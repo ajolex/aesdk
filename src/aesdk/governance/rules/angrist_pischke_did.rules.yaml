@@ -1,0 +1,17 @@
+﻿source:
+  id: "ANGRIST_PISCHKE_DID"
+  rule_file_version: "1.0.0"
+rules:
+  - id: AP-DID-003
+    name: "Staggered Adoption Requires Modern DiD Estimator"
+    severity: "error"
+    estimators: ["TWFE", "DiD"]
+    data_structures: ["panel"]
+    condition: "identification_strategy == 'DiD' and staggered_adoption == true and estimator == 'TWFE'"
+    requirement: "Staggered adoption with TWFE is blocked due to known weighting bias."
+    guidance: "Use Callaway-Sant'Anna, Sun-Abraham interactions, or stacked DiD."
+    reference:
+      authors: "Callaway & Sant'Anna"
+      journal: "Journal of Econometrics"
+      year: 2021
+      title: "Difference-in-Differences with Multiple Time Periods"

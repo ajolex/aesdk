@@ -1,0 +1,6 @@
+﻿{
+  "estimator": "TWFE",
+  "standard_errors": "HC3",
+  "clustering": "state",
+  "treatment_level": "state"
+}

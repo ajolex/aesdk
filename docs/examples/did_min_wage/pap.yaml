@@ -1,0 +1,37 @@
+﻿project:
+  id: did_min_wage
+  title: "Minimum wage DiD with staggered state policy adoption"
+  author:
+    - "AESDK Example"
+  date_registered: "2026-03-07"
+  version: "1.0.0"
+data:
+  source: "min_wage_panel.csv"
+  unit: "state"
+  structure: "panel"
+  N: 500
+  T: 12
+  G: 51
+identification:
+  strategy: "DiD"
+  treatment_variable: "policy_active"
+  outcome_variable: "employment_rate"
+  covariates:
+    mandatory: ["median_income"]
+    optional: ["unemployment_rate", "population"]
+  standard_errors: "cluster"
+  clustering: "state"
+  expected_sign: "negative"
+did_block:
+  parallel_trends_test: true
+  event_study_leads_lags: [-3, -2, -1, 0, 1, 2, 3]
+  staggered_adoption: true
+  treatment_pre_announced: false
+  anticipation_periods: 0
+  control_group: "never_treated"
+  control_group_justification: "States never adopting the policy are natural controls"
+  goodman_bacon_decomposition: true
+  hausman_test_documented: false
+  placebo_test: true
+robustness:
+  specification_curve: false

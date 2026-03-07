@@ -1,0 +1,10 @@
+﻿allowed_imports:
+  - math
+  - statistics
+  - random
+  - json
+  - pathlib
+  - numpy
+  - pandas
+  - statsmodels
+  - linearmodels

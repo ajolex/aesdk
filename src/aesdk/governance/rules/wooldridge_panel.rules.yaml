@@ -1,0 +1,18 @@
+﻿source:
+  id: "WOOLDRIDGE_PANEL"
+  rule_file_version: "1.0.0"
+rules:
+  - id: W-PANEL-001
+    name: "Cluster SE Required for Panel Data"
+    severity: "error"
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD"]
+    data_structures: ["panel"]
+    condition: "data_structure == 'panel' and standard_errors not in ['cluster', 'robust-cluster', 'two-way-cluster', 'driscoll-kraay', 'wild-cluster-bootstrap']"
+    requirement: "Panel designs must use clustered standard errors or stronger alternatives."
+    guidance: "Cluster at the unit of repeated observation or treatment assignment level."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      chapter: 7
+      section: "7.8"
+      title: "Cluster-Sample Methods"

@@ -1,0 +1,2 @@
+[console_scripts]
+aesdk = aesdk.cli.main:app

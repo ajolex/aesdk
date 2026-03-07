@@ -1,0 +1,24 @@
+{
+  "blob_version": "1.0.0",
+  "project_id": "did_min_wage",
+  "pap_path": "docs\\examples\\did_min_wage\\pap.yaml",
+  "pap_hash": "sha256:fba60f9b076ecd8cd35ce16be031f2e69b98a73e158f8a003d925c95fb42ae2b",
+  "environment": {
+    "python": "3.14.3",
+    "platform": "Windows-11-10.0.26100-SP0"
+  },
+  "events": [
+    {
+      "event_id": "e1eb31c3-2659-4b02-b69d-83cc17a120b1",
+      "event_type": "init",
+      "timestamp": "2026-03-06T16:46:54.382327+00:00",
+      "previous_hash": "",
+      "payload": {
+        "pap_path": "docs\\examples\\did_min_wage\\pap.yaml",
+        "pap_hash": "sha256:fba60f9b076ecd8cd35ce16be031f2e69b98a73e158f8a003d925c95fb42ae2b"
+      },
+      "reasoning_log": null,
+      "hash": "98a991d1c23e451d0cc1e3066ab17a09223c67006e3ec1eaa80a2531cfbaa358"
+    }
+  ]
+}

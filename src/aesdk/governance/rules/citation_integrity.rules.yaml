@@ -1,0 +1,101 @@
+# =============================================================================
+# AESDK Governance Rule File — Citation Integrity
+# Grounded in: Academic peer review standards and documented LLM failure modes
+# Maintainer: AESDK Core Team
+# Schema Version: 1.0.0
+# =============================================================================
+
+source:
+  id: "CITATION_INTEGRITY"
+  authors:
+    - "AESDK Core Team"
+  titles:
+    - "Based on documented LLM hallucination patterns in academic peer review (2024-2026)"
+  rule_file_version: "1.0.0"
+
+rules:
+
+  - id: CI-001
+    name: "Hallucinated Citations Are a Blocking Error"
+    severity: "error"
+    estimators: []          # Applies to ALL workflows
+    data_structures: []     # Applies to ALL data structures
+    condition: >
+      citation_report is not None
+      and citation_report.hallucinated_count > 0
+    requirement: >
+      One or more citations in the agent's output could not be verified
+      to exist via DOI resolution, CrossRef, or Semantic Scholar.
+      Hallucinated citations are a critical integrity failure equivalent
+      to falsified data. Execution is blocked until all citations are
+      resolved or manually verified by the researcher.
+    guidance: >
+      For each flagged citation:
+        1. Check if the paper exists under a slightly different title/year
+           (LLMs often confabulate plausible-sounding but wrong metadata).
+        2. If the citation is not real, remove it and find the correct source.
+        3. If you need to cite a concept, cite the actual textbook chapter
+           or primary source — do not allow the agent to invent a reference.
+      Use `aesdk cite verify --text reasoning_log.json` to re-run checks
+      after correction.
+    reference:
+      note: >
+        Documented in peer review reports (2025-2026): LLMs produce
+        hallucinated references at high rates. CrossRef DOI verification
+        is the minimum bar. See also: Semantic Scholar API, doi.org.
+    test_cases:
+      pass:
+        - {hallucinated_count: 0}
+        - {citation_report: null}  # No citations in text — not applicable
+      fail:
+        - {hallucinated_count: 1}
+        - {hallucinated_count: 6}   # The exact case from the reviewer's post
+
+  - id: CI-002
+    name: "Governance Rule Citations Must Be in the AESDK Rule Registry"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: >
+      rule_citation_verified == false
+    requirement: >
+      Any textbook or paper cited in an AESDK governance rule file must
+      exist in the registered bibliography. This prevents the rule
+      registry itself from containing hallucinated authority.
+    guidance: >
+      Add the reference to `aesdk/governance/bibliography.yaml` before
+      shipping a rule file. The CI pipeline checks all rule references
+      against the bibliography on every PR.
+    reference:
+      note: "Internal AESDK quality standard"
+    test_cases:
+      pass:
+        - {rule_citation_verified: true}
+      fail:
+        - {rule_citation_verified: false}
+
+  - id: CI-003
+    name: "Uncertainty Acknowledgment Required for Unverified Citations"
+    severity: "warning"
+    estimators: []
+    data_structures: []
+    condition: >
+      citation_report is not None
+      and citation_report.uncertain_count > 0
+      and citation_uncertainty_acknowledged == false
+    requirement: >
+      Citations flagged as 'uncertain' (partial match only) must be
+      acknowledged by the researcher before proceeding. The researcher
+      must confirm the citation is correct or replace it.
+    guidance: >
+      Review the suggested real paper surfaced by the validator.
+      If it matches your intent, update the citation metadata.
+      If it does not, locate the correct reference manually.
+    reference:
+      note: "AESDK citation integrity standard"
+    test_cases:
+      pass:
+        - {uncertain_count: 0}
+        - {uncertain_count: 2, citation_uncertainty_acknowledged: true}
+      fail:
+        - {uncertain_count: 2, citation_uncertainty_acknowledged: false}

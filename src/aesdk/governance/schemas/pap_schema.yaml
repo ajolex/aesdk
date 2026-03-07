@@ -1,0 +1,129 @@
+﻿$schema: "http://json-schema.org/draft-07/schema#"
+$id: "https://aesdk.io/schemas/pap/v1.0.0"
+title: "AESDK Pre-Analysis Plan"
+type: object
+required:
+  - project
+  - data
+  - identification
+  - robustness
+properties:
+  project:
+    type: object
+    required: [id, title, author, date_registered, version]
+    properties:
+      id:
+        type: string
+        pattern: "^[a-z0-9_]+$"
+      title:
+        type: string
+        minLength: 5
+      author:
+        oneOf:
+          - type: string
+          - type: array
+            items: {type: string}
+      date_registered:
+        type: string
+        format: date
+      version:
+        type: string
+        pattern: "^\\d+\\.\\d+\\.\\d+$"
+  data:
+    type: object
+    required: [source, unit, structure]
+    properties:
+      source: {type: string}
+      unit: {type: string}
+      structure:
+        type: string
+        enum: [cross-section, panel, time-series, pooled]
+      N: {type: integer, minimum: 2}
+      T: {type: integer, minimum: 1}
+      G: {type: integer, minimum: 2}
+      time_invariant_vars:
+        type: array
+        items: {type: string}
+        default: []
+  identification:
+    type: object
+    required: [strategy, treatment_variable, outcome_variable, covariates, expected_sign]
+    properties:
+      strategy:
+        type: string
+        enum: [OLS, IV, DiD, TWFE, RDD, Matching, SynthControl, EventStudy, DML, other]
+      treatment_variable: {type: string}
+      outcome_variable: {type: string}
+      covariates:
+        type: object
+        required: [mandatory]
+        properties:
+          mandatory:
+            type: array
+            items: {type: string}
+          optional:
+            type: array
+            items: {type: string}
+            default: []
+      fixed_effects:
+        type: array
+        items: {type: string}
+      standard_errors:
+        type: string
+        enum: [conventional, HC1, HC2, HC3, cluster, robust-cluster, two-way-cluster, driscoll-kraay, wild-cluster-bootstrap]
+      clustering:
+        type: string
+      expected_sign:
+        type: string
+        enum: [positive, negative, null, ambiguous]
+  iv_block:
+    type: object
+    required: [instruments, first_stage_f_threshold]
+    properties:
+      instruments:
+        type: array
+        minItems: 1
+        items: {type: string}
+      first_stage_f_threshold:
+        type: number
+        minimum: 0
+  did_block:
+    type: object
+    required: [parallel_trends_test, staggered_adoption]
+    properties:
+      parallel_trends_test: {type: boolean}
+      event_study_leads_lags:
+        type: array
+        items: {type: integer}
+      staggered_adoption: {type: boolean}
+      treatment_pre_announced: {type: boolean}
+      anticipation_periods: {type: integer, minimum: 0}
+      control_group:
+        type: string
+        enum: [never_treated, not_yet_treated, matched, all_others]
+      control_group_justification: {type: string}
+      goodman_bacon_decomposition: {type: boolean}
+      hausman_test_documented: {type: boolean}
+      placebo_test: {type: boolean}
+  robustness:
+    type: object
+    required: [specification_curve]
+    properties:
+      specification_curve: {type: boolean}
+allOf:
+  - if:
+      properties:
+        identification:
+          properties:
+            strategy:
+              const: IV
+    then:
+      required: [iv_block]
+  - if:
+      properties:
+        identification:
+          properties:
+            strategy:
+              enum: [DiD, TWFE, EventStudy]
+    then:
+      required: [did_block]
