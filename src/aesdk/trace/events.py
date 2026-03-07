@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 from aesdk.protocol.validator import ValidationResult
 
 
-def init_payload(*, pap_path: str, pap_hash: str) -> dict[str, Any]:
-    return {"pap_path": pap_path, "pap_hash": pap_hash}
+def init_payload(*, pap_path: str, pap_hash: str, governance_passport: dict[str, Any] | None = None) -> dict[str, Any]:
+    payload: dict[str, Any] = {"pap_path": pap_path, "pap_hash": pap_hash}
+    if governance_passport is not None:
+        payload["governance_passport"] = governance_passport
+    return payload
 
 
 def proposal_payload(*, proposal: dict[str, Any], seed: int, temperature: float, model: str) -> dict[str, Any]:
@@ -38,8 +42,9 @@ def validation_payload(result: ValidationResult) -> dict[str, Any]:
     }
 
 
-def execute_payload(*, status: str, diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
-    return {"status": status, "diagnostics": diagnostics}
+def execute_payload(*, code: str, status: str, diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
+    code_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    return {"status": status, "diagnostics": diagnostics, "code": code, "code_sha256": code_hash}
 
 
 def override_payload(*, rule_ids: list[str], justification: str) -> dict[str, Any]:

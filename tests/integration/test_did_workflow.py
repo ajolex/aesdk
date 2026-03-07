@@ -18,7 +18,13 @@ def test_did_workflow_blocked_and_blob_written(valid_pap_dict: dict, runtime_dir
     }
 
     blob_path = runtime_dir / ".aesdk.json"
-    project = Project.create(pap_path=pap_path, blob_path=blob_path)
+    project = Project.create(
+        pap_path=pap_path,
+        blob_path=blob_path,
+        context="production",
+        conformance="strict",
+        policy_version="1.1.0",
+    )
     project.propose_model(proposal)
     result = project.validate()
 
@@ -35,3 +41,8 @@ def test_did_workflow_blocked_and_blob_written(valid_pap_dict: dict, runtime_dir
     assert event_types[0] == "init"
     assert "propose_model" in event_types
     assert "validate" in event_types
+    passport = blob.metadata["governance_passport"]
+    assert passport["execution_context"] == "production"
+    assert passport["conformance_level"] == "strict"
+    assert passport["policy_version"] == "1.1.0"
+    assert passport["rulepack_hash"].startswith("sha256:")

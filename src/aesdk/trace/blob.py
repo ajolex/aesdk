@@ -1,8 +1,9 @@
-﻿"""Replication blob with append-only hash chain."""
+﻿"""Replication blob with append-only hash chain and signing utilities."""
 
 from __future__ import annotations
 
 import hashlib
+import hmac
 import json
 import uuid
 from dataclasses import dataclass
@@ -10,7 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from aesdk.core.errors import BlobIntegrityError
+from aesdk.core.errors import BlobIntegrityError, BlobSignatureError
+
+try:
+    import requests
+except Exception:  # pragma: no cover
+    requests = None
 
 
 @dataclass
@@ -108,13 +114,20 @@ class BlobEvent:
 
 
 class ReplicationBlob:
-    BLOB_VERSION = "1.0.0"
+    BLOB_VERSION = "1.2.0"
 
-    def __init__(self, project_id: str, pap_path: str | Path, environment: dict[str, Any]):
+    def __init__(
+        self,
+        project_id: str,
+        pap_path: str | Path,
+        environment: dict[str, Any],
+        metadata: dict[str, Any] | None = None,
+    ):
         self.project_id = project_id
         self.pap_path = str(pap_path)
         self.pap_hash = self._hash_file(self.pap_path)
         self.environment = environment
+        self.metadata = metadata or {}
         self._events: list[BlobEvent] = []
 
     @property
@@ -146,6 +159,7 @@ class ReplicationBlob:
             "pap_path": self.pap_path,
             "pap_hash": self.pap_hash,
             "environment": self.environment,
+            "metadata": self.metadata,
             "events": [event.to_dict() for event in self._events],
         }
 
@@ -160,7 +174,12 @@ class ReplicationBlob:
         target = Path(path)
         with target.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
-        blob = cls(project_id=data["project_id"], pap_path=data["pap_path"], environment=data.get("environment", {}))
+        blob = cls(
+            project_id=data["project_id"],
+            pap_path=data["pap_path"],
+            environment=data.get("environment", {}),
+            metadata=data.get("metadata", {}),
+        )
         blob.pap_hash = data["pap_hash"]
         blob._events = [BlobEvent.from_dict(item) for item in data.get("events", [])]
         return blob
@@ -175,9 +194,7 @@ class ReplicationBlob:
                 )
             computed = _event_hash(event.to_dict(include_hash=False))
             if computed != event.hash:
-                errors.append(
-                    f"Event {index} hash mismatch: expected '{event.hash}' got '{computed}'"
-                )
+                errors.append(f"Event {index} hash mismatch: expected '{event.hash}' got '{computed}'")
             previous_hash = event.hash
         return (len(errors) == 0, errors)
 
@@ -192,6 +209,160 @@ class ReplicationBlob:
 def _event_hash(payload: dict[str, Any]) -> str:
     serialized = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(serialized).hexdigest()
+
+
+def canonical_blob_bytes(blob: ReplicationBlob | dict[str, Any]) -> bytes:
+    payload = blob.to_dict() if isinstance(blob, ReplicationBlob) else blob
+    return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+
+
+def sign_blob(
+    blob_path: str | Path,
+    *,
+    mode: str = "hmac",
+    secret: str | None = None,
+    key_id: str = "local",
+    kms_endpoint: str | None = None,
+    kms_token: str | None = None,
+    timeout_seconds: float = 10.0,
+) -> Path:
+    blob_file = Path(blob_path)
+    payload = json.loads(blob_file.read_text(encoding="utf-8"))
+    canonical = canonical_blob_bytes(payload)
+    blob_sha256 = hashlib.sha256(canonical).hexdigest()
+
+    if mode == "hmac":
+        if not secret:
+            raise BlobSignatureError("secret is required for hmac signing")
+        signature = hmac.new(secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
+        signature_doc = {
+            "algorithm": "HMAC-SHA256",
+            "key_id": key_id,
+            "blob_sha256": blob_sha256,
+            "signature": signature,
+            "signed_at": datetime.now(timezone.utc).isoformat(),
+        }
+    elif mode == "kms-http":
+        if not kms_endpoint:
+            raise BlobSignatureError("kms_endpoint is required for kms-http signing")
+        signature = _kms_http_sign(
+            endpoint=kms_endpoint,
+            key_id=key_id,
+            blob_sha256=blob_sha256,
+            token=kms_token,
+            timeout_seconds=timeout_seconds,
+        )
+        signature_doc = {
+            "algorithm": "KMS-HTTP-SHA256",
+            "key_id": key_id,
+            "blob_sha256": blob_sha256,
+            "signature": signature,
+            "kms_endpoint": kms_endpoint,
+            "signed_at": datetime.now(timezone.utc).isoformat(),
+        }
+    else:
+        raise BlobSignatureError(f"Unsupported signing mode: {mode}")
+
+    sig_path = blob_file.with_suffix(blob_file.suffix + ".sig.json")
+    sig_path.write_text(json.dumps(signature_doc, indent=2), encoding="utf-8")
+    return sig_path
+
+
+def verify_blob_signature(
+    blob_path: str | Path,
+    signature_path: str | Path,
+    *,
+    secret: str | None = None,
+    kms_endpoint: str | None = None,
+    kms_token: str | None = None,
+    timeout_seconds: float = 10.0,
+) -> tuple[bool, str]:
+    blob_file = Path(blob_path)
+    sig_file = Path(signature_path)
+    payload = json.loads(blob_file.read_text(encoding="utf-8"))
+    sig_doc = json.loads(sig_file.read_text(encoding="utf-8"))
+
+    canonical = canonical_blob_bytes(payload)
+    recomputed_blob_sha = hashlib.sha256(canonical).hexdigest()
+    if recomputed_blob_sha != sig_doc.get("blob_sha256"):
+        return False, "blob_sha256 mismatch"
+
+    algorithm = sig_doc.get("algorithm", "")
+    if algorithm == "HMAC-SHA256":
+        if not secret:
+            raise BlobSignatureError("secret is required for hmac signature verification")
+        expected_sig = hmac.new(secret.encode("utf-8"), canonical, hashlib.sha256).hexdigest()
+        if not hmac.compare_digest(expected_sig, sig_doc.get("signature", "")):
+            return False, "signature mismatch"
+        return True, "ok"
+
+    if algorithm == "KMS-HTTP-SHA256":
+        endpoint = kms_endpoint or sig_doc.get("kms_endpoint")
+        if not endpoint:
+            raise BlobSignatureError("kms_endpoint is required for kms-http signature verification")
+        valid = _kms_http_verify(
+            endpoint=endpoint,
+            key_id=sig_doc.get("key_id", ""),
+            blob_sha256=recomputed_blob_sha,
+            signature=sig_doc.get("signature", ""),
+            token=kms_token,
+            timeout_seconds=timeout_seconds,
+        )
+        return (True, "ok") if valid else (False, "signature mismatch")
+
+    raise BlobSignatureError(f"Unsupported signature algorithm: {algorithm}")
+
+
+def _kms_http_sign(
+    *,
+    endpoint: str,
+    key_id: str,
+    blob_sha256: str,
+    token: str | None,
+    timeout_seconds: float,
+) -> str:
+    if requests is None:
+        raise BlobSignatureError("requests is required for kms-http signing")
+    url = endpoint.rstrip("/") + "/sign"
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    payload = {"key_id": key_id, "blob_sha256": blob_sha256}
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=timeout_seconds)
+        response.raise_for_status()
+        body = response.json()
+    except Exception as exc:
+        raise BlobSignatureError(f"kms-http sign request failed: {exc}") from exc
+    signature = body.get("signature")
+    if not signature:
+        raise BlobSignatureError("kms-http sign response missing 'signature'")
+    return str(signature)
+
+
+def _kms_http_verify(
+    *,
+    endpoint: str,
+    key_id: str,
+    blob_sha256: str,
+    signature: str,
+    token: str | None,
+    timeout_seconds: float,
+) -> bool:
+    if requests is None:
+        raise BlobSignatureError("requests is required for kms-http verification")
+    url = endpoint.rstrip("/") + "/verify"
+    headers = {"Content-Type": "application/json"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    payload = {"key_id": key_id, "blob_sha256": blob_sha256, "signature": signature}
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=timeout_seconds)
+        response.raise_for_status()
+        body = response.json()
+    except Exception as exc:
+        raise BlobSignatureError(f"kms-http verify request failed: {exc}") from exc
+    return bool(body.get("valid", False))
 
 
 def verify_integrity(blob_or_path: ReplicationBlob | str | Path) -> tuple[bool, list[str]]:

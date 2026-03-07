@@ -1,4 +1,5 @@
 ﻿from aesdk.core.errors import *
+from aesdk.core.attestation import AttestationEvidence, AttestationProvider, EndpointAttestationProvider, NoopAttestationProvider
 
 __all__ = [
     "AESDKError",
@@ -8,7 +9,14 @@ __all__ = [
     "GovernanceBlockError",
     "StateTransitionError",
     "BlobIntegrityError",
+    "BlobSignatureError",
     "SandboxExecutionError",
     "ImportWhitelistError",
+    "ForbiddenCodePatternError",
     "CitationVerificationError",
+    "AttestationError",
+    "AttestationEvidence",
+    "AttestationProvider",
+    "EndpointAttestationProvider",
+    "NoopAttestationProvider",
 ]

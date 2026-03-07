@@ -2,15 +2,17 @@
 
 from __future__ import annotations
 
-import os
 import platform
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from aesdk.core.attestation import AttestationProvider, EndpointAttestationProvider, NoopAttestationProvider
 from aesdk.core.errors import GovernanceBlockError, MissingPAPError
 from aesdk.core.state_machine import ProjectStateMachine
 from aesdk.governance.pap import validate_pap_file
+from aesdk.governance.policy import compute_rulepack_hash, resolve_profile
 from aesdk.protocol.validator import RuleRegistry, ValidationResult, Validator
 from aesdk.sandbox.runner import SandboxResult, SandboxRunner
 from aesdk.trace import events as trace_events
@@ -26,6 +28,7 @@ class Project:
     validator: Validator
     sandbox_runner: SandboxRunner
     state_machine: ProjectStateMachine
+    governance_passport: dict[str, Any]
 
     _last_proposal: dict[str, Any] | None = None
     _last_validation: ValidationResult | None = None
@@ -39,24 +42,65 @@ class Project:
         registry: RuleRegistry | None = None,
         blob: ReplicationBlob | None = None,
         sandbox_runner: SandboxRunner | None = None,
+        context: str = "research",
+        conformance: str | None = None,
+        policy_version: str = "1.0.0",
+        attestor: AttestationProvider | None = None,
+        attestation_endpoint: str | None = None,
+        attestation_token: str | None = None,
     ) -> "Project":
         pap_target = Path(pap_path)
         if not pap_target.exists():
             raise MissingPAPError(f"PAP is required and was not found: {pap_target}")
         pap = validate_pap_file(pap_target)
         project_id = pap.get("project", {}).get("id", pap_target.stem)
+
+        active_registry = registry or RuleRegistry()
+        profile = resolve_profile(context=context, conformance=conformance)
+        rulepack_hash = compute_rulepack_hash(active_registry.rules_dir)
+
+        passport = {
+            "policy_version": policy_version,
+            "policy_profile": profile.name,
+            "execution_context": profile.context.value,
+            "conformance_level": profile.conformance.value,
+            "rulepack_hash": rulepack_hash,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        active_attestor: AttestationProvider
+        if attestor is not None:
+            active_attestor = attestor
+        elif attestation_endpoint:
+            active_attestor = EndpointAttestationProvider(attestation_endpoint, token=attestation_token)
+        else:
+            active_attestor = NoopAttestationProvider()
+
+        evidence = active_attestor.attest(passport)
+        passport["attestation"] = {
+            "provider": evidence.provider,
+            "statement": evidence.statement,
+            "timestamp": evidence.timestamp,
+            "details": evidence.details,
+        }
+
         blob_target = Path(blob_path or pap_target.parent / ".aesdk.json")
         active_blob = blob or ReplicationBlob(
             project_id=project_id,
             pap_path=pap_target,
             environment={"python": platform.python_version(), "platform": platform.platform()},
+            metadata={"governance_passport": passport},
         )
 
         state_machine = ProjectStateMachine()
         state_machine.on_init()
         active_blob.record(
             "init",
-            trace_events.init_payload(pap_path=str(pap_target), pap_hash=active_blob.pap_hash),
+            trace_events.init_payload(
+                pap_path=str(pap_target),
+                pap_hash=active_blob.pap_hash,
+                governance_passport=passport,
+            ),
         )
         active_blob.save(blob_target)
 
@@ -65,9 +109,10 @@ class Project:
             pap=pap,
             blob_path=blob_target,
             blob=active_blob,
-            validator=Validator(registry=registry),
+            validator=Validator(registry=active_registry),
             sandbox_runner=sandbox_runner or SandboxRunner(),
             state_machine=state_machine,
+            governance_passport=passport,
         )
 
     def propose_model(
@@ -97,7 +142,14 @@ class Project:
             active_proposal = {}
             self.propose_model(active_proposal)
 
-        result = self.validator.validate(self.pap, active_proposal)
+        result = self.validator.validate(
+            self.pap,
+            active_proposal,
+            conformance=resolve_profile(
+                context=self.governance_passport["execution_context"],
+                conformance=self.governance_passport["conformance_level"],
+            ).conformance,
+        )
         self._last_validation = result
         self.state_machine.on_validate(result.status)
         self.blob.record("validate", trace_events.validation_payload(result))
@@ -118,6 +170,7 @@ class Project:
         self.blob.record(
             "execute",
             trace_events.execute_payload(
+                code=code,
                 status=sandbox_result.status,
                 diagnostics=[item.to_dict() for item in sandbox_result.diagnostics],
             ),

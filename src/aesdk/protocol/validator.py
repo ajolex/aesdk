@@ -11,6 +11,7 @@ from typing import Any
 import yaml
 
 from aesdk.core.errors import RuleEvaluationError
+from aesdk.governance.policy import ConformanceLevel
 
 DEFAULT_RULES_DIR = Path(__file__).resolve().parents[1] / "governance" / "rules"
 
@@ -236,6 +237,16 @@ def _format_reference(ref: dict[str, Any] | str | None) -> str:
     return ", ".join(parts) if parts else "No citation provided"
 
 
+def _apply_conformance_to_severity(severity: Severity, conformance: ConformanceLevel) -> Severity:
+    if conformance == ConformanceLevel.BASIC:
+        return severity
+    if conformance == ConformanceLevel.STRICT and severity == Severity.WARNING:
+        return Severity.ERROR
+    if conformance == ConformanceLevel.REGULATED and severity in {Severity.WARNING, Severity.INFO}:
+        return Severity.ERROR
+    return severity
+
+
 class ValidationContext:
     def __init__(self, pap: dict[str, Any], proposal: dict[str, Any]):
         self._pap = pap
@@ -273,6 +284,8 @@ class ValidationContext:
             "hausman_test_documented": did.get("hausman_test_documented", False),
             "n_covariates": len(covariates.get("mandatory", [])) + len(covariates.get("optional", [])),
             "citation_report": self._proposal.get("citation_report"),
+            "citation_uncertainty_acknowledged": self._proposal.get("citation_uncertainty_acknowledged", False),
+            "rule_citation_verified": self._proposal.get("rule_citation_verified", True),
         }
         return context
 
@@ -281,7 +294,12 @@ class Validator:
     def __init__(self, registry: RuleRegistry | None = None):
         self.registry = registry or RuleRegistry()
 
-    def validate(self, pap: dict[str, Any], proposal: dict[str, Any]) -> ValidationResult:
+    def validate(
+        self,
+        pap: dict[str, Any],
+        proposal: dict[str, Any],
+        conformance: ConformanceLevel = ConformanceLevel.BASIC,
+    ) -> ValidationResult:
         context = ValidationContext(pap, proposal).as_dict()
         violations: list[RuleViolation] = []
         for rule in self.registry.all_rules:
@@ -292,11 +310,13 @@ class Validator:
             if structures and context.get("data_structure") not in structures:
                 continue
             if _evaluate_condition((rule.get("condition") or "").strip(), context):
+                raw_severity = Severity(rule.get("severity", "warning"))
+                severity = _apply_conformance_to_severity(raw_severity, conformance)
                 violations.append(
                     RuleViolation(
                         rule_id=rule.get("id", "UNKNOWN"),
                         rule_name=rule.get("name", "Unnamed Rule"),
-                        severity=Severity(rule.get("severity", "warning")),
+                        severity=severity,
                         message=rule.get("requirement", "Requirement violated."),
                         guidance=rule.get("guidance", ""),
                         citation=_format_reference(rule.get("reference")),
@@ -310,3 +330,4 @@ class Validator:
         else:
             status = "pass"
         return ValidationResult(status=status, violations=violations)
+

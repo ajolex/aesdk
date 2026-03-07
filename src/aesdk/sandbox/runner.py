@@ -9,13 +9,14 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 import yaml
 
-from aesdk.core.errors import ImportWhitelistError, SandboxExecutionError
+from aesdk.core.errors import ForbiddenCodePatternError, ImportWhitelistError
 
 DEFAULT_WHITELIST_PATH = Path(__file__).resolve().parent / "whitelist.yaml"
+_FORBIDDEN_CALLS = {"open", "exec", "eval", "compile", "__import__", "input", "breakpoint"}
+_FORBIDDEN_ATTR_CALLS = {"system", "popen", "remove", "unlink", "rmdir", "rmtree", "rename", "replace"}
 
 
 @dataclass
@@ -55,10 +56,16 @@ class SandboxRunner:
             diagnostics.append(SandboxDiagnostic("SYNTAX", str(exc), "error"))
             return SandboxResult(status="block", diagnostics=diagnostics)
 
+        forbidden_calls = self._find_forbidden_calls(tree)
+        if forbidden_calls:
+            message = f"Forbidden operations: {', '.join(sorted(forbidden_calls))}"
+            diagnostics.append(SandboxDiagnostic("FORBIDDEN_CALL", message, "error"))
+            raise ForbiddenCodePatternError(message)
+
         imports = self._extract_imports(tree)
-        forbidden = sorted(module for module in imports if module not in self.allowed_imports)
-        if forbidden:
-            message = f"Forbidden imports: {', '.join(forbidden)}"
+        forbidden_imports = sorted(module for module in imports if module not in self.allowed_imports)
+        if forbidden_imports:
+            message = f"Forbidden imports: {', '.join(forbidden_imports)}"
             diagnostics.append(SandboxDiagnostic("IMPORT_WHITELIST", message, "error"))
             raise ImportWhitelistError(message)
 
@@ -101,3 +108,15 @@ class SandboxRunner:
             elif isinstance(node, ast.ImportFrom) and node.module:
                 modules.add(node.module.split(".")[0])
         return modules
+
+    @staticmethod
+    def _find_forbidden_calls(tree: ast.AST) -> set[str]:
+        found: set[str] = set()
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if isinstance(node.func, ast.Name) and node.func.id in _FORBIDDEN_CALLS:
+                found.add(node.func.id)
+            if isinstance(node.func, ast.Attribute) and node.func.attr in _FORBIDDEN_ATTR_CALLS:
+                found.add(node.func.attr)
+        return found

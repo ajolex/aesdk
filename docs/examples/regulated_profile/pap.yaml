@@ -1,0 +1,24 @@
+﻿project:
+  id: regulated_cross_section
+  title: "Regulated profile demo with conservative OLS"
+  author:
+    - "AESDK Example"
+  date_registered: "2026-03-08"
+  version: "1.0.0"
+data:
+  source: "regulated_demo.csv"
+  unit: "firm"
+  structure: "cross-section"
+  N: 120
+  G: 60
+identification:
+  strategy: "OLS"
+  treatment_variable: "treat"
+  outcome_variable: "outcome"
+  covariates:
+    mandatory: ["size", "age"]
+    optional: []
+  standard_errors: "HC3"
+  expected_sign: "positive"
+robustness:
+  specification_curve: false

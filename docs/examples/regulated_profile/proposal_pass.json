@@ -1,0 +1,4 @@
+﻿{
+  "estimator": "OLS",
+  "standard_errors": "HC3"
+}

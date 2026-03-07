@@ -1,1 +1,24 @@
-tools
+﻿# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Local runtime artifacts
+.aesdk.json
+*.aesdk.json
+.pytest_tmp/
+.tmp/
+tests/.runtime/
+
+# Virtual environments
+.venv/
+venv/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+
+*.aesdk.json.sig.json
+

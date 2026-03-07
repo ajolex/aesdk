@@ -1,10 +1,15 @@
 ﻿import json
 import shutil
+import sys
 import uuid
 from pathlib import Path
 
 import pytest
 import yaml
+
+SRC_DIR = Path(__file__).resolve().parents[1] / 'src'
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 
 @pytest.fixture()

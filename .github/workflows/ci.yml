@@ -1,0 +1,32 @@
+﻿name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+      - name: Unit and integration tests
+        run: pytest -q
+      - name: CLI smoke (blocked DiD)
+        run: |
+          aesdk init --pap docs/examples/did_min_wage/pap.yaml
+          aesdk validate --pap docs/examples/did_min_wage/pap.yaml --proposal docs/examples/did_min_wage/proposal_blocked.json
+          aesdk reproduce --blob docs/examples/did_min_wage/.aesdk.json --replay --fail-on-replay-mismatch=false
+      - name: CLI smoke (regulated + signed audit)
+        run: |
+          aesdk execute --pap docs/examples/regulated_profile/pap.yaml --proposal docs/examples/regulated_profile/proposal_pass.json --code-file docs/examples/regulated_profile/exec_code.py --context regulated --conformance regulated --policy-version 1.2.0
+          aesdk reproduce --blob docs/examples/regulated_profile/.aesdk.json --replay
+          aesdk audit sign --blob docs/examples/regulated_profile/.aesdk.json --mode hmac --secret ci-secret --key-id ci
+          aesdk audit verify-signature --blob docs/examples/regulated_profile/.aesdk.json --signature docs/examples/regulated_profile/.aesdk.json.sig.json --secret ci-secret
