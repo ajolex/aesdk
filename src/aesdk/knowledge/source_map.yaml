@@ -1,0 +1,82 @@
+version: "0.1.0"
+extraction:
+  method: "PyMuPDF text search over local PDFs, followed by compact paraphrased SDK protocol creation."
+  note: "PDF page numbers are 1-based document pages from the local files, not printed book page numbers."
+method_sources:
+  ols_cef:
+    - source_id: "wooldridge_cross_section_panel"
+      local_path: "tools/Wooldridge.pdf"
+      locators:
+        - pdf_pages: [253]
+          topic: "heteroskedasticity-robust inference"
+        - pdf_pages: [1, 2, 3, 4, 5]
+          topic: "econometrics, causal questions, and data structures"
+      sdk_context:
+        - "Use regression as a conditional mean/structural modeling tool only after stating the estimand and identification conditions."
+        - "Use robust or clustered inference when sampling or assignment makes conventional standard errors unreliable."
+    - source_id: "angrist_pischke_mhe"
+      local_path: "tools/MostlyHarmlessEconometrics.pdf"
+      locators:
+        - pdf_pages: [37, 38, 40, 42]
+          topic: "Making Regression Make Sense"
+      sdk_context:
+        - "Frame regression around the conditional expectation function and the identifying comparison."
+  iv_2sls:
+    - source_id: "wooldridge_cross_section_panel"
+      local_path: "tools/Wooldridge.pdf"
+      locators:
+        - pdf_pages: [466, 468, 470, 472, 474]
+          topic: "instrumental variables estimation"
+      sdk_context:
+        - "Require excluded instruments, relevance evidence, and an exclusion restriction argument before IV execution."
+    - source_id: "angrist_pischke_mhe"
+      local_path: "tools/MostlyHarmlessEconometrics.pdf"
+      locators:
+        - pdf_pages: [100, 101, 103, 105]
+          topic: "IV and causality"
+      sdk_context:
+        - "Interpret IV carefully under treatment effect heterogeneity, including LATE-style framing where appropriate."
+  panel_fe:
+    - source_id: "wooldridge_cross_section_panel"
+      local_path: "tools/Wooldridge.pdf"
+      locators:
+        - pdf_pages: [424, 438, 446, 447, 448]
+          topic: "fixed effects and unobserved effects"
+        - pdf_pages: [460, 774, 809]
+          topic: "panel data models"
+      sdk_context:
+        - "Panel methods must declare unit/time structure and the identifying within-unit or between-unit variation."
+        - "Inference must address repeated observations, clustering, serial correlation, and heteroskedasticity."
+    - source_id: "angrist_pischke_mhe"
+      local_path: "tools/MostlyHarmlessEconometrics.pdf"
+      locators:
+        - pdf_pages: [181]
+          topic: "Parallel Worlds: fixed effects, differences-in-differences, and panel data"
+      sdk_context:
+        - "Use fixed effects as a design tool whose identifying variation must be explained, not as automatic causal magic."
+  did:
+    - source_id: "angrist_pischke_mhe"
+      local_path: "tools/MostlyHarmlessEconometrics.pdf"
+      locators:
+        - pdf_pages: [181]
+          topic: "fixed effects, differences-in-differences, and panel data"
+        - pdf_pages: [185, 187, 189, 191, 193]
+          topic: "differences-in-differences examples and diagnostics"
+        - pdf_pages: [238, 247, 249, 251]
+          topic: "clustering and serial correlation in panels"
+      sdk_context:
+        - "A DiD workflow must register the comparison group, treatment timing, pre-trend diagnostic, and clustered inference plan."
+        - "Serial correlation and grouped treatment assignment are first-order inference risks in panel DiD."
+    - source_id: "callaway_santanna_2021"
+      locators:
+        - topic: "multiple-period DiD with staggered treatment timing"
+      sdk_context:
+        - "Plain TWFE is blocked for staggered adoption unless a modern estimator or decomposition strategy is registered."
+  rdd:
+    - source_id: "angrist_pischke_mhe"
+      local_path: "tools/MostlyHarmlessEconometrics.pdf"
+      locators:
+        - pdf_pages: [205, 206]
+          topic: "regression discontinuity designs"
+      sdk_context:
+        - "Future RDD protocol should require running variable, cutoff, bandwidth, continuity assumptions, and manipulation checks."

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from aesdk.core.errors import BlobIntegrityError, BlobSignatureError
+from aesdk.trace.kms_providers import provider_for_mode
 
 try:
     import requests
@@ -242,24 +243,23 @@ def sign_blob(
             "signature": signature,
             "signed_at": datetime.now(timezone.utc).isoformat(),
         }
-    elif mode == "kms-http":
-        if not kms_endpoint:
-            raise BlobSignatureError("kms_endpoint is required for kms-http signing")
-        signature = _kms_http_sign(
-            endpoint=kms_endpoint,
-            key_id=key_id,
-            blob_sha256=blob_sha256,
-            token=kms_token,
+    elif mode in {"kms-http", "aws-kms", "gcp-kms", "azure-keyvault"}:
+        provider = provider_for_mode(
+            mode,
+            kms_endpoint=kms_endpoint,
+            kms_token=kms_token,
             timeout_seconds=timeout_seconds,
         )
+        signature = provider.sign(key_id=key_id, blob_sha256=blob_sha256)
         signature_doc = {
-            "algorithm": "KMS-HTTP-SHA256",
+            "algorithm": provider.algorithm,
             "key_id": key_id,
             "blob_sha256": blob_sha256,
             "signature": signature,
-            "kms_endpoint": kms_endpoint,
             "signed_at": datetime.now(timezone.utc).isoformat(),
         }
+        if kms_endpoint:
+            signature_doc["kms_endpoint"] = kms_endpoint
     else:
         raise BlobSignatureError(f"Unsupported signing mode: {mode}")
 
@@ -296,17 +296,24 @@ def verify_blob_signature(
             return False, "signature mismatch"
         return True, "ok"
 
-    if algorithm == "KMS-HTTP-SHA256":
+    if algorithm in {"KMS-HTTP-SHA256", "AWS-KMS-RSASSA-PSS-SHA256", "GCP-KMS-RSA-SIGN-PSS-2048-SHA256", "AZURE-KEYVAULT-RS256"}:
+        mode_by_algorithm = {
+            "KMS-HTTP-SHA256": "kms-http",
+            "AWS-KMS-RSASSA-PSS-SHA256": "aws-kms",
+            "GCP-KMS-RSA-SIGN-PSS-2048-SHA256": "gcp-kms",
+            "AZURE-KEYVAULT-RS256": "azure-keyvault",
+        }
         endpoint = kms_endpoint or sig_doc.get("kms_endpoint")
-        if not endpoint:
-            raise BlobSignatureError("kms_endpoint is required for kms-http signature verification")
-        valid = _kms_http_verify(
-            endpoint=endpoint,
+        provider = provider_for_mode(
+            mode_by_algorithm[algorithm],
+            kms_endpoint=endpoint,
+            kms_token=kms_token,
+            timeout_seconds=timeout_seconds,
+        )
+        valid = provider.verify(
             key_id=sig_doc.get("key_id", ""),
             blob_sha256=recomputed_blob_sha,
             signature=sig_doc.get("signature", ""),
-            token=kms_token,
-            timeout_seconds=timeout_seconds,
         )
         return (True, "ok") if valid else (False, "signature mismatch")
 

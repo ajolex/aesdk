@@ -1,0 +1,8 @@
+{
+  "estimator": "DiD",
+  "standard_errors": "HC3",
+  "clustering": "state",
+  "treatment_level": "state",
+  "model": "employment_rate ~ policy_active + median_income + unemployment_rate + C(state) + C(year)",
+  "parallel_trends_diagnostic": "event-study leads registered in PAP"
+}

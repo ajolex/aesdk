@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ast
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,11 @@ from aesdk.core.errors import ForbiddenCodePatternError, ImportWhitelistError
 DEFAULT_WHITELIST_PATH = Path(__file__).resolve().parent / "whitelist.yaml"
 _FORBIDDEN_CALLS = {"open", "exec", "eval", "compile", "__import__", "input", "breakpoint"}
 _FORBIDDEN_ATTR_CALLS = {"system", "popen", "remove", "unlink", "rmdir", "rmtree", "rename", "replace"}
+
+try:
+    import resource
+except Exception:  # pragma: no cover - unavailable on Windows
+    resource = None
 
 
 @dataclass
@@ -38,17 +44,26 @@ class SandboxResult:
 
 
 class SandboxRunner:
-    def __init__(self, whitelist_path: str | Path | None = None):
+    def __init__(
+        self,
+        whitelist_path: str | Path | None = None,
+        *,
+        mem_limit_mb: int = 512,
+        cpu_limit_sec: int = 30,
+    ):
         self.whitelist_path = Path(whitelist_path or DEFAULT_WHITELIST_PATH)
         self.allowed_imports = self._load_whitelist(self.whitelist_path)
+        self.mem_limit_mb = mem_limit_mb
+        self.cpu_limit_sec = cpu_limit_sec
 
     def _load_whitelist(self, path: Path) -> set[str]:
         with path.open("r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle) or {}
         return set(data.get("allowed_imports", []))
 
-    def run_python(self, code: str, timeout_seconds: int = 10) -> SandboxResult:
+    def run_python(self, code: str, timeout_seconds: int | None = None) -> SandboxResult:
         diagnostics: list[SandboxDiagnostic] = []
+        active_timeout = timeout_seconds or self.cpu_limit_sec
 
         try:
             tree = ast.parse(code)
@@ -84,8 +99,9 @@ class SandboxRunner:
                     [sys.executable, str(script_path)],
                     capture_output=True,
                     text=True,
-                    timeout=timeout_seconds,
+                    timeout=active_timeout,
                     check=False,
+                    preexec_fn=self._preexec_resource_limits(),
                 )
             except subprocess.TimeoutExpired as exc:
                 diagnostics.append(SandboxDiagnostic("TIMEOUT", str(exc), "error"))
@@ -97,6 +113,22 @@ class SandboxRunner:
 
         diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
         return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
+
+    def _preexec_resource_limits(self):
+        if os.name == "nt" or resource is None:
+            return None
+
+        mem_limit_mb = self.mem_limit_mb
+        cpu_limit_sec = self.cpu_limit_sec
+
+        def apply_limits() -> None:
+            if mem_limit_mb > 0:
+                mem_bytes = mem_limit_mb * 1024 * 1024
+                resource.setrlimit(resource.RLIMIT_AS, (mem_bytes, mem_bytes))
+            if cpu_limit_sec > 0:
+                resource.setrlimit(resource.RLIMIT_CPU, (cpu_limit_sec, cpu_limit_sec))
+
+        return apply_limits
 
     @staticmethod
     def _extract_imports(tree: ast.AST) -> set[str]:

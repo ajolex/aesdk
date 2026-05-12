@@ -1,19 +1,18 @@
-﻿"""Phase-4 specification curve summary scaffold."""
-
+﻿"""Summarization of econometric results."""
 from __future__ import annotations
+from aesdk.curve.spec_engine import SpecResult
 
-from dataclasses import dataclass
+def summarize_result(result: SpecResult) -> str:
+    """Creates a human-readable summary of the econometric result."""
+    lines = [
+        f"Estimator: {result.estimator_name}",
+        f"Observations: {result.n_observations}",
+        f"R-squared: {result.r_squared:.4f}",
+        "\nCoefficients:"
+    ]
+    for var, val in result.coefficients.items():
+        se = result.std_errors.get(var, 0)
+        p = result.p_values.get(var, 1)
+        lines.append(f"  {var}: {val:.4f} (SE: {se:.4f}, p: {p:.4f})")
 
-from aesdk.curve.runner import SpecificationResult
-
-
-@dataclass
-class CurveSummary:
-    n_specs: int
-    n_estimated: int
-
-
-def summarize(results: list[SpecificationResult]) -> CurveSummary:
-    """Return aggregate counts for placeholder phase-4 output."""
-    estimated = sum(1 for result in results if result.estimate is not None)
-    return CurveSummary(n_specs=len(results), n_estimated=estimated)
+    return "\n".join(lines)

@@ -1,0 +1,151 @@
+version: "0.1.0"
+methods:
+  ols_cef:
+    name: "OLS / CEF Regression"
+    status: "initial"
+    data_structures: ["cross-section", "pooled", "panel"]
+    estimators: ["OLS"]
+    purpose: "Estimate conditional mean relationships and, under stated identification assumptions, causal parameters."
+    assumptions:
+      - "The target estimand is stated before estimation."
+      - "The identifying variation is conditionally exogenous given the registered covariates or design."
+      - "The functional form and included covariates are part of the pre-analysis plan."
+      - "Inference is robust to plausible heteroskedasticity or clustering in the design."
+    required_pap_fields:
+      - "identification.strategy"
+      - "identification.treatment_variable"
+      - "identification.outcome_variable"
+      - "identification.covariates"
+      - "identification.standard_errors"
+      - "robustness.specification_curve"
+    diagnostics:
+      - "Inspect covariate balance or design support where causal language is used."
+      - "Use heteroskedasticity-robust inference unless conventional inference is explicitly justified."
+      - "For grouped, repeated, or assigned-at-group designs, cluster at the assignment or sampling level."
+    blocks_or_warnings:
+      - "Block causal claims if the exogeneity/design assumption is not documented."
+      - "Warn when conventional standard errors are used without justification."
+      - "Block post-hoc covariate selection that is not declared in the PAP."
+    sources:
+      - {id: "wooldridge_cross_section_panel", chapters: ["4"]}
+      - {id: "angrist_pischke_mhe", chapters: ["3"]}
+  iv_2sls:
+    name: "Instrumental Variables / 2SLS"
+    status: "initial"
+    data_structures: ["cross-section", "pooled", "panel"]
+    estimators: ["IV", "2SLS"]
+    purpose: "Estimate causal effects when treatment or exposure is endogenous and valid excluded instruments are available."
+    assumptions:
+      - "Excluded instruments are relevant for the endogenous variable."
+      - "Excluded instruments affect the outcome only through the endogenous variable."
+      - "Excluded instruments are independent of unobserved determinants of the outcome under the design."
+      - "The estimand is interpreted carefully when effects are heterogeneous."
+    required_pap_fields:
+      - "iv_block.instruments"
+      - "iv_block.first_stage_f_threshold"
+      - "identification.treatment_variable"
+      - "identification.outcome_variable"
+      - "identification.covariates"
+    diagnostics:
+      - "Report first-stage strength for excluded instruments."
+      - "Use heteroskedasticity-robust or cluster-robust 2SLS inference as appropriate."
+      - "When overidentified, report and interpret overidentification checks as diagnostics rather than proof of validity."
+      - "Document the substantive exclusion restriction argument."
+    blocks_or_warnings:
+      - "Block IV execution when no excluded instrument is registered."
+      - "Block or warn when the reported first-stage statistic is below the registered threshold."
+      - "Warn when first-stage evidence is missing."
+    sources:
+      - {id: "wooldridge_cross_section_panel", chapters: ["5"]}
+      - {id: "angrist_pischke_mhe", chapters: ["4"]}
+  panel_fe:
+    name: "Panel Fixed Effects / Unobserved Effects"
+    status: "initial"
+    data_structures: ["panel"]
+    estimators: ["FE", "TWFE", "POLS", "RE"]
+    purpose: "Use repeated observations to control for time-invariant unobserved heterogeneity or model panel dependence."
+    assumptions:
+      - "The panel unit and time index are declared."
+      - "The source of identifying variation after fixed effects is described."
+      - "Serial correlation, heteroskedasticity, and clustering are addressed in inference."
+      - "Time-invariant regressors are not interpreted as identified by unit fixed effects."
+    required_pap_fields:
+      - "data.unit"
+      - "data.structure"
+      - "data.N"
+      - "data.T"
+      - "identification.fixed_effects"
+      - "identification.standard_errors"
+      - "identification.clustering"
+    diagnostics:
+      - "Cluster at the repeated-observation unit or treatment assignment level."
+      - "Consider serial correlation diagnostics for longer panels."
+      - "Document whether fixed effects, random effects, or pooled models match the estimand."
+    blocks_or_warnings:
+      - "Block panel workflows using conventional or only HC standard errors when clustered inference is required."
+      - "Block clustering below the treatment assignment level when that level is known."
+      - "Warn when fixed-effects identification is claimed but the remaining within-unit variation is not described."
+    sources:
+      - {id: "wooldridge_cross_section_panel", chapters: ["10", "11"]}
+      - {id: "angrist_pischke_mhe", chapters: ["5"]}
+  did:
+    name: "Differences-in-Differences"
+    status: "initial"
+    data_structures: ["panel", "pooled"]
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    purpose: "Estimate treatment effects by comparing outcome changes between treated and comparison groups under a parallel-trends design."
+    assumptions:
+      - "A credible comparison group is defined before estimation."
+      - "Parallel trends or a design-specific substitute is argued and diagnosed."
+      - "Treatment timing, anticipation, and dynamic effects are documented."
+      - "Inference accounts for clustering and serial correlation in grouped or panel treatment designs."
+    required_pap_fields:
+      - "did_block.parallel_trends_test"
+      - "did_block.event_study_leads_lags"
+      - "did_block.staggered_adoption"
+      - "did_block.control_group"
+      - "did_block.control_group_justification"
+      - "identification.standard_errors"
+      - "identification.clustering"
+    diagnostics:
+      - "Report pre-treatment event-study leads or another registered pre-trend diagnostic."
+      - "Document the comparison group for staggered adoption."
+      - "Avoid plain TWFE as the default estimator when treatment timing is staggered."
+      - "Use placebo or falsification checks when registered."
+    blocks_or_warnings:
+      - "Block staggered-adoption TWFE unless a modern estimator or decomposition strategy is registered."
+      - "Block DiD without clustered or stronger inference for panel/grouped designs."
+      - "Block missing comparison-group justification."
+      - "Warn when pre-trend diagnostics are missing."
+    sources:
+      - {id: "angrist_pischke_mhe", chapters: ["5", "8"]}
+      - {id: "callaway_santanna_2021"}
+  rdd:
+    name: "Regression Discontinuity Design"
+    status: "planned"
+    data_structures: ["cross-section", "pooled", "panel"]
+    estimators: ["RDD"]
+    purpose: "Estimate causal effects near a treatment assignment cutoff under continuity of potential outcomes around the threshold."
+    assumptions:
+      - "A running variable and cutoff define treatment assignment."
+      - "Potential outcomes are smooth through the cutoff absent treatment."
+      - "Units cannot precisely manipulate assignment around the cutoff, or manipulation is diagnosed and addressed."
+      - "The bandwidth, polynomial/order choices, and inference method are registered before estimation."
+    required_pap_fields:
+      - "rdd_block.running_variable"
+      - "rdd_block.cutoff"
+      - "rdd_block.bandwidth_rule"
+      - "rdd_block.manipulation_check"
+      - "identification.outcome_variable"
+      - "identification.treatment_variable"
+    diagnostics:
+      - "Check density or manipulation around the cutoff."
+      - "Assess covariate continuity near the cutoff."
+      - "Report sensitivity to bandwidth and functional-form choices."
+      - "Separate sharp and fuzzy RD designs explicitly."
+    blocks_or_warnings:
+      - "Block RDD without a registered running variable and cutoff."
+      - "Warn when no manipulation or density check is registered."
+      - "Warn when bandwidth sensitivity is missing."
+    sources:
+      - {id: "angrist_pischke_mhe", chapters: ["6"]}

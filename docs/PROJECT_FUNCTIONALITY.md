@@ -16,6 +16,7 @@ AESDK enforces scientific-method guardrails for LLM-assisted econometrics and pr
 8. Signed audit artifacts (HMAC + KMS-HTTP integration).
 9. Remote attestation hooks (noop + endpoint).
 10. Sandboxed execution controls.
+11. Textbook-backed method protocols and source locators.
 
 ## Governance passport schema (stored in blob metadata)
 
@@ -60,11 +61,15 @@ AESDK enforces scientific-method guardrails for LLM-assisted econometrics and pr
 - `aesdk reproduce`
   - integrity + full replay checks
 - `aesdk audit sign`
-  - hmac or kms-http signing
+  - hmac, kms-http, aws-kms, gcp-kms, or azure-keyvault signing
 - `aesdk audit verify-signature`
   - signature verification by algorithm
 - `aesdk cite verify`
   - citation checks
+- `aesdk methods list/show/sources`
+  - method protocols and textbook source locators
+- `aesdk sources list/show`
+  - registered source metadata
 
 ## Example packs
 
@@ -82,6 +87,7 @@ CI executes:
 
 ## Remaining hardening opportunities
 
-- provider-specific KMS adapters (AWS/GCP/Azure) on top of KMS-HTTP contract
 - containerized sandbox isolation with resource/network policy
 - signed replay reports for external auditors
+- richer source maps with printed page numbers, section anchors, and extraction QA
+- live cloud KMS examples for AWS/GCP/Azure credentials and key-policy setup

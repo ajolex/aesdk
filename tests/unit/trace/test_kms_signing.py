@@ -23,7 +23,7 @@ def test_kms_http_sign_and_verify(monkeypatch, runtime_dir):
             return _FakeResponse({'valid': True})
         raise AssertionError('unexpected endpoint')
 
-    import aesdk.trace.blob as mod
+    import aesdk.trace.kms_providers as mod
 
     monkeypatch.setattr(mod.requests, 'post', fake_post)
 
@@ -32,3 +32,20 @@ def test_kms_http_sign_and_verify(monkeypatch, runtime_dir):
 
     assert ok is True
     assert message == 'ok'
+
+
+def test_aws_kms_provider_with_injected_client():
+    from aesdk.trace.kms_providers import AWSKMSProvider
+
+    class FakeAWSClient:
+        def sign(self, **kwargs):  # noqa: ANN003
+            assert kwargs["MessageType"] == "DIGEST"
+            return {"Signature": b"signed"}
+
+        def verify(self, **kwargs):  # noqa: ANN003
+            assert kwargs["Signature"] == b"signed"
+            return {"SignatureValid": True}
+
+    provider = AWSKMSProvider(client=FakeAWSClient())
+    signature = provider.sign(key_id="key", blob_sha256="00" * 32)
+    assert provider.verify(key_id="key", blob_sha256="00" * 32, signature=signature)

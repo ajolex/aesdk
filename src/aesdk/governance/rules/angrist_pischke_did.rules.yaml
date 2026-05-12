@@ -2,6 +2,33 @@
   id: "ANGRIST_PISCHKE_DID"
   rule_file_version: "1.0.0"
 rules:
+  - id: AP-DID-001
+    name: "DiD Requires Parallel-Trends Diagnostic"
+    severity: "warning"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "identification_strategy == 'DiD' and parallel_trends_test == false"
+    requirement: "A DiD design must register a parallel-trends diagnostic or a design-specific substitute."
+    guidance: "Use pre-treatment event-study leads, graphical diagnostics, or a registered falsification design before interpreting DiD causally."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      book: "Mostly Harmless Econometrics"
+      chapter: 5
+      title: "Fixed Effects, Differences-in-Differences, and Panel Data"
+  - id: AP-DID-002
+    name: "DiD Event-Study Window Should Be Registered"
+    severity: "warning"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "identification_strategy == 'DiD' and (event_study_leads_lags is None or len(event_study_leads_lags) == 0)"
+    requirement: "The PAP does not register event-study leads/lags for diagnosing pre-trends and dynamic treatment effects."
+    guidance: "Register the event-time window or explain why an event-study diagnostic is not appropriate for the design."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      book: "Mostly Harmless Econometrics"
+      chapter: 5
+      title: "Fixed Effects, Differences-in-Differences, and Panel Data"
+
   - id: AP-DID-003
     name: "Staggered Adoption Requires Modern DiD Estimator"
     severity: "error"
@@ -15,3 +42,16 @@ rules:
       journal: "Journal of Econometrics"
       year: 2021
       title: "Difference-in-Differences with Multiple Time Periods"
+  - id: AP-DID-004
+    name: "DiD Requires Comparison Group Justification"
+    severity: "error"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "identification_strategy == 'DiD' and (control_group is None or control_group_justification is None or control_group_justification == '')"
+    requirement: "A DiD design must define and justify the comparison group before estimation."
+    guidance: "Declare whether controls are never-treated, not-yet-treated, matched, or another registered group, and explain why they support the identifying contrast."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      book: "Mostly Harmless Econometrics"
+      chapter: 5
+      title: "Fixed Effects, Differences-in-Differences, and Panel Data"

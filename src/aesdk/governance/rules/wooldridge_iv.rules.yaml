@@ -1,0 +1,43 @@
+source:
+  id: "WOOLDRIDGE_IV"
+  rule_file_version: "1.0.0"
+rules:
+  - id: W-IV-001
+    name: "IV Requires Registered Excluded Instruments"
+    severity: "error"
+    estimators: ["IV", "2SLS"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "len(iv_instruments) == 0"
+    requirement: "An IV design must register at least one excluded instrument before estimation."
+    guidance: "Declare the instrument list in iv_block.instruments and document why each instrument is relevant and excluded from the structural outcome equation."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      chapter: 5
+      title: "Instrumental Variables Estimation of Single-Equation Linear Models"
+  - id: W-IV-002
+    name: "Weak First Stage Blocks IV Execution"
+    severity: "error"
+    estimators: ["IV", "2SLS"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "first_stage_f_stat is not None and first_stage_f_stat < first_stage_f_threshold"
+    requirement: "The reported first-stage strength is below the registered threshold."
+    guidance: "Revisit the instrument set, use weak-instrument robust inference, or revise the design before reporting IV estimates."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      chapter: 5
+      title: "Instrumental Variables and Two-Stage Least Squares"
+  - id: W-IV-003
+    name: "First Stage Evidence Required for IV"
+    severity: "warning"
+    estimators: ["IV", "2SLS"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "first_stage_f_stat is None"
+    requirement: "The IV proposal does not report first-stage evidence."
+    guidance: "Report the first-stage statistic or another registered relevance diagnostic before interpreting 2SLS results."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      chapter: 5
+      title: "Instrumental Variables and Two-Stage Least Squares"

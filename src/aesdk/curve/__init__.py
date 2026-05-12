@@ -1,5 +1,6 @@
-﻿"""Curve package exports."""
+﻿from aesdk.curve.spec_engine import SpecEngine, SpecResult
+from aesdk.curve.runner import CurveRunner
+from aesdk.curve.plot import plot_coefficients
+from aesdk.curve.summarize import summarize_result
 
-from aesdk.curve.spec_engine import Specification, SpecificationEngine, SpecificationPlan
-
-__all__ = ["Specification", "SpecificationEngine", "SpecificationPlan"]
+__all__ = ["SpecEngine", "SpecResult", "CurveRunner", "plot_coefficients", "summarize_result"]

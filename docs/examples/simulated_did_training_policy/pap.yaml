@@ -1,0 +1,38 @@
+project:
+  id: simulated_did_training_policy
+  title: "Simulated state job-training subsidy effects on county employment"
+  author:
+    - "AESDK Example"
+  date_registered: "2026-05-13"
+  version: "1.0.0"
+data:
+  source: "docs/examples/simulated_did_training_policy/training_policy_panel.csv"
+  unit: "state"
+  structure: "panel"
+  N: 96
+  T: 8
+  G: 12
+identification:
+  strategy: "DiD"
+  treatment_variable: "policy_active"
+  outcome_variable: "employment_rate"
+  covariates:
+    mandatory: ["median_income", "unemployment_rate"]
+    optional: []
+  fixed_effects: ["state", "year"]
+  standard_errors: "cluster"
+  clustering: "state"
+  expected_sign: "negative"
+did_block:
+  parallel_trends_test: true
+  event_study_leads_lags: [-3, -2, -1, 0, 1, 2, 3]
+  staggered_adoption: false
+  treatment_pre_announced: false
+  anticipation_periods: 0
+  control_group: "never_treated"
+  control_group_justification: "Six states are simulated as never treated and share the same pre-policy trend as treated states."
+  goodman_bacon_decomposition: false
+  hausman_test_documented: false
+  placebo_test: true
+robustness:
+  specification_curve: true

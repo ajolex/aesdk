@@ -16,3 +16,17 @@ rules:
       chapter: 7
       section: "7.8"
       title: "Cluster-Sample Methods"
+  - id: W-PANEL-002
+    name: "Cluster Level Must Not Be Below Treatment Assignment Level"
+    severity: "error"
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "treatment_assignment_level is not None and clustering_level is not None and cluster_hierarchy_rank(clustering_level) < cluster_hierarchy_rank(treatment_assignment_level)"
+    requirement: "Clustered inference must be at least as aggregated as the treatment assignment level when that level is known."
+    guidance: "Cluster at the assignment level or a more aggregated level; for uncertain designs, use a conservative clustering strategy."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      chapter: 7
+      section: "7.8"
+      title: "Cluster-Sample Methods"

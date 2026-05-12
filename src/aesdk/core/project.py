@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from aesdk.config import config
 from aesdk.core.attestation import AttestationProvider, EndpointAttestationProvider, NoopAttestationProvider
 from aesdk.core.errors import GovernanceBlockError, MissingPAPError
 from aesdk.core.state_machine import ProjectStateMachine
@@ -110,7 +111,11 @@ class Project:
             blob_path=blob_target,
             blob=active_blob,
             validator=Validator(registry=active_registry),
-            sandbox_runner=sandbox_runner or SandboxRunner(),
+            sandbox_runner=sandbox_runner
+            or SandboxRunner(
+                mem_limit_mb=config.sandbox_mem_limit_mb,
+                cpu_limit_sec=config.sandbox_cpu_limit_sec,
+            ),
             state_machine=state_machine,
             governance_passport=passport,
         )

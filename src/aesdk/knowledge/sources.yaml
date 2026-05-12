@@ -1,0 +1,39 @@
+version: "0.1.0"
+sources:
+  wooldridge_cross_section_panel:
+    type: textbook
+    title: "Econometric Analysis of Cross Section and Panel Data"
+    authors:
+      - "Jeffrey M. Wooldridge"
+    local_path: "tools/Wooldridge.pdf"
+    sdk_use:
+      - "linear model assumptions"
+      - "OLS and IV estimation"
+      - "heteroskedasticity-robust and cluster-robust inference"
+      - "linear unobserved-effects panel models"
+    notes: "Local source used for compact, paraphrased method protocols and governance rules."
+  angrist_pischke_mhe:
+    type: textbook
+    title: "Mostly Harmless Econometrics: An Empiricist's Companion"
+    authors:
+      - "Joshua D. Angrist"
+      - "Jorn-Steffen Pischke"
+    local_path: "tools/MostlyHarmlessEconometrics.pdf"
+    sdk_use:
+      - "research design framing"
+      - "CEF and regression interpretation"
+      - "instrumental variables and LATE"
+      - "fixed effects, differences-in-differences, and panel data"
+      - "regression discontinuity"
+      - "clustered inference"
+    notes: "Local source used for compact, paraphrased method protocols and governance rules."
+  callaway_santanna_2021:
+    type: article
+    title: "Difference-in-Differences with Multiple Time Periods"
+    authors:
+      - "Brantly Callaway"
+      - "Pedro H. C. Sant'Anna"
+    journal: "Journal of Econometrics"
+    year: 2021
+    sdk_use:
+      - "modern DiD guidance for staggered treatment timing"

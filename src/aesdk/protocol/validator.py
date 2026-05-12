@@ -129,11 +129,16 @@ class _SafeEval(ast.NodeVisitor):
         return self.visit(node.value)
 
     def visit_BoolOp(self, node: ast.BoolOp) -> Any:
-        values = [bool(self.visit(v)) for v in node.values]
         if isinstance(node.op, ast.And):
-            return all(values)
+            for value in node.values:
+                if not bool(self.visit(value)):
+                    return False
+            return True
         if isinstance(node.op, ast.Or):
-            return any(values)
+            for value in node.values:
+                if bool(self.visit(value)):
+                    return True
+            return False
         raise RuleEvaluationError("Unsupported bool operator")
 
     def visit_UnaryOp(self, node: ast.UnaryOp) -> Any:
@@ -256,12 +261,14 @@ class ValidationContext:
         data = self._pap.get("data", {})
         identification = self._pap.get("identification", {})
         did = self._pap.get("did_block", {})
+        iv = self._pap.get("iv_block", {})
         robustness = self._pap.get("robustness", {})
         covariates = identification.get("covariates", {})
 
         context: dict[str, Any] = {
             "data": data,
             "did_block": did,
+            "iv_block": iv,
             "robustness": robustness,
             "covariates": covariates,
             "data_structure": data.get("structure"),
@@ -282,6 +289,10 @@ class ValidationContext:
             "placebo_test": did.get("placebo_test", False),
             "goodman_bacon_decomposition": did.get("goodman_bacon_decomposition", False),
             "hausman_test_documented": did.get("hausman_test_documented", False),
+            "iv_instruments": iv.get("instruments", []),
+            "first_stage_f_threshold": iv.get("first_stage_f_threshold", 10),
+            "first_stage_f_stat": self._proposal.get("first_stage_f_stat"),
+            "exclusion_restriction_documented": self._proposal.get("exclusion_restriction_documented", False),
             "n_covariates": len(covariates.get("mandatory", [])) + len(covariates.get("optional", [])),
             "citation_report": self._proposal.get("citation_report"),
             "citation_uncertainty_acknowledged": self._proposal.get("citation_uncertainty_acknowledged", False),

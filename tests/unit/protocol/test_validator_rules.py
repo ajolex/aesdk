@@ -41,3 +41,46 @@ def test_strict_conformance_escalates_warnings_to_block(valid_pap_dict: dict) ->
     strict = Validator().validate(valid_pap_dict, proposal, conformance=ConformanceLevel.STRICT)
     assert basic.status == "warn"
     assert strict.status == "block"
+
+
+def test_rule_engine_blocks_clustering_below_assignment_level(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "county",
+        "treatment_level": "state",
+    }
+    result = Validator().validate(valid_pap_dict, proposal)
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-PANEL-002" in ids
+    assert result.status == "block"
+
+
+def test_rule_engine_warns_when_iv_first_stage_missing(valid_pap_dict: dict) -> None:
+    pap = dict(valid_pap_dict)
+    pap["identification"] = {
+        **valid_pap_dict["identification"],
+        "strategy": "IV",
+    }
+    pap.pop("did_block")
+    pap["iv_block"] = {"instruments": ["quarter_of_birth"], "first_stage_f_threshold": 10}
+    proposal = {"estimator": "IV", "standard_errors": "HC3"}
+    result = Validator().validate(pap, proposal)
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-IV-003" in ids
+    assert result.status == "warn"
+
+
+def test_rule_engine_blocks_weak_iv_first_stage(valid_pap_dict: dict) -> None:
+    pap = dict(valid_pap_dict)
+    pap["identification"] = {
+        **valid_pap_dict["identification"],
+        "strategy": "IV",
+    }
+    pap.pop("did_block")
+    pap["iv_block"] = {"instruments": ["quarter_of_birth"], "first_stage_f_threshold": 10}
+    proposal = {"estimator": "IV", "standard_errors": "HC3", "first_stage_f_stat": 4.2}
+    result = Validator().validate(pap, proposal)
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-IV-002" in ids
+    assert result.status == "block"
