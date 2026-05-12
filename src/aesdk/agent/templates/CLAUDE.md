@@ -1,9 +1,10 @@
 # AESDK Instructions For Claude
 
-When asked to write econometric analysis code, use AESDK as a required preflight guard.
+When asked to write econometric analysis code, use AESDK first.
 
-- Before coding, call `aesdk.agent_context(method)` or the CLI `aesdk agent context`.
-- Before running analysis code, call `aesdk.preflight(...)` or the CLI `aesdk agent preflight`.
-- A blocked AESDK result is a hard stop.
-- Use AESDK method protocols and source locators instead of relying on memory.
-- Record execution through AESDK when code is run.
+- Load method guidance with `aesdk agent context --method <method>`.
+- Run preflight with `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`.
+- A `block` result is a hard stop.
+- A `warn` result requires researcher review.
+- Do not invent assumptions, diagnostics, citations, or estimator requirements.
+- Explain AESDK results in plain language for economics RAs and faculty.

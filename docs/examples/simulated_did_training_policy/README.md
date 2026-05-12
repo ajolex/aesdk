@@ -1,39 +1,93 @@
-# Simulated DiD Training Policy Example
+# Example: A Simulated Difference-in-Differences Study
 
-This example shows AESDK as an econometrics SDK rather than a generic code runner.
+This example is written for an RA or instructor who wants to see how AESDK changes an AI-assisted analysis workflow.
 
-Use case: an analyst wants to estimate whether a state-level job-training subsidy changed county employment rates. The data are simulated, but the workflow is realistic:
+Imagine the research question is:
 
-1. Generate or inspect panel data.
-2. Register a pre-analysis plan.
-3. Propose an analysis.
-4. Let AESDK block invalid inference choices.
-5. Run a compliant DiD analysis and write an auditable replication blob.
+> Did a state-level job-training subsidy reduce county employment rates?
+
+The data here are simulated, so we know the true effect. The point is not the substantive result. The point is to show how AESDK forces the AI agent to check the design before it writes or runs code.
+
+## What The Example Shows
+
+The example walks through five steps:
+
+1. Generate panel data.
+2. Use a pre-analysis plan.
+3. Compare a bad proposal with a good proposal.
+4. Let AESDK block the bad proposal.
+5. Run the good proposal and leave a reproducibility record.
 
 ## Files
 
-- `training_policy_panel.csv`: deterministic simulated panel data.
-- `generate_data.py`: deterministic random-data generator.
-- `pap.yaml`: pre-analysis plan for a non-staggered DiD design.
-- `proposal_blocked.json`: intentionally invalid proposal using non-clustered standard errors.
-- `proposal_pass.json`: compliant proposal using clustered inference at the treatment assignment level.
-- `exec_code.py`: estimation script run through the AESDK sandbox.
+- `generate_data.py`: creates the simulated panel data.
+- `training_policy_panel.csv`: simulated state-year panel data.
+- `pap.yaml`: the pre-analysis plan.
+- `proposal_blocked.json`: a bad proposal that uses the wrong inference choice.
+- `proposal_pass.json`: a proposal that clusters at the treatment assignment level.
+- `exec_code.py`: the analysis code that AESDK runs only after preflight passes.
 
-## Commands
+## Step 1: Generate The Data
 
 ```bash
 python docs/examples/simulated_did_training_policy/generate_data.py
-aesdk methods show did --format yaml
-aesdk methods sources did --format yaml
+```
+
+The simulated true treatment effect is `-2.25`.
+
+## Step 2: Ask AESDK What A DiD Design Requires
+
+```bash
 aesdk agent context --method did
+```
+
+This prints the assumptions, diagnostics, and source-backed guardrails that an AI agent should read before writing code.
+
+## Step 3: Run Preflight On The Good Proposal
+
+```bash
 aesdk agent preflight --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json --conformance strict
-aesdk validate --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_blocked.json --conformance strict
-aesdk validate --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json --conformance strict
-aesdk execute --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json --code-file docs/examples/simulated_did_training_policy/exec_code.py --context production --conformance strict --policy-version 1.2.0
+```
+
+Expected result:
+
+```text
+status=pass blocked=False
+```
+
+## Step 4: See AESDK Block A Bad Proposal
+
+```bash
+aesdk agent preflight --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_blocked.json --conformance strict
+```
+
+Expected result:
+
+```text
+status=block blocked=True
+```
+
+The blocked proposal uses a non-clustered standard error choice in a panel DiD setting. AESDK stops the agent before analysis code runs.
+
+## Step 5: Run The Approved Analysis
+
+```bash
+aesdk agent run --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json --code-file docs/examples/simulated_did_training_policy/exec_code.py --conformance strict
+```
+
+The analysis should estimate a negative treatment effect close to the simulated true effect.
+
+## Step 6: Check The Reproducibility Record
+
+```bash
 aesdk reproduce --blob docs/examples/simulated_did_training_policy/.aesdk.json --replay
 ```
 
-You can also run the same data through the SDK analysis layer:
+This verifies the recorded run and replays the execution event.
+
+## Optional: Use The Analysis Helper Directly
+
+AESDK also has a small Python analysis helper:
 
 ```python
 from aesdk.curve.runner import CurveRunner
@@ -53,8 +107,10 @@ result = runner.execute_spec(
 print(round(result.coefficients["policy_active"], 4))
 ```
 
-Expected behavior:
+Expected estimate:
 
-- `proposal_blocked.json` should return `status=block` because panel DiD requires clustered or stronger inference.
-- `proposal_pass.json` should return `status=pass`.
-- `exec_code.py` should estimate a negative treatment effect close to the simulated policy effect.
+```text
+-2.2298
+```
+
+That is close to the simulated true effect of `-2.25`.

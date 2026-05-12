@@ -26,7 +26,7 @@
 
 ### Notes
 
-- Public release requires choosing and committing a license before publishing to PyPI.
+- AESDK is licensed under Apache-2.0.
 - Textbook PDFs are local source material and should not be distributed inside the package.
 
 ## Historical Scaffold - 2026-03-08

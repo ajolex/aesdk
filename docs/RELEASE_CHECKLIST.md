@@ -1,50 +1,97 @@
-# Release Checklist
+# AESDK Public Release Checklist
 
-## Pre-release
+Use this checklist before making AESDK public. The goal is not just to publish a Python package. The goal is to make sure an economics RA, professor, or applied research team can install AESDK and use it in an AI-assisted workflow without needing to understand the internals.
 
-- [ ] `pytest -q` passes locally.
-- [ ] `python -m build` passes locally.
-- [ ] `python -m twine check dist/*` passes locally.
-- [ ] CLI smoke checks pass for blocked and regulated examples.
-- [ ] Agent smoke checks pass:
-  - [ ] `aesdk agent context --method did`
-  - [ ] `aesdk agent preflight --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json`
-- [ ] `SECURITY.md` reviewed for current controls and limits.
-- [ ] `docs/PROJECT_FUNCTIONALITY.md` reflects actual runtime behavior.
-- [ ] `docs/DISTRIBUTION.md` reflects the release process.
-- [ ] `CHANGELOG.md` includes the release version.
-- [ ] `.gitignore` excludes runtime artifacts and cache files.
-- [ ] Public license is chosen and committed.
-- [ ] Confirm the PyPI distribution name is available or update `[project].name`.
+## Research-User Readiness
 
-## Artifact Integrity
+- [ ] The README explains AESDK in plain language for economics researchers.
+- [ ] The README shows the simplest workflow: context, preflight, run.
+- [ ] The example DiD project runs from copied commands.
+- [ ] `AGENTS.md` tells AI agents exactly when to call AESDK.
+- [ ] `CLAUDE.md` tells Claude exactly when to call AESDK.
+- [ ] No public-facing page suggests AESDK replaces research judgment or peer review.
+- [ ] No public-facing page implies the package redistributes textbooks.
 
-- [ ] Generate `.aesdk.json` for example runs.
-- [ ] Sign blobs with `aesdk audit sign`.
-- [ ] Verify signatures with `aesdk audit verify-signature`.
-- [ ] Archive blobs + signatures with release artifacts when appropriate.
+## Method and Governance Readiness
 
-## Governance Readiness
+- [ ] `aesdk methods validate` returns `knowledge_base=ok`.
+- [ ] The supported methods are named clearly:
+  - [ ] `ols_cef`
+  - [ ] `iv_2sls`
+  - [ ] `panel_fe`
+  - [ ] `did`
+  - [ ] `rdd` as planned/initial support
+- [ ] The simulated DiD bad proposal is blocked.
+- [ ] The simulated DiD good proposal passes.
+- [ ] Replay works for an executed example.
 
-- [ ] Rulepack hash is recorded in governance passport.
-- [ ] Policy version is set and documented.
-- [ ] Conformance/profile expectations are documented per environment.
-- [ ] Attestation provider configured (noop for local, endpoint for production).
+## Package Readiness
 
-## Release Actions
+- [ ] Apache-2.0 remains the intended public license.
+- [ ] `pyproject.toml` has the correct package name.
+- [ ] `pyproject.toml` has public metadata: description, authors, keywords, classifiers, URLs.
+- [ ] Package data includes method protocols, source metadata, rules, schemas, and agent templates.
+- [ ] Generated files such as `dist/`, `build/`, and `*.egg-info/` are not committed.
+- [ ] Textbook PDFs and large extracted textbook files are not included in the package.
 
-- [ ] Create clean commits by feature area.
-- [ ] Configure TestPyPI Trusted Publisher for `.github/workflows/publish.yml` and environment `testpypi`.
-- [ ] Configure PyPI Trusted Publisher for `.github/workflows/publish.yml` and environment `pypi`.
-- [ ] Tag release, for example `v0.1.0`.
-- [ ] Push branch, tags, and open PR.
-- [ ] Confirm CI green on PR.
-- [ ] Confirm publish workflow succeeds on TestPyPI.
-- [ ] Confirm publish workflow succeeds on PyPI.
+## Local Verification
 
-## Post-release
+- [ ] Tests pass:
 
-- [ ] Test fresh install from PyPI.
-- [ ] Announce release notes.
-- [ ] Collect feedback on agent preflight, replay, signing, and attestation integration.
-- [ ] Plan next hardening work: container isolation, richer method protocols, and live cloud KMS examples.
+```bash
+python -m pytest
+```
+
+- [ ] Build passes:
+
+```bash
+python -m build
+```
+
+- [ ] Package check passes:
+
+```bash
+python -m twine check dist/*
+```
+
+- [ ] Fresh wheel install works:
+
+```bash
+python -c "import aesdk as ae; print(ae.agent_context('did').method_id)"
+```
+
+## Publishing Setup
+
+- [ ] Confirm the name `aesdk` is available on PyPI, or choose another distribution name.
+- [ ] Configure TestPyPI Trusted Publishing:
+  - [ ] repository: `ajolex/aesdk`
+  - [ ] workflow: `publish.yml`
+  - [ ] environment: `testpypi`
+- [ ] Configure PyPI Trusted Publishing:
+  - [ ] repository: `ajolex/aesdk`
+  - [ ] workflow: `publish.yml`
+  - [ ] environment: `pypi`
+- [ ] CI is green on the release commit.
+
+## Release
+
+- [ ] Update `CHANGELOG.md`.
+- [ ] Commit release changes.
+- [ ] Tag the release, for example:
+
+```bash
+git tag v0.1.0
+git push origin main --tags
+```
+
+- [ ] Publish to TestPyPI first.
+- [ ] Install from TestPyPI in a clean environment.
+- [ ] Publish to PyPI.
+- [ ] Install from PyPI in a clean environment.
+
+## After Release
+
+- [ ] Ask one RA to try the README workflow from scratch.
+- [ ] Ask one faculty/applied researcher to read the README for clarity.
+- [ ] Collect confusing points and update docs quickly.
+- [ ] Track requested method coverage, especially RDD, matching, synthetic control, and more modern DiD variants.

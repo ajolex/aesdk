@@ -1,55 +1,79 @@
-# Distributing AESDK
+# Publishing AESDK For Public Use
 
-This document describes the public package release path for AESDK.
+This page is for the person preparing AESDK for public release. The intended public audience is not mainly software developers; it is economics RAs, faculty, and applied researchers who want safer AI-assisted empirical work.
+
+The release should therefore be judged by one question:
+
+> Can a research team install AESDK, tell an AI agent to use it, and get useful econometric guardrails with minimal extra work?
+
+## Before Publishing
+
+Do these before uploading anything to PyPI:
+
+1. Confirm the Apache-2.0 license remains appropriate for the project.
+2. Confirm the package name `aesdk` is available on PyPI.
+3. Confirm no textbook PDFs or long extracted textbook text are included in the package.
+4. Run the tests.
+5. Build the package.
+6. Install the built wheel in a fresh environment and verify `import aesdk as ae`.
 
 ## Package Name
 
-The configured package name is `aesdk`.
+The current package name is `aesdk`.
 
-Before the first public release, confirm availability:
+Check availability:
 
 ```bash
 python -m pip index versions aesdk
 ```
 
-or visit:
+or open:
 
 ```text
 https://pypi.org/project/aesdk/
 ```
 
-If the name is taken, change `[project].name` in `pyproject.toml` before publishing. The Python import name can remain `aesdk` if the distribution name changes.
+If the name is already taken, choose a different distribution name before release. The import name can still remain:
+
+```python
+import aesdk as ae
+```
 
 ## License
 
-The repository currently does not declare a license. Choose and commit a license before publishing publicly.
+AESDK is licensed under Apache-2.0.
 
-Common options:
+Apache-2.0 is a permissive open-source license. It is a good fit for a public research and AI tooling package because universities, labs, companies, and independent researchers can use and adapt the package, and the license includes explicit patent language.
 
-- MIT: permissive and simple.
-- Apache-2.0: permissive with explicit patent language.
-- BSD-3-Clause: permissive academic-friendly option.
+Before release, confirm that all committed project files are intended to be covered by this license.
 
-Do not publish copyrighted textbook PDFs or extracted long-form book text. AESDK should distribute only compact, paraphrased protocols, source metadata, and rule files.
+## Textbook Material
 
-## Local Build
+AESDK can cite and summarize textbook-backed method guidance, but it should not distribute copyrighted textbooks or long extracted passages.
 
-Run from the repository root:
+Safe to distribute:
+
+- compact method protocols
+- rule files
+- source metadata
+- local source locators
+- examples written for AESDK
+
+Not safe to distribute:
+
+- full textbook PDFs
+- large extracted textbook markdown files
+- long verbatim textbook passages
+
+## Local Build Check
+
+On Windows PowerShell:
 
 ```powershell
 python -m pip install --upgrade build twine
 Remove-Item -Recurse -Force dist -ErrorAction SilentlyContinue
 python -m build
 python -m twine check dist/*
-```
-
-Fresh wheel smoke test:
-
-```powershell
-python -m venv .tmp/aesdk-wheel-smoke
-.tmp/aesdk-wheel-smoke/Scripts/python -m pip install --upgrade pip
-.tmp/aesdk-wheel-smoke/Scripts/python -m pip install (Get-ChildItem dist/*.whl | Select-Object -First 1).FullName
-.tmp/aesdk-wheel-smoke/Scripts/python -c "import aesdk as ae; print(ae.agent_context('did').method_id)"
 ```
 
 On macOS/Linux:
@@ -59,68 +83,91 @@ python -m pip install --upgrade build twine
 rm -rf dist build
 python -m build
 python -m twine check dist/*
+```
+
+## Fresh Install Check
+
+After building, install the wheel into a clean environment.
+
+Windows PowerShell:
+
+```powershell
+python -m venv .tmp/aesdk-wheel-smoke
+.tmp/aesdk-wheel-smoke/Scripts/python -m pip install --upgrade pip
+.tmp/aesdk-wheel-smoke/Scripts/python -m pip install (Get-ChildItem dist/*.whl | Select-Object -First 1).FullName
+.tmp/aesdk-wheel-smoke/Scripts/python -c "import aesdk as ae; print(ae.agent_context('did').method_id)"
+```
+
+macOS/Linux:
+
+```bash
 python -m venv .tmp/aesdk-wheel-smoke
 .tmp/aesdk-wheel-smoke/bin/python -m pip install --upgrade pip
 .tmp/aesdk-wheel-smoke/bin/python -m pip install dist/*.whl
 .tmp/aesdk-wheel-smoke/bin/python -c "import aesdk as ae; print(ae.agent_context('did').method_id)"
 ```
 
-## TestPyPI
+Expected output:
 
-Use TestPyPI before publishing to PyPI.
+```text
+did
+```
 
-1. Create/claim the TestPyPI project.
-2. Configure a Trusted Publisher for:
-   - owner/repo: `ajolex/aesdk`
+## TestPyPI First
+
+Use TestPyPI before the real PyPI release.
+
+1. Create or claim the TestPyPI project.
+2. Configure Trusted Publishing for:
+   - repository: `ajolex/aesdk`
    - workflow: `publish.yml`
    - environment: `testpypi`
-3. Run the `Publish` workflow manually.
-4. Install from TestPyPI in a clean environment:
+3. Run the GitHub `Publish` workflow manually.
+4. Test install from TestPyPI:
 
 ```bash
 python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple aesdk
-python -c "import aesdk as ae; print(ae.agent_context('did').method_id)"
+python -c "import aesdk as ae; print(ae.agent_context('did').protocol['name'])"
 ```
 
-## PyPI Trusted Publishing
+## PyPI Release
 
-For real releases, use PyPI Trusted Publishing rather than long-lived API tokens.
+Use PyPI Trusted Publishing. Do not use a long-lived API token unless there is a specific reason.
 
-Configure a PyPI Trusted Publisher for:
+Configure PyPI Trusted Publishing for:
 
-- owner/repo: `ajolex/aesdk`
+- repository: `ajolex/aesdk`
 - workflow: `publish.yml`
 - environment: `pypi`
 
-The release workflow uses GitHub OIDC and `pypa/gh-action-pypi-publish`.
-
-Official references:
+Useful official references:
 
 - https://docs.pypi.org/trusted-publishers/
 - https://packaging.python.org/guides/section-build-and-publish/
 
 ## Release Flow
 
-1. Confirm `python -m pytest` passes.
-2. Confirm `python -m build` and `python -m twine check dist/*` pass.
-3. Confirm the version in `pyproject.toml`.
-4. Update `CHANGELOG.md`.
+1. Update `CHANGELOG.md`.
+2. Confirm tests pass.
+3. Confirm the package builds.
+4. Confirm fresh wheel install works.
 5. Commit release prep.
-6. Tag:
+6. Tag the release:
 
 ```bash
 git tag v0.1.0
 git push origin main --tags
 ```
 
-7. Approve TestPyPI and PyPI environments in GitHub Actions.
-8. Smoke test public install after publish.
+7. Approve the TestPyPI and PyPI environments in GitHub Actions.
+8. After publication, test a public install.
 
-## Agent Installation Smoke
+## Public Install Smoke Test
 
-After install, verify the primary public workflow:
+After the package is on PyPI:
 
 ```bash
+pip install aesdk
 python - <<'PY'
 import aesdk as ae
 ctx = ae.agent_context("did")
@@ -128,3 +175,5 @@ print(ctx.method_id)
 print(ctx.protocol["name"])
 PY
 ```
+
+Expected output should mention `did` and `Differences-in-Differences`.
