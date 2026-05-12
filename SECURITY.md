@@ -30,6 +30,7 @@ AESDK enforces governance-first execution. Invalid work is blocked instead of to
 ### Signing and verification
 - HMAC signing and verification.
 - KMS-HTTP signing and verification integration points.
+- Optional provider adapters for AWS KMS, GCP Cloud KMS, and Azure Key Vault.
 
 ### Attestation
 - Local no-op provider for development.
@@ -42,7 +43,7 @@ AESDK enforces governance-first execution. Invalid work is blocked instead of to
 
 ## Current limits
 - Sandbox is subprocess-based, not full container isolation.
-- KMS-HTTP and attestation depend on external service quality and key management.
+- KMS and attestation depend on external service quality, credentials, key policy, and key management.
 - Replay is deterministic only when runtime environment/dependencies are controlled.
 
 ## Operational recommendations

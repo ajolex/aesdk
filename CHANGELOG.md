@@ -1,8 +1,38 @@
-﻿# Changelog
+# Changelog
 
-## 1.0.0 - 2026-03-08
+## 0.1.0 - 2026-05-13
 
 ### Added
+
+- Agent-facing API:
+  - `aesdk.agent_context`
+  - `aesdk.preflight`
+  - `aesdk.draft_pap`
+  - `aesdk.run_analysis`
+- Agent CLI:
+  - `aesdk agent context`
+  - `aesdk agent preflight`
+  - `aesdk agent draft-pap`
+  - `aesdk agent run`
+  - `aesdk agent template`
+- Bundled `AGENTS.md` and `CLAUDE.md` templates.
+- Textbook-backed knowledge registry and method protocols.
+- Source locators for local textbook-derived SDK context.
+- Real `statsmodels`-based DiD and panel fixed-effects helpers.
+- Simulated DiD training-policy example.
+- Provider-based KMS adapters for KMS-HTTP, AWS KMS, GCP KMS, and Azure Key Vault.
+- CSV and styled HTML trace exporters.
+- Public distribution docs and Trusted Publishing workflows.
+
+### Notes
+
+- Public release requires choosing and committing a license before publishing to PyPI.
+- Textbook PDFs are local source material and should not be distributed inside the package.
+
+## Historical Scaffold - 2026-03-08
+
+### Added
+
 - Enforcement-first PAP/rules/validation workflow with explicit pass/warn/block outcomes.
 - Policy profiles and conformance levels (`basic`, `strict`, `regulated`).
 - Governance passport metadata in replication blob.
@@ -20,8 +50,6 @@
 - Regulated profile example under `docs/examples/regulated_profile`.
 
 ### Changed
+
 - Security documentation updated to reflect conformance, passport, signature, and attestation behavior.
 - Functionality documentation expanded for developer handover and audit readiness.
-
-### Notes
-- Remote attestation and KMS integration are real HTTP integration points; production deployment requires managed endpoints and secrets.

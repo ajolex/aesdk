@@ -4,6 +4,9 @@ __pycache__/
 *.pyo
 *.pyd
 .pytest_cache/
+build/
+dist/
+*.egg-info/
 
 # Local runtime artifacts
 .aesdk.json

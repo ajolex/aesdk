@@ -131,6 +131,7 @@ aesdk audit verify-signature --blob docs/examples/regulated_profile/.aesdk.json 
 ## Docs
 
 - Functionality: `docs/PROJECT_FUNCTIONALITY.md`
+- Distribution: `docs/DISTRIBUTION.md`
 - Security: `SECURITY.md`
 - Release checklist: `docs/RELEASE_CHECKLIST.md`
 
