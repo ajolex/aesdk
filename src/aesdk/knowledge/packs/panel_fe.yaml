@@ -1,6 +1,11 @@
 version: "0.1.0"
 method_id: "panel_fe"
 name: "Panel Fixed Effects / Unobserved Effects"
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "theoretical_microfoundations"
+  curriculum_topics: ["panel_data", "matrix_ols", "asymptotic_theory"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
   status: "reviewed_guardrail"
   source_review: "partial_multi_source"

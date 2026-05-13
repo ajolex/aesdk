@@ -1,6 +1,11 @@
 version: "0.1.0"
 method_id: "limited_dependent"
 name: "Limited Dependent Variable Models"
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "identification_pivot"
+  curriculum_topics: ["limited_dependent", "binary_dummy_variables"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
   status: "pending_human_review"
   source_review: "ai_source_audited_pending_human_review"

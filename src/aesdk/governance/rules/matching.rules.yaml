@@ -1,0 +1,83 @@
+source:
+  id: "MATCHING_GOVERNANCE"
+  method_id: "matching"
+  topic: "matching_propensity_score"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "potential_outcomes"
+    - "matching"
+rules:
+  - id: MATCH-001
+    name: "Matching Requires Pre-Treatment Covariates"
+    severity: "error"
+    estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
+    data_structures: ["cross-section", "pooled"]
+    condition: "len(matching_pre_treatment_covariates) == 0"
+    requirement: "Matching must declare the pre-treatment covariates used to construct comparability."
+    guidance: "List only covariates measured before treatment assignment."
+    reference:
+      authors: "Rosenbaum, Paul R.; Rubin, Donald B."
+      title: "Propensity-score design and selection on observables"
+
+  - id: MATCH-002
+    name: "Matching Blocks Post-Treatment Covariates"
+    severity: "error"
+    estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
+    data_structures: ["cross-section", "pooled"]
+    condition: "len(matching_post_treatment_covariates) > 0"
+    requirement: "Matching cannot use post-treatment variables, mediators, or outcomes as match covariates."
+    guidance: "Remove post-treatment variables and rebuild the matching specification with pre-treatment covariates."
+    reference:
+      authors: "Rosenbaum, Paul R.; Rubin, Donald B."
+      title: "Observed pre-treatment covariates and causal effects"
+
+  - id: MATCH-003
+    name: "Matching Requires Estimand"
+    severity: "error"
+    estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
+    data_structures: ["cross-section", "pooled"]
+    condition: "matching_estimand is None or matching_estimand == ''"
+    requirement: "Matching must declare whether the target is ATT, ATC, ATE, or another estimand."
+    guidance: "State the target population before matching and report how trimming changes it."
+    reference:
+      authors: "Rosenbaum, Paul R.; Rubin, Donald B."
+      title: "Treatment-effect estimands under matching"
+
+  - id: MATCH-004
+    name: "Matching Requires Balance Diagnostics"
+    severity: "warning"
+    estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
+    data_structures: ["cross-section", "pooled"]
+    condition: "matching_balance_diagnostics is None"
+    requirement: "Matching should report balance before and after matching."
+    guidance: "Report standardized mean differences or comparable balance summaries."
+    reference:
+      authors: "Rosenbaum, Paul R.; Rubin, Donald B."
+      title: "Balance diagnostics"
+
+  - id: MATCH-005
+    name: "Poor Matching Balance Blocks Causal Interpretation"
+    severity: "error"
+    estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
+    data_structures: ["cross-section", "pooled"]
+    condition: "matching_balance_passed == false"
+    requirement: "Causal interpretation is blocked when balance remains poor after matching."
+    guidance: "Revise the matching specification, trim support, or report the result as non-causal/design support only."
+    reference:
+      authors: "Rosenbaum, Paul R.; Rubin, Donald B."
+      title: "Balance and support"
+
+  - id: MATCH-006
+    name: "Matching Requires Common Support Review"
+    severity: "warning"
+    estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
+    data_structures: ["cross-section", "pooled"]
+    condition: "matching_common_support is None"
+    requirement: "Matching should inspect common support and discarded units."
+    guidance: "Report overlap, trimming, discarded units, and retained-population implications."
+    reference:
+      authors: "Rosenbaum, Paul R.; Rubin, Donald B."
+      title: "Common support"

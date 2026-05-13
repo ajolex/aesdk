@@ -1,5 +1,5 @@
 # =============================================================================
-# AESDK Governance Rule File — Citation Integrity
+# AESDK Governance Rule File - Citation Integrity
 # Grounded in: Academic peer review standards and documented LLM failure modes
 # Maintainer: AESDK Core Team
 # Schema Version: 1.0.0
@@ -7,49 +7,58 @@
 
 source:
   id: "CITATION_INTEGRITY"
+  topic: "citation_integrity"
   authors:
     - "AESDK Core Team"
   titles:
-    - "Based on documented LLM hallucination patterns in academic peer review (2024-2026)"
-  rule_file_version: "1.0.0"
+    - "Online-verifiable citation integrity for AI-assisted econometric work"
+  rule_file_version: "1.1.0"
+  organization: "cross_cutting_topic"
+
+curriculum:
+  applies_to_stages:
+    - foundations_mechanics
+    - identification_pivot
+    - theoretical_microfoundations
+    - advanced_empirical_research
+  topics:
+    - source_integrity
+    - research_auditability
 
 rules:
 
   - id: CI-001
     name: "Hallucinated Citations Are a Blocking Error"
     severity: "error"
-    estimators: []          # Applies to ALL workflows
-    data_structures: []     # Applies to ALL data structures
+    estimators: []
+    data_structures: []
     condition: >
       citation_report is not None
       and citation_report.hallucinated_count > 0
     requirement: >
       One or more citations in the agent's output could not be verified
-      to exist via DOI resolution, CrossRef, or Semantic Scholar.
-      Hallucinated citations are a critical integrity failure equivalent
-      to falsified data. Execution is blocked until all citations are
-      resolved or manually verified by the researcher.
+      online by DOI resolution or by an approved public source locator.
+      Hallucinated or unreachable citations are a critical research-integrity
+      failure. Execution is blocked until every cited source is real and
+      publicly findable.
     guidance: >
-      For each flagged citation:
-        1. Check if the paper exists under a slightly different title/year
-           (LLMs often confabulate plausible-sounding but wrong metadata).
-        2. If the citation is not real, remove it and find the correct source.
-        3. If you need to cite a concept, cite the actual textbook chapter
-           or primary source — do not allow the agent to invent a reference.
-      Use `aesdk cite verify --text reasoning_log.json` to re-run checks
-      after correction.
+      For each flagged citation, locate the source online through DOI,
+      publisher, journal, university, or official package documentation.
+      If the citation is not real, remove it and replace it with the
+      correct source. Do not let an AI agent invent a plausible reference.
+      Use `aesdk cite verify --text reasoning_log.json` to re-run enforced
+      online DOI checks after correction.
     reference:
       note: >
-        Documented in peer review reports (2025-2026): LLMs produce
-        hallucinated references at high rates. CrossRef DOI verification
-        is the minimum bar. See also: Semantic Scholar API, doi.org.
+        AESDK public-review standard: every citation in agent-generated
+        econometric reasoning must be independently findable online.
     test_cases:
       pass:
         - {hallucinated_count: 0}
-        - {citation_report: null}  # No citations in text — not applicable
+        - {citation_report: null}
       fail:
         - {hallucinated_count: 1}
-        - {hallucinated_count: 6}   # The exact case from the reviewer's post
+        - {hallucinated_count: 6}
 
   - id: CI-002
     name: "Governance Rule Citations Must Be in the AESDK Rule Registry"
@@ -59,13 +68,13 @@ rules:
     condition: >
       rule_citation_verified == false
     requirement: >
-      Any textbook or paper cited in an AESDK governance rule file must
-      exist in the registered bibliography. This prevents the rule
-      registry itself from containing hallucinated authority.
+      Any textbook, paper, software manual, or official documentation cited
+      in an AESDK governance rule file must exist in the registered source
+      metadata and include an online locator.
     guidance: >
-      Register the reference in `src/aesdk/knowledge/sources.yaml` or keep
-      it as explicit internal guidance before shipping a rule file. Run
-      `aesdk methods validate` to check bundled source references.
+      Register the reference in `src/aesdk/knowledge/sources.yaml` with a DOI
+      or public URL before shipping a rule file. Run `aesdk methods validate`
+      to check bundled source references.
     reference:
       note: "Internal AESDK quality standard"
     test_cases:
@@ -75,7 +84,31 @@ rules:
         - {rule_citation_verified: false}
 
   - id: CI-003
-    name: "Uncertainty Acknowledgment Required for Unverified Citations"
+    name: "Unreachable Online Citations Block Execution"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: >
+      citation_report is not None
+      and citation_report.unreachable_count > 0
+    requirement: >
+      Citations with DOI-like metadata must resolve online. A citation that
+      cannot be reached through its DOI is not acceptable for public-facing
+      econometric work without replacement or documented manual verification.
+    guidance: >
+      Check the DOI, journal page, publisher page, and author page. Replace
+      malformed or dead references with the correct DOI or an official public
+      locator before code execution or report generation.
+    reference:
+      note: "AESDK online citation verification standard"
+    test_cases:
+      pass:
+        - {unreachable_count: 0}
+      fail:
+        - {unreachable_count: 1}
+
+  - id: CI-004
+    name: "Uncertainty Acknowledgment Required for Partial Citation Matches"
     severity: "warning"
     estimators: []
     data_structures: []
@@ -84,13 +117,13 @@ rules:
       and citation_report.uncertain_count > 0
       and citation_uncertainty_acknowledged == false
     requirement: >
-      Citations flagged as 'uncertain' (partial match only) must be
-      acknowledged by the researcher before proceeding. The researcher
-      must confirm the citation is correct or replace it.
+      Citations flagged as partial matches must be acknowledged by the
+      researcher before proceeding. The researcher must confirm the citation
+      is correct or replace it.
     guidance: >
-      Review the suggested real paper surfaced by the validator.
-      If it matches your intent, update the citation metadata.
-      If it does not, locate the correct reference manually.
+      Review the suggested real paper surfaced by the validator. If it
+      matches your intent, update the citation metadata. If it does not,
+      locate the correct reference manually.
     reference:
       note: "AESDK citation integrity standard"
     test_cases:

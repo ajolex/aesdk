@@ -95,6 +95,25 @@ method_sources:
           topic: "selection, matching logic, and regression design comparisons"
       sdk_context:
         - "Matching is a design/preprocessing step; it does not solve unobserved confounding without a credible assumption."
+  experimental_rct:
+    - source_id: "jpal_randomization"
+      locators:
+        - topic: "randomization, ATE intuition, assignment unit, strata, and replicable assignment"
+      sdk_context:
+        - "RCT workflows must document randomization unit, assignment variable, treatment arms, and assignment probabilities."
+        - "Stratified or clustered assignment must be reflected in the analysis and inference plan."
+    - source_id: "jpal_data_analysis"
+      locators:
+        - topic: "ATE, LATE, treatment-on-treated, attrition, spillovers, and randomization inference"
+      sdk_context:
+        - "Agents must distinguish ITT/ATE/ATT/LATE and check compliance, attrition, spillovers, and randomization-inference options."
+    - source_id: "bedecarrats_guerin_roubaud_2015"
+      local_path: "tools/2015-01-EN-The-gold-standard-for-randomized-evaluations-from-discussion-of-method-to-political-economy.pdf"
+      locators:
+        - pdf_pages: [1, 2, 3]
+          topic: "RCT scope and political-economy cautions"
+      sdk_context:
+        - "Do not treat RCTs as a universal gold standard; require scope, implementation, and external-validity discussion."
   synthetic_control:
     - source_id: "world_bank_impact_eval"
       local_path: "tools/WorldBankImpactEval.pdf"

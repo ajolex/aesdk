@@ -1,0 +1,275 @@
+source:
+  id: "EXPERIMENTAL_RCT_GOVERNANCE"
+  method_id: "experimental_rct"
+  topic: "randomized_controlled_trials"
+  rule_file_version: "1.1.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "potential_outcomes"
+    - "randomized_control_trials"
+rules:
+  - id: RCT-001
+    name: "RCT Requires Randomization Unit"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_randomization_unit is None or rct_randomization_unit == ''"
+    requirement: "An RCT workflow must declare the unit of randomization."
+    guidance: "State whether individuals, households, schools, firms, villages, or another unit were randomized."
+    reference:
+      authors: "J-PAL"
+      title: "Randomization"
+
+  - id: RCT-002
+    name: "RCT Requires Assignment Variable"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_assignment_variable is None or rct_assignment_variable == ''"
+    requirement: "An RCT workflow must declare the randomized assignment variable."
+    guidance: "Distinguish assignment/offer from actual take-up or treatment receipt."
+    reference:
+      authors: "J-PAL"
+      title: "Randomization and data analysis"
+
+  - id: RCT-003
+    name: "RCT Requires Treatment Arms"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "len(rct_treatment_arms) == 0 or rct_control_group is None or rct_control_group == ''"
+    requirement: "An RCT workflow must define treatment arm(s) and the control/comparison group."
+    guidance: "List all treatment arms and name the reference/control condition."
+    reference:
+      authors: "J-PAL"
+      title: "Randomization methods"
+
+  - id: RCT-004
+    name: "RCT Requires Estimand Declaration"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_estimand is None or rct_estimand == ''"
+    requirement: "An RCT workflow must declare whether it reports ITT, ATE, ATT/ToT, LATE, or another experimental contrast."
+    guidance: "State the estimand before writing code; do not mix assignment effects with receipt effects."
+    reference:
+      authors: "J-PAL"
+      title: "Treatment effects"
+
+  - id: RCT-005
+    name: "RCT Requires Assignment Probability or Randomization Method"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_assignment_probability is None and (rct_randomization_method is None or rct_randomization_method == '')"
+    requirement: "RCT workflows should document the assignment probability or randomization method."
+    guidance: "Record treatment ratios, lottery/permutation/stratified assignment, or the exact randomization procedure."
+    reference:
+      authors: "J-PAL"
+      title: "Randomization methods and assignment shares"
+
+  - id: RCT-006
+    name: "RCT Reproducibility Requires Seed or Assignment File"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_random_seed is None and text_missing(rct_assignment_file) and rct_randomization_method != 'public_lottery'"
+    requirement: "Software-generated randomization should record a seed or archived assignment file."
+    guidance: "Store the seed, assignment script, or final assignment file so the randomization can be audited."
+    reference:
+      authors: "J-PAL"
+      title: "Replicable random assignment"
+
+  - id: RCT-007
+    name: "Cluster-Randomized RCT Requires Clustered Inference"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_cluster_randomized == true and rct_randomization_inference_plan != true and standard_errors not in ['cluster', 'robust-cluster', 'two-way-cluster', 'wild-cluster-bootstrap']"
+    requirement: "Cluster-randomized experiments must use inference that respects the randomization unit."
+    guidance: "Cluster at the assignment unit or use a valid randomization-inference design."
+    reference:
+      authors: "J-PAL; Cameron, A. Colin; Miller, Douglas L."
+      title: "Cluster randomization and cluster-robust inference"
+
+  - id: RCT-008
+    name: "LATE Requires Take-Up Variable"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_estimand == 'LATE' and (rct_takeup_variable is None or rct_takeup_variable == '')"
+    requirement: "LATE requires a treatment receipt or take-up variable."
+    guidance: "Use randomized assignment as an instrument for actual treatment receipt, not as the receipt variable itself."
+    reference:
+      authors: "J-PAL"
+      title: "Local average treatment effects"
+
+  - id: RCT-009
+    name: "LATE Requires Compliance Assumptions"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_estimand == 'LATE' and (rct_exclusion_for_late_documented == false or rct_monotonicity_documented == false)"
+    requirement: "LATE requires exclusion and monotonicity/complier assumptions to be documented."
+    guidance: "Explain why assignment affects outcomes only through receipt and why assignment does not reduce take-up for would-be compliers."
+    reference:
+      authors: "J-PAL; Imbens, Guido W.; Wooldridge, Jeffrey M."
+      title: "Local average treatment effects"
+
+  - id: RCT-010
+    name: "ATT/ToT Requires Compliance Reporting"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_estimand in ['ATT', 'ToT', 'LATE'] and rct_compliance_rate is None"
+    requirement: "ATT/ToT/LATE workflows should report compliance or take-up rates."
+    guidance: "Report treatment take-up, crossovers, one-sided/two-sided noncompliance, and first-stage strength where relevant."
+    reference:
+      authors: "J-PAL"
+      title: "Treatment-on-treated and compliance"
+
+  - id: RCT-011
+    name: "RCT Requires Baseline Balance Check"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_baseline_balance_check != true"
+    requirement: "RCT workflows should report baseline balance across treatment arms."
+    guidance: "Report balance on key pre-treatment covariates and any stratification variables."
+    reference:
+      authors: "J-PAL; Bruhn, Miriam; McKenzie, David"
+      title: "Randomization and balance"
+
+  - id: RCT-012
+    name: "RCT Requires Attrition Check"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_attrition_check != true"
+    requirement: "RCT workflows should check attrition overall and by treatment arm."
+    guidance: "Report attrition rates and use bounds or sensitivity analysis when attrition may be differential."
+    reference:
+      authors: "J-PAL"
+      title: "Attrition, bounds, and inverse-probability weighting"
+
+  - id: RCT-013
+    name: "RCT Requires Spillover or Interference Plan"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "text_missing(rct_spillover_plan)"
+    requirement: "RCT workflows should document spillover/interference risks."
+    guidance: "Explain why interference is unlikely, or specify spillover-aware measurement, clustering, or sensitivity checks."
+    reference:
+      authors: "J-PAL"
+      title: "Internal validity, spillovers, and SUTVA"
+
+  - id: RCT-014
+    name: "RCT Should Register Power Calculation"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_power_calculation != true"
+    requirement: "RCT workflows should document power calculations or minimum detectable effects."
+    guidance: "Add the power calculation, assignment shares, clustering assumptions, and minimum detectable effect."
+    reference:
+      authors: "J-PAL"
+      title: "Power calculations"
+
+  - id: RCT-015
+    name: "RCT Should Register Trial and PAP"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_trial_registration != true or rct_pap_registered != true"
+    requirement: "RCT workflows should document trial registration and a pre-analysis plan when available."
+    guidance: "Register or link the trial and PAP, or document why registration is unavailable."
+    reference:
+      authors: "J-PAL"
+      title: "Trial registration and pre-analysis plans"
+
+  - id: RCT-016
+    name: "Cluster-Randomized RCT Requires Cluster Level"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_cluster_randomized == true and rct_randomization_inference_plan != true and standard_errors in ['cluster', 'robust-cluster', 'two-way-cluster', 'wild-cluster-bootstrap'] and cluster_level_missing(clustering_level)"
+    requirement: "Clustered RCT inference must declare the cluster level."
+    guidance: "Name the level used for clustered standard errors, and make it match the randomization unit unless a stronger level is justified."
+    reference:
+      authors: "J-PAL; Cameron, A. Colin; Miller, Douglas L."
+      title: "Clustered experimental inference"
+
+  - id: RCT-017
+    name: "Cluster-Randomized RCT Cannot Cluster Below Assignment Unit"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_cluster_randomized == true and rct_randomization_inference_plan != true and clustering_level is not None and cluster_hierarchy_rank(clustering_level) < cluster_hierarchy_rank(rct_randomization_unit)"
+    requirement: "Clustered RCT inference cannot cluster below the unit of random assignment."
+    guidance: "If schools were randomized, do not use individual-level clustering; cluster at school or a higher design level."
+    reference:
+      authors: "J-PAL; Cameron, A. Colin; Miller, Douglas L."
+      title: "Cluster level for randomized designs"
+
+  - id: RCT-018
+    name: "ATE Requires Perfect Assignment-To-Receipt Compliance"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_estimand == 'ATE' and (rct_compliance_type in ['encouragement', 'imperfect', 'imperfect_compliance', 'noncompliance', 'non_compliance', 'partial_compliance', 'one_sided_noncompliance', 'two_sided_noncompliance'] or (rct_compliance_rate is not None and rct_compliance_rate < 1))"
+    requirement: "Do not report an unqualified ATE when assignment is an encouragement or compliance is imperfect."
+    guidance: "Report ITT, or justify a LATE/ToT estimand with take-up, compliance, and exclusion assumptions."
+    reference:
+      authors: "J-PAL"
+      title: "ATE, treatment-on-treated, compliance, and LATE"
+
+  - id: RCT-019
+    name: "Differential Attrition Requires Sensitivity Plan"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_attrition_differential == true and text_missing(rct_attrition_sensitivity_plan)"
+    requirement: "Differential attrition must be paired with a bounds, weighting, or sensitivity plan."
+    guidance: "State how attrition by arm changes the estimand and what sensitivity analysis will be reported."
+    reference:
+      authors: "J-PAL"
+      title: "Attrition and sensitivity analysis"
+
+  - id: RCT-020
+    name: "Spillover Risk Requires Measurement Or Sensitivity Plan"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_spillover_risk == true and text_missing(rct_spillover_measurement_plan)"
+    requirement: "Known spillover risk requires a measurement, exclusion, or sensitivity plan."
+    guidance: "Specify how exposure to treated units will be measured or how contaminated comparisons will be handled."
+    reference:
+      authors: "J-PAL"
+      title: "Spillovers and interference"
+
+  - id: RCT-021
+    name: "RCT Requires SUTVA Rationale"
+    severity: "warning"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "text_missing(rct_sutva_rationale)"
+    requirement: "RCT workflows should explain why interference or multiple treatment versions do not undermine the estimand."
+    guidance: "Document the SUTVA rationale in plain research language, especially when treatment is delivered through networks, classrooms, clinics, villages, or markets."
+    reference:
+      authors: "J-PAL"
+      title: "SUTVA and interference"
+
+  - id: RCT-022
+    name: "Stratified Randomization Requires Strata"
+    severity: "error"
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rct_stratification_used == true and len(rct_strata) == 0"
+    requirement: "Stratified randomization must list the strata or blocking variables."
+    guidance: "Record the variables used for stratification/blocking so balance checks and inference can respect the design."
+    reference:
+      authors: "J-PAL; Bruhn, Miriam; McKenzie, David"
+      title: "Stratified randomization and balance"

@@ -1,6 +1,11 @@
 version: "0.1.0"
 method_id: "rdd"
 name: "Regression Discontinuity Design"
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "advanced_empirical_research"
+  curriculum_topics: ["potential_outcomes", "rdd"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
   status: "planned_guardrail"
   source_review: "limited"

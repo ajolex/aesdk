@@ -8,6 +8,9 @@
   - pandas
   - statsmodels
   - linearmodels
+  - pyfixest
+  - rdrobust
+  - scpi
 allowed_r_packages:
   - base
   - stats

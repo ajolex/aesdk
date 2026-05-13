@@ -1,0 +1,74 @@
+source:
+  id: "OLS_CEF_GOVERNANCE"
+  method_id: "ols_cef"
+  topic: "ols_conditional_expectation_function"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "foundations_mechanics"
+  topics:
+    - "simple_linear_regression"
+    - "gauss_markov"
+    - "multiple_regression_ovb"
+    - "inference"
+    - "functional_forms"
+rules:
+  - id: OLS-001
+    name: "OLS Requires Outcome and Regressor"
+    severity: "error"
+    estimators: ["OLS"]
+    data_structures: []
+    condition: "outcome_variable is None or outcome_variable == '' or treatment_variable is None or treatment_variable == ''"
+    requirement: "OLS/CEF analysis must declare the outcome and coefficient-of-interest variable before code is written."
+    guidance: "Name the dependent variable and the treatment/regressor whose coefficient will be interpreted."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Stock, James H.; Watson, Mark W."
+      title: "OLS mechanics and applied regression setup"
+
+  - id: OLS-002
+    name: "Causal OLS Requires Identification Assumption"
+    severity: "error"
+    estimators: ["OLS"]
+    data_structures: []
+    condition: "causal_claim == true and identification_assumption_documented == false"
+    requirement: "OLS estimates cannot be described causally unless the identifying exogeneity/design assumption is documented."
+    guidance: "State the conditional exogeneity, random assignment, or design argument; otherwise rewrite the analysis as descriptive."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "Regression interpretation and identification"
+
+  - id: OLS-003
+    name: "OLS Robust Inference Required Unless Justified"
+    severity: "warning"
+    estimators: ["OLS"]
+    data_structures: ["cross-section", "pooled"]
+    condition: "standard_errors in [None, '', 'conventional', 'iid'] and conventional_se_justified == false"
+    requirement: "OLS should use heteroskedasticity-robust inference unless conventional standard errors are explicitly justified."
+    guidance: "Use HC/robust standard errors, or document why homoskedastic iid inference is appropriate."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Stock, James H.; Watson, Mark W."
+      title: "Heteroskedasticity-robust inference"
+
+  - id: OLS-004
+    name: "Post-Hoc Covariate Selection Requires Disclosure"
+    severity: "error"
+    estimators: ["OLS"]
+    data_structures: []
+    condition: "post_hoc_covariate_selection == true"
+    requirement: "Post-hoc covariate selection is blocked unless moved into a disclosed robustness/specification-curve workflow."
+    guidance: "Return to the PAP, declare covariates, or report the search as a sensitivity analysis rather than a primary specification."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "Regression specification and research design discipline"
+
+  - id: OLS-005
+    name: "Causal OLS Requires Support Check"
+    severity: "warning"
+    estimators: ["OLS"]
+    data_structures: []
+    condition: "causal_claim == true and support_check is None"
+    requirement: "Causal OLS should include an overlap/support check for the identifying comparison."
+    guidance: "Add support, overlap, balance, or sample-comparability diagnostics before interpreting coefficients causally."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "OLS support and design diagnostics"

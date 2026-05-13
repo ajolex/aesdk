@@ -1,6 +1,11 @@
 version: "0.1.0"
 method_id: "iv_2sls"
 name: "Instrumental Variables / 2SLS"
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "identification_pivot"
+  curriculum_topics: ["iv_2sls", "simultaneous_equations", "heteroskedasticity_robust_se"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
   status: "reviewed_guardrail"
   source_review: "partial_multi_source"

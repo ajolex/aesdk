@@ -1,13 +1,21 @@
 ﻿source:
-  id: "ANGRIST_PISCHKE_DID"
-  rule_file_version: "1.0.0"
+  id: "DID_GOVERNANCE"
+  method_id: "did"
+  topic: "difference_in_differences"
+  rule_file_version: "1.1.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "potential_outcomes"
+    - "did_staggered"
 rules:
   - id: AP-DID-001
     name: "DiD Requires Parallel-Trends Diagnostic"
     severity: "warning"
     estimators: ["DiD", "TWFE", "EventStudy"]
     data_structures: ["panel", "pooled"]
-    condition: "identification_strategy == 'DiD' and parallel_trends_test == false"
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and parallel_trends_test == false"
     requirement: "A DiD design must register a parallel-trends diagnostic or a design-specific substitute."
     guidance: "Use pre-treatment event-study leads, graphical diagnostics, or a registered falsification design before interpreting DiD causally."
     reference:
@@ -20,7 +28,7 @@ rules:
     severity: "warning"
     estimators: ["DiD", "TWFE", "EventStudy"]
     data_structures: ["panel", "pooled"]
-    condition: "identification_strategy == 'DiD' and (event_study_leads_lags is None or len(event_study_leads_lags) == 0)"
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and (event_study_leads_lags is None or len(event_study_leads_lags) == 0)"
     requirement: "The PAP does not register event-study leads/lags for diagnosing pre-trends and dynamic treatment effects."
     guidance: "Register the event-time window or explain why an event-study diagnostic is not appropriate for the design."
     reference:
@@ -32,9 +40,9 @@ rules:
   - id: AP-DID-003
     name: "Staggered Adoption Requires Modern DiD Estimator"
     severity: "error"
-    estimators: ["TWFE", "DiD"]
+    estimators: ["TWFE", "DiD", "EventStudy"]
     data_structures: ["panel"]
-    condition: "identification_strategy == 'DiD' and staggered_adoption == true and estimator == 'TWFE'"
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and staggered_adoption == true and estimator == 'TWFE'"
     requirement: "Staggered adoption with TWFE is blocked due to known weighting bias."
     guidance: "Use Callaway-Sant'Anna, Sun-Abraham interactions, or stacked DiD."
     reference:
@@ -47,7 +55,7 @@ rules:
     severity: "error"
     estimators: ["DiD", "TWFE", "EventStudy"]
     data_structures: ["panel", "pooled"]
-    condition: "identification_strategy == 'DiD' and (control_group is None or control_group_justification is None or control_group_justification == '')"
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and (control_group is None or control_group_justification is None or control_group_justification == '')"
     requirement: "A DiD design must define and justify the comparison group before estimation."
     guidance: "Declare whether controls are never-treated, not-yet-treated, matched, or another registered group, and explain why they support the identifying contrast."
     reference:

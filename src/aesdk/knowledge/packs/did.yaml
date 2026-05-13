@@ -1,6 +1,11 @@
 version: "0.1.0"
 method_id: "did"
 name: "Differences-in-Differences"
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "advanced_empirical_research"
+  curriculum_topics: ["potential_outcomes", "did_staggered"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
   status: "reviewed_guardrail"
   source_review: "partial_multi_source"

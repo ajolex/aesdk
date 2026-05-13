@@ -66,6 +66,14 @@ properties:
           - PropensityScore
           - Mahalanobis
           - EntropyBalance
+          - RCT
+          - RandomizedExperiment
+          - RandomizedControlledTrial
+          - ITT
+          - ATE
+          - ATT
+          - ToT
+          - LATE
           - SynthControl
           - SyntheticControl
           - AugmentedSyntheticControl
@@ -145,6 +153,46 @@ properties:
       goodman_bacon_decomposition: {type: boolean}
       hausman_test_documented: {type: boolean}
       placebo_test: {type: boolean}
+  rct_block:
+    type: object
+    required: [randomization_unit, assignment_variable, treatment_arms, estimand]
+    properties:
+      randomization_unit: {type: string}
+      assignment_variable: {type: string}
+      treatment_arms:
+        type: array
+        minItems: 1
+        items: {type: string}
+      control_group: {type: string}
+      assignment_probability: {type: number, minimum: 0, maximum: 1}
+      random_seed: {}
+      assignment_file: {type: string}
+      randomization_method: {type: string}
+      strata:
+        type: array
+        items: {type: string}
+      stratification_used: {type: boolean}
+      cluster_randomized: {type: boolean}
+      compliance_type: {type: string}
+      estimand:
+        type: string
+        enum: [ITT, ATE, ATT, ToT, LATE]
+      takeup_variable: {type: string}
+      compliance_rate: {type: number, minimum: 0, maximum: 1}
+      exclusion_for_late_documented: {type: boolean}
+      monotonicity_documented: {type: boolean}
+      baseline_balance_check: {type: boolean}
+      attrition_check: {type: boolean}
+      attrition_differential: {type: boolean}
+      attrition_sensitivity_plan: {type: string}
+      spillover_plan: {type: string}
+      spillover_risk: {type: boolean}
+      spillover_measurement_plan: {type: string}
+      sutva_rationale: {type: string}
+      power_calculation: {type: boolean}
+      trial_registration: {type: boolean}
+      pap_registered: {type: boolean}
+      randomization_inference_plan: {type: boolean}
   robustness:
     type: object
     required: [specification_curve]
@@ -167,3 +215,11 @@ allOf:
               enum: [DiD, TWFE, EventStudy]
     then:
       required: [did_block]
+  - if:
+      properties:
+        identification:
+          properties:
+            strategy:
+              enum: [RCT, RandomizedExperiment, RandomizedControlledTrial, ITT, ATE, ATT, ToT, LATE]
+    then:
+      required: [rct_block]

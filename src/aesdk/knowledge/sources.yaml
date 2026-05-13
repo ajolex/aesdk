@@ -1,17 +1,37 @@
 version: "0.1.0"
 sources:
+  wooldridge_intro_modern:
+    type: textbook
+    title: "Introductory Econometrics: A Modern Approach"
+    authors:
+      - "Jeffrey M. Wooldridge"
+    online:
+      url: "https://www.cengage.com/c/introductory-econometrics-a-modern-approach-7e-wooldridge/9781337558860/"
+      isbn: "9781337558860"
+    sdk_use:
+      - "introductory OLS mechanics"
+      - "Gauss-Markov assumptions"
+      - "multiple regression and omitted variable bias"
+      - "functional forms and introductory treatment effects"
+    notes: "Publisher-online source used for the foundations curriculum; compact paraphrased guidance only."
+
   wooldridge_cross_section_panel:
     type: textbook
     title: "Econometric Analysis of Cross Section and Panel Data"
     authors:
       - "Jeffrey M. Wooldridge"
     local_path: "tools/Wooldridge.pdf"
+    online:
+      url: "https://mitpress.mit.edu/9780262232586/econometric-analysis-of-cross-section-and-panel-data/"
+      isbn: "9780262232586"
     sdk_use:
       - "linear model assumptions"
       - "OLS and IV estimation"
       - "heteroskedasticity-robust and cluster-robust inference"
       - "linear unobserved-effects panel models"
+      - "nonlinear cross-section and panel models"
     notes: "Local source used for compact, paraphrased method protocols and governance rules."
+
   angrist_pischke_mhe:
     type: textbook
     title: "Mostly Harmless Econometrics: An Empiricist's Companion"
@@ -19,6 +39,9 @@ sources:
       - "Joshua D. Angrist"
       - "Jorn-Steffen Pischke"
     local_path: "tools/MostlyHarmlessEconometrics.pdf"
+    online:
+      url: "https://press.princeton.edu/books/paperback/9780691120355/mostly-harmless-econometrics"
+      isbn: "9780691120355"
     sdk_use:
       - "research design framing"
       - "CEF and regression interpretation"
@@ -27,38 +50,7 @@ sources:
       - "regression discontinuity"
       - "clustered inference"
     notes: "Local source used for compact, paraphrased method protocols and governance rules."
-  callaway_santanna_2021:
-    type: article
-    title: "Difference-in-Differences with Multiple Time Periods"
-    authors:
-      - "Brantly Callaway"
-      - "Pedro H. C. Sant'Anna"
-    journal: "Journal of Econometrics"
-    year: 2021
-    sdk_use:
-      - "modern DiD guidance for staggered treatment timing"
-  greene_econometric_analysis:
-    type: textbook
-    title: "Econometric Analysis"
-    authors:
-      - "William H. Greene"
-    local_path: "tools/econometric_analysis_by_greence.pdf"
-    sdk_use:
-      - "maximum likelihood and generalized method of moments"
-      - "limited dependent variable models"
-      - "panel-data extensions"
-      - "asymptotic inference"
-    notes: "Local source for advanced econometric method packs; compact paraphrased guidance only."
-  heiss_using_r_intro_econometrics:
-    type: textbook
-    title: "Using R for Introductory Econometrics"
-    authors:
-      - "Florian Heiss"
-    local_path: "tools/FlorianHeiss.pdf"
-    sdk_use:
-      - "R implementation patterns for introductory econometrics"
-      - "teaching-oriented OLS, IV, panel, limited dependent variable, and time-series examples"
-    notes: "Local source for teaching-friendly R code recipes and diagnostics."
+
   stock_watson_intro_econometrics:
     type: textbook
     title: "Introduction to Econometrics"
@@ -66,12 +58,161 @@ sources:
       - "James H. Stock"
       - "Mark W. Watson"
     local_path: "tools/JamesHStock.pdf"
+    online:
+      url: "https://www.pearson.com/en-us/subject-catalog/p/introduction-to-econometrics/P200000006421/9780136879787"
+      isbn: "9780136879787"
     sdk_use:
       - "applied regression workflow"
       - "panel data and DiD"
       - "IV and weak-instrument diagnostics"
       - "time-series foundations"
     notes: "Local source for applied method framing and teaching examples."
+
+  gujarati_basic_econometrics:
+    type: textbook
+    title: "Basic Econometrics"
+    authors:
+      - "Damodar N. Gujarati"
+    local_path: "tools/7-Basic-Econometrics-4th-Ed.-Gujarati.pdf"
+    online:
+      url: "https://www.mheducation.com/highered/product/basic-econometrics-gujarati-porter/M9780073375779.html"
+      isbn: "9780073375779"
+    sdk_use:
+      - "introductory regression mechanics"
+      - "classical linear model assumptions"
+      - "diagnostics and applied interpretation"
+    notes: "Local source for foundations cross-checking; compact paraphrased guidance only."
+
+  verbeek_modern_econometrics:
+    type: textbook
+    title: "A Guide to Modern Econometrics"
+    authors:
+      - "Marno Verbeek"
+    local_path: "tools/modern-econometrics.pdf"
+    online:
+      url: "https://www.wiley-vch.de/de/fachgebiete/finanzen-wirtschaft-recht/a-guide-to-modern-econometrics-978-1-119-47211-7"
+      isbn: "9781119472117"
+    sdk_use:
+      - "matrix OLS"
+      - "asymptotic theory"
+      - "maximum likelihood and GMM"
+      - "panel-data methods"
+    notes: "Local source for theory and micro-foundations curriculum."
+
+  greene_econometric_analysis:
+    type: textbook
+    title: "Econometric Analysis"
+    authors:
+      - "William H. Greene"
+    local_path: "tools/econometric_analysis_by_greence.pdf"
+    online:
+      url: "https://www.pearson.com/en-us/subject-catalog/p/econometric-analysis/P200000006254"
+    sdk_use:
+      - "maximum likelihood and generalized method of moments"
+      - "limited dependent variable models"
+      - "panel-data extensions"
+      - "asymptotic inference"
+    notes: "Local source for advanced econometric method packs; compact paraphrased guidance only."
+
+  hansen_econometrics_2022:
+    type: textbook
+    title: "Econometrics"
+    authors:
+      - "Bruce E. Hansen"
+    year: 2022
+    online:
+      url: "https://www.stata.com/bookstore/econometrics-hansen/"
+      isbn: "9780691235899"
+    sdk_use:
+      - "modern graduate econometrics curriculum"
+      - "matrix OLS and asymptotics"
+      - "panel data, DiD, RDD, nonlinear methods, and machine learning"
+    notes: "Online source used to align AESDK stages with a modern comprehensive econometrics curriculum."
+
+  cameron_trivedi_microeconometrics:
+    type: textbook
+    title: "Microeconometrics: Methods and Applications"
+    authors:
+      - "A. Colin Cameron"
+      - "Pravin K. Trivedi"
+    online:
+      url: "https://cameron.econ.ucdavis.edu/mmabook/mmaoutline.html"
+      isbn: "9780521848053"
+    sdk_use:
+      - "microeconometric likelihood and GMM methods"
+      - "limited dependent variables"
+      - "applied micro method design"
+    notes: "Author-maintained online book outline used as a public locator."
+
+  cunningham_mixtape:
+    type: textbook
+    title: "Causal Inference: The Mixtape"
+    authors:
+      - "Scott Cunningham"
+    online:
+      url: "https://yalebooks.yale.edu/9780300255881/causal-inference/"
+      isbn: "9780300255881"
+    sdk_use:
+      - "modern causal inference pedagogy"
+      - "potential outcomes"
+      - "DiD, RDD, matching, and synthetic control intuition"
+    notes: "Publisher-online source for modern causal inference framing."
+
+  jpal_randomization:
+    type: research_resource
+    title: "Randomization"
+    authors:
+      - "Sarah Kopper"
+      - "Anja Sautmann"
+    online:
+      url: "https://www.povertyactionlab.org/resource/randomization"
+    sdk_use:
+      - "RCT random assignment concepts"
+      - "ATE intuition under random assignment"
+      - "randomization unit, strata, treatment arms, and reproducible assignment"
+    notes: "Official J-PAL research resource for randomized-evaluation design."
+
+  jpal_data_analysis:
+    type: research_resource
+    title: "Data analysis"
+    authors:
+      - "The Abdul Latif Jameel Poverty Action Lab"
+    online:
+      url: "https://www.povertyactionlab.org/resource/data-analysis"
+    sdk_use:
+      - "RCT treatment-effect estimands"
+      - "ATE, LATE, treatment-on-treated, compliance, attrition, spillovers, and randomization inference"
+    notes: "Official J-PAL research resource for analysis of randomized evaluations."
+
+  bedecarrats_guerin_roubaud_2015:
+    type: working_paper
+    title: "The gold standard for randomized evaluations: from discussion of method to political economy"
+    authors:
+      - "Florent Bedecarrats"
+      - "Isabelle Guerin"
+      - "Francois Roubaud"
+    local_path: "tools/2015-01-EN-The-gold-standard-for-randomized-evaluations-from-discussion-of-method-to-political-economy.pdf"
+    online:
+      url: "https://dial.ird.fr/wp-content/uploads/2021/10/2015-01-EN-The-gold-standard-for-randomized-evaluations-from-discussion-of-method-to-political-economy.pdf"
+    sdk_use:
+      - "scope limits and political-economy cautions for RCTs"
+      - "guardrails against treating RCTs as a universal gold standard"
+    notes: "Local critical source used to keep RCT guidance explicit about scope, implementation, and external-validity limits."
+
+  heiss_using_r_intro_econometrics:
+    type: textbook
+    title: "Using R for Introductory Econometrics"
+    authors:
+      - "Florian Heiss"
+    local_path: "tools/FlorianHeiss.pdf"
+    online:
+      url: "https://www.urfie.net/"
+      isbn: "9798648436763"
+    sdk_use:
+      - "R implementation patterns for introductory econometrics"
+      - "teaching-oriented OLS, IV, panel, limited dependent variable, and time-series examples"
+    notes: "Local source for teaching-friendly R code recipes and diagnostics."
+
   world_bank_impact_eval:
     type: textbook
     title: "Impact Evaluation in Practice"
@@ -82,6 +223,9 @@ sources:
       - "Laura B. Rawlings"
       - "Christel M. J. Vermeersch"
     local_path: "tools/WorldBankImpactEval.pdf"
+    online:
+      url: "https://openknowledge.worldbank.org/entities/publication/1a8d42be-720d-5fd8-8a03-2074c90a279a"
+      isbn: "9781464807794"
     sdk_use:
       - "impact-evaluation design selection"
       - "randomized assignment"
@@ -90,36 +234,61 @@ sources:
       - "RDD"
       - "operational research planning"
     notes: "Local source for practitioner-facing causal-design checklists."
+
   wooldridge_recent_did_notes:
     type: working_paper_or_note
     title: "Recent Wooldridge DiD / treatment-effect notes"
     authors:
       - "Jeffrey M. Wooldridge"
     local_path: "tools/US25_Wooldridge.pdf"
+    online:
+      url: "https://users.ssc.wisc.edu/~bhansen/workshop/Wooldridge.pdf"
     sdk_use:
       - "recent DiD implementation guidance"
       - "heterogeneous treatment timing"
     notes: "Short local source; title should be verified before public citation."
+
   wooldridge_nonlinear_did_2023:
     type: article
     title: "Simple approaches to nonlinear difference-in-differences with panel data"
     authors:
       - "Jeffrey M. Wooldridge"
     local_path: "tools/utad016.pdf"
+    online:
+      doi: "10.1093/ectj/utad016"
+      url: "https://academic.oup.com/ectj/article/26/3/C31/7250479"
     sdk_use:
       - "nonlinear DiD"
       - "panel treatment effects"
     notes: "Local article source for future nonlinear DiD packs."
+
   wooldridge_r_package:
     type: software_documentation
     title: "wooldridge: 115 Data Sets from Introductory Econometrics"
     authors:
       - "Justin M. Shea"
     local_path: "tools/wooldridgePackage.pdf"
+    online:
+      url: "https://cran.r-project.org/package=wooldridge"
     sdk_use:
       - "replication datasets for examples"
       - "teaching data references"
     notes: "Local package manual for examples; not a source for identification rules."
+
+  callaway_santanna_2021:
+    type: article
+    title: "Difference-in-Differences with Multiple Time Periods"
+    authors:
+      - "Brantly Callaway"
+      - "Pedro H. C. Sant'Anna"
+    journal: "Journal of Econometrics"
+    year: 2021
+    online:
+      doi: "10.1016/j.jeconom.2020.12.001"
+      url: "https://doi.org/10.1016/j.jeconom.2020.12.001"
+    sdk_use:
+      - "modern DiD guidance for staggered treatment timing"
+
   rosenbaum_rubin_1983:
     type: article
     title: "The Central Role of the Propensity Score in Observational Studies for Causal Effects"
@@ -128,8 +297,12 @@ sources:
       - "Donald B. Rubin"
     journal: "Biometrika"
     year: 1983
+    online:
+      doi: "10.1093/biomet/70.1.41"
+      url: "https://doi.org/10.1093/biomet/70.1.41"
     sdk_use:
       - "propensity score and matching identification guidance"
+
   abadie_gardeazabal_2003:
     type: article
     title: "The Economic Costs of Conflict: A Case Study of the Basque Country"
@@ -138,8 +311,12 @@ sources:
       - "Javier Gardeazabal"
     journal: "American Economic Review"
     year: 2003
+    online:
+      doi: "10.1257/000282803321455188"
+      url: "https://doi.org/10.1257/000282803321455188"
     sdk_use:
       - "synthetic control comparative case study foundation"
+
   abadie_diamond_hainmueller_2010:
     type: article
     title: "Synthetic Control Methods for Comparative Case Studies"
@@ -149,8 +326,12 @@ sources:
       - "Jens Hainmueller"
     journal: "Journal of the American Statistical Association"
     year: 2010
+    online:
+      doi: "10.1198/jasa.2009.ap08746"
+      url: "https://doi.org/10.1198/jasa.2009.ap08746"
     sdk_use:
       - "synthetic control donor-pool and pre-treatment fit guidance"
+
   hansen_1982:
     type: article
     title: "Large Sample Properties of Generalized Method of Moments Estimators"
@@ -158,8 +339,48 @@ sources:
       - "Lars Peter Hansen"
     journal: "Econometrica"
     year: 1982
+    online:
+      doi: "10.2307/1912775"
+      url: "https://doi.org/10.2307/1912775"
     sdk_use:
       - "generalized method of moments foundation"
+
+  chernozhukov_dml_2018:
+    type: article
+    title: "Double/Debiased Machine Learning for Treatment and Structural Parameters"
+    authors:
+      - "Victor Chernozhukov"
+      - "Denis Chetverikov"
+      - "Mert Demirer"
+      - "Esther Duflo"
+      - "Christian Hansen"
+      - "Whitney Newey"
+      - "James Robins"
+    journal: "The Econometrics Journal"
+    year: 2018
+    online:
+      doi: "10.1111/ectj.12097"
+      url: "https://academic.oup.com/ectj/article/21/1/C1/5056401"
+    sdk_use:
+      - "double/debiased machine learning"
+      - "orthogonal scores and cross-fitting"
+
+  berry_levinsohn_pakes_1995:
+    type: article
+    title: "Automobile Prices in Market Equilibrium"
+    authors:
+      - "Steven Berry"
+      - "James Levinsohn"
+      - "Ariel Pakes"
+    journal: "Econometrica"
+    year: 1995
+    online:
+      doi: "10.2307/2171802"
+      url: "https://doi.org/10.2307/2171802"
+    sdk_use:
+      - "structural demand estimation"
+      - "discrete choice and BLP-style modeling"
+
   box_jenkins_reinsel_ljung_2015:
     type: textbook
     title: "Time Series Analysis: Forecasting and Control"
@@ -169,5 +390,8 @@ sources:
       - "Gregory C. Reinsel"
       - "Greta M. Ljung"
     year: 2015
+    online:
+      url: "https://www.wiley.com/en-us/Time+Series+Analysis%3A+Forecasting+and+Control%2C+5th+Edition-p-9781118675021"
+      isbn: "9781118675021"
     sdk_use:
       - "ARIMA and time-series modeling reference"

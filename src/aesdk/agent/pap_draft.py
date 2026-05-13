@@ -11,6 +11,7 @@ import pandas as pd
 
 _METHOD_TO_STRATEGY = {
     "did": "DiD",
+    "experimental_rct": "RCT",
     "gmm": "GMM",
     "iv_2sls": "IV",
     "limited_dependent": "Logit",
@@ -107,4 +108,22 @@ def draft_pap(
         }
     if method == "iv_2sls":
         pap["iv_block"] = {"instruments": ["TBD"], "first_stage_f_threshold": 10}
+    if method == "experimental_rct":
+        pap["rct_block"] = {
+            "randomization_unit": unit or "unit",
+            "assignment_variable": treatment,
+            "treatment_arms": [treatment],
+            "control_group": "control",
+            "assignment_probability": 0.5,
+            "randomization_method": "TBD",
+            "estimand": "ITT",
+            "baseline_balance_check": True,
+            "attrition_check": False,
+            "spillover_plan": "TBD",
+            "spillover_risk": False,
+            "sutva_rationale": "TBD",
+            "power_calculation": False,
+            "trial_registration": False,
+            "pap_registered": True,
+        }
     return pap

@@ -1,0 +1,83 @@
+source:
+  id: "NONLINEAR_DID_GOVERNANCE"
+  method_id: "nonlinear_did"
+  topic: "nonlinear_difference_in_differences"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "potential_outcomes"
+    - "did_staggered"
+rules:
+  - id: NLDID-001
+    name: "Nonlinear DiD Requires Outcome Family"
+    severity: "error"
+    estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"]
+    data_structures: ["panel", "pooled"]
+    condition: "nonlinear_did_outcome_family is None or nonlinear_did_outcome_family == ''"
+    requirement: "Nonlinear DiD must declare the outcome family before estimator choice."
+    guidance: "State whether the outcome is binary, count, fractional, censored, or another nonlinear family."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Callaway, Brantly; Sant'Anna, Pedro H. C."
+      title: "Nonlinear and group-time DiD"
+
+  - id: NLDID-002
+    name: "Nonlinear DiD Requires Target Scale"
+    severity: "error"
+    estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"]
+    data_structures: ["panel", "pooled"]
+    condition: "nonlinear_did_target_scale is None or nonlinear_did_target_scale == ''"
+    requirement: "Nonlinear DiD must state the scale of the target effect."
+    guidance: "Declare whether the effect is reported on probability, count-mean, level, odds, log-rate, or another scale."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      title: "Nonlinear DiD target scale"
+
+  - id: NLDID-003
+    name: "Nonlinear DiD Requires Effect Transformation"
+    severity: "error"
+    estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"]
+    data_structures: ["panel", "pooled"]
+    condition: "nonlinear_did_effect_transformation is None"
+    requirement: "Nonlinear model coefficients cannot be reported as treatment effects without a transformation plan."
+    guidance: "Report ATT, marginal effects, or predicted contrasts on the registered scale, not only raw link-scale coefficients."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      title: "Nonlinear DiD effect transformation"
+
+  - id: NLDID-004
+    name: "Nonlinear DiD Requires Comparison Group"
+    severity: "error"
+    estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"]
+    data_structures: ["panel", "pooled"]
+    condition: "control_group is None or control_group == '' or control_group_justification is None or control_group_justification == ''"
+    requirement: "Nonlinear DiD still requires a defined and justified comparison group."
+    guidance: "Declare never-treated, not-yet-treated, or another comparison group and justify it."
+    reference:
+      authors: "Callaway, Brantly; Sant'Anna, Pedro H. C."
+      title: "DiD comparison groups"
+
+  - id: NLDID-005
+    name: "Nonlinear DiD Staggered Timing Requires Modern Logic"
+    severity: "error"
+    estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD"]
+    data_structures: ["panel"]
+    condition: "staggered_adoption == true and estimator in ['PoissonDiD', 'LogitDiD']"
+    requirement: "Staggered nonlinear DiD cannot rely on unqualified nonlinear TWFE-style logic."
+    guidance: "Use group-time, doubly robust, or otherwise explicitly justified modern DiD logic."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Callaway, Brantly; Sant'Anna, Pedro H. C."
+      title: "Staggered timing in nonlinear DiD"
+
+  - id: NLDID-006
+    name: "Nonlinear DiD Requires Functional-Form Sensitivity"
+    severity: "warning"
+    estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"]
+    data_structures: ["panel", "pooled"]
+    condition: "nonlinear_did_functional_form_sensitivity != true"
+    requirement: "Nonlinear DiD should acknowledge sensitivity to outcome family, link, and target scale."
+    guidance: "Compare defensible model families or explain why one link/family is dictated by the design."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      title: "Functional-form sensitivity in nonlinear DiD"

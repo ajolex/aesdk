@@ -2,7 +2,7 @@
 
 For econometric analysis, always use AESDK before writing or running code.
 
-1. Identify the method. Supported method ids include `ols_cef`, `iv_2sls`, `panel_fe`, `did`, `rdd`, `matching`, `synthetic_control`, `nonlinear_did`, `gmm`, `limited_dependent`, and `time_series`. Use `aesdk methods list` if unsure.
+1. Identify the method. Supported method ids include `ols_cef`, `iv_2sls`, `panel_fe`, `did`, `experimental_rct`, `rdd`, `matching`, `synthetic_control`, `nonlinear_did`, `gmm`, `limited_dependent`, and `time_series`. Use `aesdk methods list` if unsure.
 2. Load context:
    `aesdk agent context --method <method>`
 3. Run preflight:
@@ -13,3 +13,6 @@ For econometric analysis, always use AESDK before writing or running code.
 7. Do not invent econometric assumptions, diagnostics, citations, or estimator requirements.
 8. Use governed execution when running analysis code:
    `aesdk agent run --method <method> --pap pap.yaml --proposal proposal.json --code-file analysis.py`
+   AESDK also gates Stata `.do` files and R scripts:
+   `aesdk agent run --method <method> --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata`
+   `aesdk agent run --method <method> --pap pap.yaml --proposal proposal.json --code-file analysis.R --language r`

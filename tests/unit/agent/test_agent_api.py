@@ -207,9 +207,41 @@ def test_drafted_pap_can_be_serialized_and_validated(tmp_path) -> None:
     assert result.status in {"pass", "warn"}
 
 
+def test_drafted_rct_pap_can_be_serialized_and_validated(tmp_path) -> None:
+    pap = ae.draft_pap(
+        goal="Estimate tutoring offer effect",
+        method="experimental_rct",
+        outcome="test_score",
+        treatment="assigned_tutoring",
+        unit="student",
+    )
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.preflight(
+        method="experimental_rct",
+        pap_path=pap_path,
+        proposal={"estimator": "RCT", "standard_errors": "HC3"},
+        conformance="basic",
+    )
+
+    assert pap["identification"]["strategy"] == "RCT"
+    assert pap["rct_block"]["randomization_unit"] == "student"
+    assert result.status in {"pass", "warn"}
+    assert not result.blocked
+
+
 def test_template_cli_resource_available() -> None:
     from importlib.resources import files
 
-    template = files("aesdk.agent.templates").joinpath("AGENTS.md")
-    assert template.is_file()
-    assert "always use AESDK" in template.read_text(encoding="utf-8")
+    agents_template = files("aesdk.agent.templates").joinpath("AGENTS.md")
+    claude_template = files("aesdk.agent.templates").joinpath("CLAUDE.md")
+    assert agents_template.is_file()
+    assert claude_template.is_file()
+    agents_text = agents_template.read_text(encoding="utf-8")
+    claude_text = claude_template.read_text(encoding="utf-8")
+    assert "always use AESDK" in agents_text
+    assert "experimental_rct" in agents_text
+    assert "analysis.do" in agents_text
+    assert "experimental_rct" in claude_text
+    assert "Stata" in claude_text

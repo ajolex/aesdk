@@ -1,0 +1,95 @@
+source:
+  id: "SYNTHETIC_CONTROL_GOVERNANCE"
+  method_id: "synthetic_control"
+  topic: "synthetic_control"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "potential_outcomes"
+    - "synthetic_control"
+rules:
+  - id: SYNTH-001
+    name: "Synthetic Control Requires Treated Unit"
+    severity: "error"
+    estimators: ["SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    data_structures: ["panel"]
+    condition: "synth_treated_unit is None or synth_treated_unit == ''"
+    requirement: "Synthetic control must declare the treated unit."
+    guidance: "Name the treated case before defining donors or predictors."
+    reference:
+      authors: "Abadie, Alberto; Diamond, Alexis; Hainmueller, Jens"
+      title: "Synthetic control methods"
+
+  - id: SYNTH-002
+    name: "Synthetic Control Requires Donor Pool"
+    severity: "error"
+    estimators: ["SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    data_structures: ["panel"]
+    condition: "len(synth_donor_pool) == 0"
+    requirement: "Synthetic control must declare the eligible donor pool."
+    guidance: "List donor units and justify exclusions before fitting weights."
+    reference:
+      authors: "Abadie, Alberto; Diamond, Alexis; Hainmueller, Jens"
+      title: "Donor-pool eligibility"
+
+  - id: SYNTH-003
+    name: "Synthetic Control Requires Intervention Time"
+    severity: "error"
+    estimators: ["SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    data_structures: ["panel"]
+    condition: "synth_intervention_time is None"
+    requirement: "Synthetic control must declare the intervention time."
+    guidance: "Define the treatment date so pre-treatment fit and post-treatment gaps are separated."
+    reference:
+      authors: "Abadie, Alberto; Diamond, Alexis; Hainmueller, Jens"
+      title: "Pre-treatment fit and post-treatment gaps"
+
+  - id: SYNTH-004
+    name: "Synthetic Control Requires Predictors"
+    severity: "error"
+    estimators: ["SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    data_structures: ["panel"]
+    condition: "len(synth_predictors) == 0"
+    requirement: "Synthetic control must declare predictors or pre-treatment outcomes used to form weights."
+    guidance: "Register predictors and pre-treatment outcome windows before fitting the synthetic unit."
+    reference:
+      authors: "Abadie, Alberto; Diamond, Alexis; Hainmueller, Jens"
+      title: "Predictor balance"
+
+  - id: SYNTH-005
+    name: "Poor Synthetic Control Fit Blocks Strong Causal Claims"
+    severity: "error"
+    estimators: ["SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    data_structures: ["panel"]
+    condition: "synth_pre_treatment_fit == false"
+    requirement: "Strong causal interpretation is blocked when pre-treatment fit is poor."
+    guidance: "Redesign the donor pool, predictors, or method before reporting treatment effects."
+    reference:
+      authors: "Abadie, Alberto; Diamond, Alexis; Hainmueller, Jens"
+      title: "Pre-treatment fit"
+
+  - id: SYNTH-006
+    name: "Synthetic Control Requires Placebo or Sensitivity Checks"
+    severity: "warning"
+    estimators: ["SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    data_structures: ["panel"]
+    condition: "synth_placebo_tests != true and synth_donor_pool_sensitivity != true"
+    requirement: "Synthetic control should report placebo/permutation or donor-pool sensitivity checks."
+    guidance: "Run placebo checks where feasible and report sensitivity to influential donor exclusions."
+    reference:
+      authors: "Abadie, Alberto; Diamond, Alexis; Hainmueller, Jens"
+      title: "Placebo and sensitivity diagnostics"
+
+  - id: SYNTH-007
+    name: "Contaminated Donor Pool Blocks Synthetic Control"
+    severity: "error"
+    estimators: ["SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    data_structures: ["panel"]
+    condition: "len(synth_contaminated_donors) > 0"
+    requirement: "Donor units affected by treatment or spillovers cannot remain in the donor pool."
+    guidance: "Remove contaminated donors and rerun fit, weight, and sensitivity diagnostics."
+    reference:
+      authors: "Abadie, Alberto; Diamond, Alexis; Hainmueller, Jens"
+      title: "No donor contamination"

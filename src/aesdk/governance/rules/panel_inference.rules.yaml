@@ -1,6 +1,13 @@
 ﻿source:
-  id: "WOOLDRIDGE_PANEL"
-  rule_file_version: "1.0.0"
+  id: "PANEL_INFERENCE_GOVERNANCE"
+  method_id: "panel_fe"
+  topic: "panel_inference"
+  rule_file_version: "1.1.0"
+  organization: "method_topic"
+curriculum:
+  stage: "theoretical_microfoundations"
+  topics:
+    - "panel_data"
 rules:
   - id: W-PANEL-001
     name: "Cluster SE Required for Panel Data"
@@ -58,3 +65,47 @@ rules:
       chapter: 7
       section: "7.8"
       title: "Cluster-Sample Methods"
+  - id: PANEL-FE-005
+    name: "Panel FE Requires Unit and Time Index"
+    severity: "error"
+    estimators: ["FE", "RE", "POLS"]
+    data_structures: ["panel"]
+    condition: "panel_unit is None or panel_unit == '' or panel_time is None or panel_time == ''"
+    requirement: "Panel workflows must declare both the unit index and time index."
+    guidance: "Record the panel unit and time variables before estimating fixed, random, or pooled panel models."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Verbeek, Marno"
+      title: "Panel data structure"
+  - id: PANEL-FE-006
+    name: "Fixed Effects Require Declared Effects"
+    severity: "error"
+    estimators: ["FE"]
+    data_structures: ["panel"]
+    condition: "len(fixed_effects) == 0"
+    requirement: "Fixed-effects workflows must declare the fixed effects included in the model."
+    guidance: "State unit, time, two-way, or other fixed effects and how they match the estimand."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Verbeek, Marno"
+      title: "Fixed effects and within estimation"
+  - id: PANEL-FE-007
+    name: "Fixed Effects Require Within-Variation Explanation"
+    severity: "warning"
+    estimators: ["FE"]
+    data_structures: ["panel"]
+    condition: "within_variation_documented != true"
+    requirement: "Fixed-effects workflows should explain the remaining within-unit identifying variation."
+    guidance: "Describe the within-unit changes that identify the coefficient after fixed effects."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Verbeek, Marno"
+      title: "Within-estimation interpretation"
+  - id: PANEL-FE-008
+    name: "Unit FE Cannot Identify Time-Invariant Regressors"
+    severity: "error"
+    estimators: ["FE"]
+    data_structures: ["panel"]
+    condition: "'unit' in fixed_effects and len(time_invariant_regressors) > 0 and time_invariant_interpreted == true"
+    requirement: "Unit fixed effects absorb time-invariant regressors; those coefficients cannot be interpreted as identified by the FE model."
+    guidance: "Remove the interpretation, use a different design, or explain a model that can identify time-invariant variables."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Verbeek, Marno"
+      title: "Time-invariant regressors under unit fixed effects"

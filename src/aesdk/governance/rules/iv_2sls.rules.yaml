@@ -1,6 +1,14 @@
 source:
-  id: "WOOLDRIDGE_IV"
-  rule_file_version: "1.0.0"
+  id: "IV_2SLS_GOVERNANCE"
+  method_id: "iv_2sls"
+  topic: "instrumental_variables"
+  rule_file_version: "1.1.0"
+  organization: "method_topic"
+curriculum:
+  stage: "identification_pivot"
+  topics:
+    - "iv_2sls"
+    - "simultaneous_equations"
 rules:
   - id: W-IV-001
     name: "IV Requires Registered Excluded Instruments"
@@ -41,3 +49,14 @@ rules:
       book: "Econometric Analysis of Cross Section and Panel Data"
       chapter: 5
       title: "Instrumental Variables and Two-Stage Least Squares"
+  - id: W-IV-004
+    name: "IV Requires Exclusion Restriction Argument"
+    severity: "error"
+    estimators: ["IV", "2SLS"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "exclusion_restriction_documented == false"
+    requirement: "An IV design must document why excluded instruments affect the outcome only through the endogenous variable."
+    guidance: "Write the substantive exclusion restriction argument for each excluded instrument before estimating 2SLS."
+    reference:
+      authors: "Wooldridge, Jeffrey M.; Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "Instrument relevance and exclusion restrictions"

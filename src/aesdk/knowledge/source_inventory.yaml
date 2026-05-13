@@ -42,12 +42,47 @@ sources:
     role: "applied undergraduate/masters econometrics"
     current_pack_use: ["ols_cef", "iv_2sls", "panel_fe", "did", "limited_dependent", "time_series"]
     extraction_status: "inventory_only"
+  - source_id: "gujarati_basic_econometrics"
+    file_name: "7-Basic-Econometrics-4th-Ed.-Gujarati.pdf"
+    local_path: "tools/7-Basic-Econometrics-4th-Ed.-Gujarati.pdf"
+    pages: 1027
+    role: "introductory regression foundations and classical linear model diagnostics"
+    current_pack_use: ["ols_cef"]
+    extraction_status: "inventory_only"
+  - source_id: "verbeek_modern_econometrics"
+    file_name: "modern-econometrics.pdf"
+    local_path: "tools/modern-econometrics.pdf"
+    pages: 447
+    role: "modern econometrics curriculum, matrix methods, asymptotics, MLE, GMM, and panel data"
+    current_pack_use: ["panel_fe", "gmm", "limited_dependent"]
+    extraction_status: "inventory_only"
+  - source_id: "croux_advanced_econometrics_notes"
+    file_name: "Cursus Advanced Econometrics.pdf"
+    local_path: "tools/Cursus Advanced Econometrics.pdf"
+    pages: 129
+    role: "advanced econometrics lecture-note supplement for probability, estimators, and applied software orientation"
+    current_pack_use: []
+    extraction_status: "inventory_only"
+  - source_id: "uploaded_intro_econometrics_2nd"
+    file_name: "introduction-to-econometric-2nd.pdf"
+    local_path: "tools/introduction-to-econometric-2nd.pdf"
+    pages: 637
+    role: "uploaded textbook requiring title/author confirmation before rule use"
+    current_pack_use: []
+    extraction_status: "inventory_only_unverified_metadata"
   - source_id: "world_bank_impact_eval"
     file_name: "WorldBankImpactEval.pdf"
     local_path: "tools/WorldBankImpactEval.pdf"
     pages: 367
     role: "impact-evaluation design selection for practitioner workflows"
-    current_pack_use: ["did", "rdd", "matching", "synthetic_control"]
+    current_pack_use: ["did", "rdd", "matching", "experimental_rct", "synthetic_control"]
+    extraction_status: "inventory_only"
+  - source_id: "bedecarrats_guerin_roubaud_2015"
+    file_name: "2015-01-EN-The-gold-standard-for-randomized-evaluations-from-discussion-of-method-to-political-economy.pdf"
+    local_path: "tools/2015-01-EN-The-gold-standard-for-randomized-evaluations-from-discussion-of-method-to-political-economy.pdf"
+    pages: 21
+    role: "critical RCT scope, methodology, and political-economy source"
+    current_pack_use: ["experimental_rct"]
     extraction_status: "inventory_only"
   - source_id: "wooldridge_recent_did_notes"
     file_name: "US25_Wooldridge.pdf"

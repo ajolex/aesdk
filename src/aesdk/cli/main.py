@@ -22,6 +22,7 @@ from aesdk.knowledge import (
     list_knowledge_pack_ids,
     list_method_ids,
     list_source_ids,
+    load_curriculum,
     load_official_software_sources,
     load_source_inventory,
     validate_knowledge_base,
@@ -37,11 +38,13 @@ audit_app = typer.Typer(help="Audit utilities")
 methods_app = typer.Typer(help="Textbook-backed method protocols")
 sources_app = typer.Typer(help="Registered textbook and literature sources")
 agent_app = typer.Typer(help="Agent-facing preflight and context helpers")
+rules_app = typer.Typer(help="Executable econometric governance rules")
 app.add_typer(cite_app, name="cite")
 app.add_typer(audit_app, name="audit")
 app.add_typer(methods_app, name="methods")
 app.add_typer(sources_app, name="sources")
 app.add_typer(agent_app, name="agent")
+app.add_typer(rules_app, name="rules")
 
 
 def _load_json(path: str | Path) -> dict:
@@ -223,6 +226,19 @@ def methods_packs_cmd() -> None:
         typer.echo(method_id)
 
 
+@methods_app.command("curriculum")
+def methods_curriculum_cmd(
+    output_format: str = typer.Option("json", "--format", help="Output format: json|yaml"),
+) -> None:
+    curriculum = load_curriculum()
+    if output_format.lower() == "yaml":
+        typer.echo(yaml.safe_dump(curriculum, sort_keys=False))
+        return
+    if output_format.lower() != "json":
+        raise typer.BadParameter("format must be json or yaml")
+    typer.echo(json.dumps(curriculum, indent=2))
+
+
 @methods_app.command("pack")
 def methods_pack_cmd(
     method_id: str = typer.Argument(..., help="Knowledge pack id, for example did or iv_2sls."),
@@ -295,6 +311,26 @@ def sources_software_cmd(
     if output_format.lower() != "json":
         raise typer.BadParameter("format must be json or yaml")
     typer.echo(json.dumps(sources, indent=2))
+
+
+@rules_app.command("list")
+def rules_list_cmd(
+    output_format: str = typer.Option("json", "--format", help="Output format: json|yaml|text"),
+) -> None:
+    rules = RuleRegistry().all_rules
+    if output_format.lower() == "yaml":
+        typer.echo(yaml.safe_dump({"rules": rules}, sort_keys=False))
+        return
+    if output_format.lower() == "json":
+        typer.echo(json.dumps({"rules": rules}, indent=2))
+        return
+    if output_format.lower() != "text":
+        raise typer.BadParameter("format must be json, yaml, or text")
+    for rule in rules:
+        typer.echo(
+            f"{rule.get('id')} | {rule.get('severity')} | "
+            f"{rule.get('name')} | {rule.get('_source_file')}"
+        )
 
 
 @app.command("init")
@@ -465,16 +501,21 @@ def audit_verify_signature_cmd(
 @cite_app.command("verify")
 def cite_verify_cmd(
     text: str = typer.Option("-", help="Path to text file or '-' for stdin."),
-    online: bool = typer.Option(False, help="Enable online DOI reachability checks."),
 ) -> None:
     if text == "-":
         content = sys.stdin.read()
     else:
         content = Path(text).read_text(encoding="utf-8-sig")
-    report = verify_text(content, online=online)
-    typer.echo(f"dois_found={len(report.dois)} invalid_format={report.invalid_format_count}")
+    report = verify_text(content)
+    typer.echo(
+        f"dois_found={len(report.dois)} "
+        f"invalid_format={report.invalid_format_count} "
+        f"unreachable={report.unreachable_count}"
+    )
     for item in report.dois:
         typer.echo(f"- doi={item.doi} format={item.valid_format} reachable={item.reachable}")
+    if report.invalid_format_count or report.unreachable_count:
+        raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":  # pragma: no cover

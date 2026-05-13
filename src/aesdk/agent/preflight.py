@@ -20,6 +20,7 @@ _METHOD_STRATEGY_ALIASES = {
     "did": {"DiD", "TWFE", "EventStudy"},
     "rdd": {"RDD"},
     "matching": {"Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"},
+    "experimental_rct": {"RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"},
     "synthetic_control": {"SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"},
     "nonlinear_did": {"NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"},
     "gmm": {"GMM", "IVGMM", "DynamicPanelGMM"},

@@ -1,0 +1,95 @@
+source:
+  id: "LIMITED_DEPENDENT_GOVERNANCE"
+  method_id: "limited_dependent"
+  topic: "limited_dependent_variables"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "identification_pivot"
+  topics:
+    - "limited_dependent"
+    - "binary_dummy_variables"
+rules:
+  - id: LDV-001
+    name: "Limited Dependent Model Requires Outcome Type"
+    severity: "error"
+    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "limited_outcome_type is None or limited_outcome_type == ''"
+    requirement: "Limited dependent variable workflows must declare the outcome support."
+    guidance: "State whether the outcome is binary, censored, truncated, ordered, multinomial, fractional, or count."
+    reference:
+      authors: "Greene, William H.; Wooldridge, Jeffrey M.; Cameron, A. Colin; Trivedi, Pravin K."
+      title: "Limited dependent variable models"
+
+  - id: LDV-002
+    name: "Limited Dependent Model Requires Link or Family"
+    severity: "error"
+    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "limited_link_or_family is None or limited_link_or_family == ''"
+    requirement: "Limited dependent variable workflows must declare the link or family."
+    guidance: "Register logit, probit, Tobit, Poisson, negative binomial, ordered, multinomial, or another justified family."
+    reference:
+      authors: "Greene, William H.; Wooldridge, Jeffrey M."
+      title: "Nonlinear model family and link functions"
+
+  - id: LDV-003
+    name: "Raw Nonlinear Coefficients Cannot Be Reported as Effects"
+    severity: "error"
+    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "limited_reporting_raw_coefficient == true and limited_marginal_effect_plan is None"
+    requirement: "Logit, probit, Tobit, count, ordered, or multinomial coefficients cannot be silently reported as probability/count effects."
+    guidance: "Add marginal effects, predicted contrasts, expected counts, or state that coefficients are on the model scale."
+    reference:
+      authors: "Greene, William H.; Wooldridge, Jeffrey M."
+      title: "Marginal effects and nonlinear interpretation"
+
+  - id: LDV-004
+    name: "Limited Dependent Model Requires Target Effect"
+    severity: "error"
+    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "limited_target_effect is None or limited_target_effect == ''"
+    requirement: "Limited dependent variable workflows must declare the target effect scale."
+    guidance: "State coefficient, marginal effect, predicted probability, predicted count, odds ratio, incidence-rate ratio, or another target."
+    reference:
+      authors: "Greene, William H.; Wooldridge, Jeffrey M."
+      title: "Effect-scale interpretation"
+
+  - id: LDV-005
+    name: "Limited Dependent Model Requires Convergence Check"
+    severity: "warning"
+    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "limited_convergence_check != true"
+    requirement: "Limited dependent variable workflows should report optimizer convergence and numerical warnings."
+    guidance: "Check convergence status, iteration warnings, and fitted probabilities or counts."
+    reference:
+      authors: "Greene, William H."
+      title: "MLE convergence diagnostics"
+
+  - id: LDV-006
+    name: "Binary Outcome Requires Separation Check"
+    severity: "warning"
+    estimators: ["Logit", "Probit"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "limited_outcome_type == 'binary' and limited_separation_check != true"
+    requirement: "Binary logit/probit workflows should check complete or quasi-complete separation."
+    guidance: "Inspect sparse cells and separation diagnostics before interpreting coefficients or marginal effects."
+    reference:
+      authors: "Greene, William H.; Wooldridge, Jeffrey M."
+      title: "Binary response diagnostics"
+
+  - id: LDV-007
+    name: "Count Outcome Requires Overdispersion Check"
+    severity: "warning"
+    estimators: ["Poisson", "NegativeBinomial"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "limited_outcome_type == 'count' and limited_overdispersion_check != true"
+    requirement: "Count-outcome workflows should assess overdispersion."
+    guidance: "Compare mean/variance, use robust inference, or consider negative binomial/quasi-likelihood alternatives."
+    reference:
+      authors: "Cameron, A. Colin; Trivedi, Pravin K."
+      title: "Count models and overdispersion"

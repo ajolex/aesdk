@@ -30,7 +30,7 @@ You do not need to be a software engineer to benefit from it. The intended workf
 
 AESDK currently provides:
 
-- method guidance for common econometric workflows, including OLS/CEF, IV/2SLS, panel fixed effects, DiD, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series
+- method guidance for common econometric workflows, including OLS/CEF, IV/2SLS, panel fixed effects, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series
 - pre-analysis plan checks
 - proposal validation with `pass`, `warn`, or `block`
 - AI-agent context packets that explain the relevant assumptions and diagnostics
@@ -38,7 +38,7 @@ AESDK currently provides:
 - governed execution for Python scripts, Stata `.do` files, and R scripts
 - reproducibility records through an `.aesdk.json` audit file
 - replay checks for recorded execution
-- citation/source integrity checks for agent-generated research text
+- enforced online citation/source integrity checks for agent-generated research text
 
 The method guidance is compact and paraphrased. It is meant to guide agents, not to redistribute textbooks.
 
@@ -162,7 +162,7 @@ AESDK_STATA="C:\Program Files\Stata18\StataMP-64.exe"
 AESDK_R="C:\Program Files\R\R-4.5.0\bin\Rscript.exe"
 ```
 
-Stata and R execution record `language=stata` or `language=r` in the `.aesdk.json` audit file. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. The R guard blocks shell calls, file deletion helpers, package installs, network `source`/`url` helpers, and `library()`/`require()` calls outside the AESDK R package allowlist.
+Stata and R execution record `language=stata` or `language=r` in the `.aesdk.json` audit file. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. The R guard blocks shell calls, file deletion helpers, package installs, network `source`/`url` helpers, and `library()`/`require()` calls outside the AESDK R package allowlist. Python and R recipe packages are checked against the sandbox allowlists, so bundled recipes and governed execution stay aligned.
 
 ## Method Protocols
 
@@ -173,7 +173,9 @@ aesdk methods list
 aesdk methods show did
 aesdk methods packs
 aesdk methods pack did --format yaml
+aesdk methods curriculum --format yaml
 aesdk methods sources did --format yaml
+aesdk rules list --format text
 aesdk sources inventory --format yaml
 aesdk sources software --format yaml
 ```
@@ -183,9 +185,20 @@ AESDK now has two knowledge layers:
 - **method protocols**, which are compact guardrails used by preflight checks
 - **Real Knowledge Packs**, which add estimator decision trees, assumptions, required inputs, diagnostics, failure modes, code recipes, reporting checklists, source anchors, and maturity labels
 
-Rule enforcement is strongest for the mature governance rules currently bundled for DiD, panel fixed effects, IV, and citation integrity. The newer packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series provide source-anchored context and conservative workflow guidance, but they should be treated as guidance-first until method-specific rule packs are added and reviewed.
+The governance layer is organized around a standard econometrics curriculum:
 
-The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Heiss, World Bank impact evaluation material, recent Wooldridge DiD sources, and package documentation. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
+- **Foundations (The Mechanics)**: probability/statistics review, simple and multiple regression, Gauss-Markov assumptions, omitted variable bias, inference, and functional forms
+- **The Identification Pivot**: dummy variables, heteroskedasticity-robust inference, IV/2SLS, simultaneity, and limited dependent variable models
+- **Theoretical and Micro-foundations**: matrix OLS, asymptotics, MLE, GMM, panel fixed effects/random effects, and time-series dynamics
+- **Advanced Empirical Research**: potential outcomes, randomized controlled trials and field experiments, DiD, RDD, matching, synthetic control, nonlinear DiD, structural/BLP-style modeling, and double machine learning
+
+Each method protocol now declares its curriculum stage and topic tags, so an AI agent can see where a method sits in the larger econometrics sequence before it writes code.
+
+Governance files and knowledge packs are organized by econometric topic or method, not by textbook author. Textbooks and papers remain registered as sources inside the rule or pack, but the file identity is the research decision being governed: `did`, `iv_2sls`, `panel_inference`, `citation_integrity`, and the method pack ids. This is deliberate: it helps AI agents treat sources as evidence rather than inventing author-specific doctrine.
+
+Every bundled method pack now has an executable governance rule file. AESDK currently ships 94 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
+
+The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Gujarati, Verbeek, Heiss, World Bank impact evaluation material, J-PAL randomized-evaluation resources, critical RCT scope sources, recent Wooldridge DiD sources, and package documentation. Public source registry entries must include an online locator such as a DOI, publisher page, journal page, author page, or official package page. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
 
 For maintainers adding new books or papers, run the deep audit:
 
@@ -195,7 +208,7 @@ python scripts/deep_knowledge_audit.py --tools-dir tools --write-report docs/dee
 
 The report scans local PDFs page-by-page and records candidate page locators, duplicate pack IDs, long-text warnings, and coverage gaps. It is a maintenance aid, not a substitute for human source review.
 
-The newest packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series are marked `pending_human_review` with `ai_source_audited_pending_human_review`. That means AESDK has checked source anchors, structure, and conservative guidance, but a human econometrician should still sign off before treating them as reviewed or audited references.
+The newest packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series are marked `pending_human_review` with `ai_source_audited_pending_human_review`. They now have executable guardrails, but a human econometrician should still sign off before treating their full guidance as final audited doctrine.
 
 ## Reproducibility
 
@@ -215,7 +228,7 @@ AESDK does not:
 - replace an advisor, coauthor, referee, or domain expert
 - prove that an identification assumption is true
 - redistribute copyrighted textbook content
-- make AI-generated citations trustworthy without verification
+- accept AI-generated citations that cannot be found online
 
 It helps ensure that the agent follows a documented research workflow and stops when obvious econometric guardrails are violated.
 

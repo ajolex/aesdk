@@ -94,6 +94,20 @@ def _cluster_level_parts(level: Any) -> list[str]:
     return [part for part in text.split() if part]
 
 
+def _normalized_phrase(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip().lower()
+    for separator in ["-", "/", "\\", ",", ";", ":"]:
+        text = text.replace(separator, " ")
+    return "_".join(part for part in text.split() if part)
+
+
+def _text_missing(value: Any) -> bool:
+    text = _normalized_phrase(value)
+    return text in {"", "tbd", "todo", "to_be_determined", "unknown", "na", "n_a", "none", "not_applicable"}
+
+
 def _cluster_level_missing(level: Any) -> bool:
     return not _cluster_level_parts(level)
 
@@ -103,7 +117,29 @@ def _cluster_level_count(level: Any) -> int:
 
 
 def _cluster_hierarchy_rank(level: Any) -> int:
-    order = ["individual", "firm", "school", "county", "state", "region", "country"]
+    order = [
+        "individual",
+        "person",
+        "student",
+        "patient",
+        "worker",
+        "child",
+        "household",
+        "classroom",
+        "clinic",
+        "firm",
+        "school",
+        "village",
+        "community",
+        "market",
+        "tract",
+        "zip",
+        "district",
+        "county",
+        "state",
+        "region",
+        "country",
+    ]
     parts = _cluster_level_parts(level)
     if not parts:
         return -1
@@ -222,6 +258,8 @@ class _SafeEval(ast.NodeVisitor):
             return _cluster_level_missing(args[0])
         if fn_name == "cluster_level_count":
             return _cluster_level_count(args[0])
+        if fn_name == "text_missing":
+            return _text_missing(args[0])
         raise RuleEvaluationError(f"Function '{fn_name}' is not allowed")
 
     def visit_GeneratorExp(self, node: ast.GeneratorExp) -> Any:
@@ -250,8 +288,46 @@ def _evaluate_condition(condition: str, context: dict[str, Any]) -> bool:
     try:
         tree = ast.parse(condition, mode="eval")
         return bool(_SafeEval(context).visit(tree))
-    except Exception:
-        return False
+    except Exception as exc:
+        raise RuleEvaluationError(f"Rule condition failed to evaluate: {condition}") from exc
+
+
+def _as_list(value: Any) -> list[Any]:
+    if value is None:
+        return []
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, set):
+        return list(value)
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    return [value]
+
+
+def _estimator_matches(active: Any, rule_estimators: list[Any]) -> bool:
+    if not rule_estimators:
+        return True
+    aliases = {
+        "SynthControl": "SyntheticControl",
+    }
+    active_text = str(active) if active is not None else ""
+    candidates = {active_text, aliases.get(active_text, active_text)}
+    return any(str(item) in candidates for item in rule_estimators)
+
+
+def _normalized_citation_report(value: Any) -> Any:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        return value
+    report = dict(value)
+    report.setdefault("hallucinated_count", 0)
+    report.setdefault("uncertain_count", 0)
+    report.setdefault("unreachable_count", 0)
+    report.setdefault("invalid_format_count", 0)
+    return report
 
 
 def _format_reference(ref: dict[str, Any] | str | None) -> str:
@@ -287,24 +363,57 @@ class ValidationContext:
         identification = self._pap.get("identification", {})
         did = self._pap.get("did_block", {})
         iv = self._pap.get("iv_block", {})
+        rdd = self._merged_block("rdd_block")
+        matching = self._merged_block("matching_block")
+        rct = self._merged_block("rct_block")
+        synthetic_control = self._merged_block("synthetic_control_block")
+        nonlinear_did = self._merged_block("nonlinear_did_block")
+        gmm = self._merged_block("gmm_block")
+        limited = self._merged_block("limited_dependent_block")
+        time_series = self._merged_block("time_series_block")
         robustness = self._pap.get("robustness", {})
         covariates = identification.get("covariates", {})
+        outcome_variable = self._proposal.get("outcome_variable", identification.get("outcome_variable"))
+        treatment_variable = self._proposal.get("treatment_variable", identification.get("treatment_variable"))
+        standard_errors = self._proposal.get("standard_errors", identification.get("standard_errors"))
+        clustering_level = self._proposal.get("clustering", identification.get("clustering"))
+        fixed_effects = self._proposal.get("fixed_effects", identification.get("fixed_effects", []))
 
         context: dict[str, Any] = {
             "data": data,
+            "proposal": self._proposal,
             "did_block": did,
             "iv_block": iv,
+            "rdd_block": rdd,
+            "matching_block": matching,
+            "rct_block": rct,
+            "synthetic_control_block": synthetic_control,
+            "nonlinear_did_block": nonlinear_did,
+            "gmm_block": gmm,
+            "limited_dependent_block": limited,
+            "time_series_block": time_series,
             "robustness": robustness,
             "covariates": covariates,
             "data_structure": data.get("structure"),
+            "panel_unit": data.get("unit"),
+            "panel_time": data.get("time", data.get("time_index")),
             "N": data.get("N"),
             "T": data.get("T"),
             "G": data.get("G"),
             "time_invariant_vars": data.get("time_invariant_vars", []),
             "identification_strategy": identification.get("strategy"),
             "estimator": self._proposal.get("estimator", identification.get("strategy")),
-            "standard_errors": self._proposal.get("standard_errors", identification.get("standard_errors")),
-            "clustering_level": self._proposal.get("clustering", identification.get("clustering")),
+            "outcome_variable": outcome_variable,
+            "treatment_variable": treatment_variable,
+            "fixed_effects": _as_list(fixed_effects),
+            "within_variation_documented": self._proposal.get(
+                "within_variation_documented",
+                identification.get("within_variation_documented", False),
+            ),
+            "time_invariant_regressors": _as_list(self._proposal.get("time_invariant_regressors", [])),
+            "time_invariant_interpreted": self._proposal.get("time_invariant_interpreted", False),
+            "standard_errors": standard_errors,
+            "clustering_level": clustering_level,
             "treatment_assignment_level": self._proposal.get("treatment_level"),
             "parallel_trends_test": did.get("parallel_trends_test", False),
             "staggered_adoption": did.get("staggered_adoption", False),
@@ -314,16 +423,121 @@ class ValidationContext:
             "placebo_test": did.get("placebo_test", False),
             "goodman_bacon_decomposition": did.get("goodman_bacon_decomposition", False),
             "hausman_test_documented": did.get("hausman_test_documented", False),
-            "iv_instruments": iv.get("instruments", []),
+            "iv_instruments": _as_list(iv.get("instruments", [])),
             "first_stage_f_threshold": iv.get("first_stage_f_threshold", 10),
             "first_stage_f_stat": self._proposal.get("first_stage_f_stat"),
-            "exclusion_restriction_documented": self._proposal.get("exclusion_restriction_documented", False),
+            "exclusion_restriction_documented": self._proposal.get(
+                "exclusion_restriction_documented",
+                iv.get("exclusion_restriction_documented", False),
+            ),
             "n_covariates": len(covariates.get("mandatory", [])) + len(covariates.get("optional", [])),
-            "citation_report": self._proposal.get("citation_report"),
+            "citation_report": _normalized_citation_report(self._proposal.get("citation_report")),
             "citation_uncertainty_acknowledged": self._proposal.get("citation_uncertainty_acknowledged", False),
             "rule_citation_verified": self._proposal.get("rule_citation_verified", True),
+            "causal_claim": self._proposal.get("causal_claim", identification.get("causal_claim", False)),
+            "identification_assumption_documented": self._proposal.get(
+                "identification_assumption_documented",
+                bool(identification.get("strategy")),
+            ),
+            "support_check": self._proposal.get("support_check", robustness.get("support_check")),
+            "post_hoc_covariate_selection": self._proposal.get("post_hoc_covariate_selection", False),
+            "conventional_se_justified": self._proposal.get("conventional_se_justified", False),
+            "specification_curve": self._proposal.get("specification_curve", robustness.get("specification_curve")),
+            "rdd_running_variable": rdd.get("running_variable"),
+            "rdd_cutoff": rdd.get("cutoff"),
+            "rdd_bandwidth_rule": rdd.get("bandwidth_rule"),
+            "rdd_sharp_or_fuzzy": rdd.get("sharp_or_fuzzy"),
+            "rdd_manipulation_check": rdd.get("manipulation_check"),
+            "rdd_covariate_continuity": rdd.get("covariate_continuity"),
+            "rdd_bandwidth_sensitivity": rdd.get("bandwidth_sensitivity"),
+            "rdd_polynomial_order": rdd.get("polynomial_order"),
+            "matching_method": matching.get("method"),
+            "matching_pre_treatment_covariates": _as_list(matching.get("pre_treatment_covariates", [])),
+            "matching_post_treatment_covariates": _as_list(matching.get("post_treatment_covariates", [])),
+            "matching_estimand": matching.get("estimand"),
+            "matching_balance_diagnostics": matching.get("balance_diagnostics"),
+            "matching_common_support": matching.get("common_support"),
+            "matching_effective_sample_size": matching.get("effective_sample_size"),
+            "matching_balance_passed": matching.get("balance_passed"),
+            "matching_discarded_units_reported": matching.get("discarded_units_reported"),
+            "rct_randomization_unit": rct.get("randomization_unit"),
+            "rct_assignment_variable": rct.get("assignment_variable"),
+            "rct_treatment_arms": _as_list(rct.get("treatment_arms", [])),
+            "rct_control_group": rct.get("control_group"),
+            "rct_assignment_probability": rct.get("assignment_probability"),
+            "rct_random_seed": rct.get("random_seed"),
+            "rct_assignment_file": rct.get("assignment_file"),
+            "rct_randomization_method": rct.get("randomization_method"),
+            "rct_strata": _as_list(rct.get("strata", [])),
+            "rct_stratification_used": rct.get("stratification_used", False),
+            "rct_cluster_randomized": rct.get("cluster_randomized", False),
+            "rct_compliance_type": _normalized_phrase(rct.get("compliance_type")),
+            "rct_estimand": rct.get("estimand"),
+            "rct_takeup_variable": rct.get("takeup_variable"),
+            "rct_compliance_rate": rct.get("compliance_rate"),
+            "rct_exclusion_for_late_documented": rct.get("exclusion_for_late_documented", False),
+            "rct_monotonicity_documented": rct.get("monotonicity_documented", False),
+            "rct_baseline_balance_check": rct.get("baseline_balance_check"),
+            "rct_attrition_check": rct.get("attrition_check"),
+            "rct_attrition_differential": rct.get("attrition_differential", False),
+            "rct_attrition_sensitivity_plan": rct.get("attrition_sensitivity_plan"),
+            "rct_spillover_plan": rct.get("spillover_plan"),
+            "rct_spillover_risk": rct.get("spillover_risk", False),
+            "rct_spillover_measurement_plan": rct.get("spillover_measurement_plan"),
+            "rct_sutva_rationale": rct.get("sutva_rationale"),
+            "rct_power_calculation": rct.get("power_calculation"),
+            "rct_trial_registration": rct.get("trial_registration"),
+            "rct_pap_registered": rct.get("pap_registered"),
+            "rct_randomization_inference_plan": rct.get("randomization_inference_plan"),
+            "synth_treated_unit": synthetic_control.get("treated_unit"),
+            "synth_donor_pool": _as_list(synthetic_control.get("donor_pool", [])),
+            "synth_intervention_time": synthetic_control.get("intervention_time"),
+            "synth_predictors": _as_list(synthetic_control.get("predictors", [])),
+            "synth_pre_treatment_fit": synthetic_control.get("pre_treatment_fit"),
+            "synth_donor_weights": synthetic_control.get("donor_weights"),
+            "synth_placebo_tests": synthetic_control.get("placebo_tests"),
+            "synth_donor_pool_sensitivity": synthetic_control.get("donor_pool_sensitivity"),
+            "synth_contaminated_donors": _as_list(synthetic_control.get("contaminated_donors", [])),
+            "nonlinear_did_outcome_family": nonlinear_did.get("outcome_family"),
+            "nonlinear_did_target_scale": nonlinear_did.get("target_scale"),
+            "nonlinear_did_effect_transformation": nonlinear_did.get("effect_transformation"),
+            "nonlinear_did_functional_form_sensitivity": nonlinear_did.get("functional_form_sensitivity"),
+            "gmm_moment_conditions": _as_list(gmm.get("moment_conditions", [])),
+            "gmm_parameters": _as_list(gmm.get("parameters", [])),
+            "gmm_instruments": _as_list(gmm.get("instruments", [])),
+            "gmm_weighting_matrix": gmm.get("weighting_matrix"),
+            "gmm_identification_rank": gmm.get("identification_rank"),
+            "gmm_overidentification_diagnostic": gmm.get("overidentification_diagnostic"),
+            "gmm_weighting_sensitivity": gmm.get("weighting_sensitivity"),
+            "gmm_many_instruments": gmm.get("many_instruments", False),
+            "limited_outcome_type": limited.get("outcome_type"),
+            "limited_link_or_family": limited.get("link_or_family"),
+            "limited_target_effect": limited.get("target_effect"),
+            "limited_marginal_effect_plan": limited.get("marginal_effect_plan"),
+            "limited_reporting_raw_coefficient": limited.get("reporting_raw_coefficient", False),
+            "limited_convergence_check": limited.get("convergence_check"),
+            "limited_separation_check": limited.get("separation_check"),
+            "limited_overdispersion_check": limited.get("overdispersion_check"),
+            "time_index": time_series.get("time_index", data.get("time_index")),
+            "time_frequency": time_series.get("frequency", data.get("frequency")),
+            "stationarity_plan": time_series.get("stationarity_plan"),
+            "lag_order_plan": time_series.get("lag_order_plan"),
+            "forecast_or_causal_target": time_series.get("forecast_or_causal_target"),
+            "autocorrelation_diagnostic": time_series.get("autocorrelation_diagnostic"),
+            "forecast_backtest": time_series.get("forecast_backtest"),
+            "lookahead_bias": time_series.get("lookahead_bias", False),
         }
         return context
+
+    def _merged_block(self, name: str) -> dict[str, Any]:
+        block: dict[str, Any] = {}
+        pap_block = self._pap.get(name, {})
+        proposal_block = self._proposal.get(name, {})
+        if isinstance(pap_block, dict):
+            block.update(pap_block)
+        if isinstance(proposal_block, dict):
+            block.update(proposal_block)
+        return block
 
 
 class Validator:
@@ -341,11 +555,26 @@ class Validator:
         for rule in self.registry.all_rules:
             estimators = rule.get("estimators") or []
             structures = rule.get("data_structures") or []
-            if estimators and context.get("estimator") not in estimators:
+            if not _estimator_matches(context.get("estimator"), estimators):
                 continue
             if structures and context.get("data_structure") not in structures:
                 continue
-            if _evaluate_condition((rule.get("condition") or "").strip(), context):
+            try:
+                triggered = _evaluate_condition((rule.get("condition") or "").strip(), context)
+            except RuleEvaluationError as exc:
+                violations.append(
+                    RuleViolation(
+                        rule_id=f"{rule.get('id', 'UNKNOWN')}-EVAL",
+                        rule_name=f"Rule Evaluation Failed: {rule.get('name', 'Unnamed Rule')}",
+                        severity=Severity.ERROR,
+                        message=str(exc),
+                        guidance="Fix the governance rule condition or normalize the PAP/proposal field it depends on.",
+                        citation=_format_reference(rule.get("reference")),
+                        source_file=rule.get("_source_file", ""),
+                    )
+                )
+                continue
+            if triggered:
                 raw_severity = Severity(rule.get("severity", "warning"))
                 severity = _apply_conformance_to_severity(raw_severity, conformance)
                 violations.append(

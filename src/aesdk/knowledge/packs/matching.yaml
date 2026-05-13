@@ -1,6 +1,11 @@
 version: "0.1.0"
 method_id: "matching"
 name: "Matching / Propensity Score Preprocessing"
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "advanced_empirical_research"
+  curriculum_topics: ["potential_outcomes", "matching"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
   status: "pending_human_review"
   source_review: "ai_source_audited_pending_human_review"

@@ -1,0 +1,165 @@
+version: "0.1.0"
+curriculum:
+  foundations_mechanics:
+    label: "Foundations (The Mechanics)"
+    focus: "Prediction, description, and the mechanics of OLS as the best linear unbiased estimator under Gauss-Markov conditions."
+    audience_stage: "Introductory undergraduate or first RA training sequence"
+    topics:
+      probability_statistics:
+        label: "Probability and Statistics Review"
+        scope:
+          - "Random variables, expectations, variance, covariance, and sampling variation."
+          - "Central Limit Theorem logic behind large-sample normal approximations."
+      simple_linear_regression:
+        label: "Simple Linear Regression"
+        scope:
+          - "OLS slopes and intercepts, fitted values, residuals, and sample analogues."
+      gauss_markov:
+        label: "Gauss-Markov Assumptions"
+        scope:
+          - "Linearity, random sampling, no perfect multicollinearity, zero conditional mean, and homoskedasticity."
+      multiple_regression_ovb:
+        label: "Multiple Regression and Omitted Variable Bias"
+        scope:
+          - "Holding other factors constant, bad controls, and the direction of omitted variable bias."
+      inference:
+        label: "Inference"
+        scope:
+          - "t-tests, F-tests, confidence intervals, p-values, and robust inference."
+      functional_forms:
+        label: "Functional Forms"
+        scope:
+          - "Logs, elasticities, quadratics, interactions, dummy variables, and marginal-effect interpretation."
+    primary_sources:
+      - wooldridge_intro_modern
+      - stock_watson_intro_econometrics
+      - gujarati_basic_econometrics
+    method_ids:
+      - ols_cef
+
+  identification_pivot:
+    label: "The Identification Pivot"
+    focus: "Endogeneity, treatment-control contrasts, robust inference, instruments, and nonlinear outcome choices."
+    audience_stage: "Intermediate applied econometrics sequence"
+    topics:
+      binary_dummy_variables:
+        label: "Binary and Dummy Variables"
+        scope:
+          - "Treatment-control contrasts, group indicators, interactions, and interpretation with nonlinear terms."
+      heteroskedasticity_robust_se:
+        label: "Heteroskedasticity and Robust Standard Errors"
+        scope:
+          - "Variance misspecification, robust covariance estimators, and cluster-aware inference."
+      iv_2sls:
+        label: "Instrumental Variables and 2SLS"
+        scope:
+          - "Relevance, exclusion, first-stage strength, overidentification diagnostics, and LATE-style interpretation."
+      simultaneous_equations:
+        label: "Simultaneous Equation Models"
+        scope:
+          - "Supply-demand systems, reflection problems, and simultaneity as a source of endogeneity."
+      limited_dependent:
+        label: "Limited Dependent Variables"
+        scope:
+          - "Logit, probit, Tobit, ordered, multinomial, count, and marginal-effect interpretation."
+    primary_sources:
+      - wooldridge_intro_modern
+      - stock_watson_intro_econometrics
+      - greene_econometric_analysis
+    method_ids:
+      - iv_2sls
+      - limited_dependent
+
+  theoretical_microfoundations:
+    label: "Theoretical and Micro-foundations"
+    focus: "Matrix notation, large-sample theory, likelihood, moments, and panel-data estimators."
+    audience_stage: "Advanced undergraduate, master's, or first-year graduate econometrics"
+    topics:
+      matrix_ols:
+        label: "Matrix OLS"
+        scope:
+          - "Normal equations, projection matrices, residual makers, rank, and collinearity."
+      asymptotic_theory:
+        label: "Asymptotic Theory"
+        scope:
+          - "Consistency, probability limits, Law of Large Numbers, Central Limit Theorem, and asymptotic variance."
+      maximum_likelihood:
+        label: "Maximum Likelihood Estimation"
+        scope:
+          - "Likelihood construction, score, Hessian, convergence, and misspecification-aware interpretation."
+      gmm:
+        label: "Generalized Method of Moments"
+        scope:
+          - "Moment conditions, weighting matrices, rank conditions, and overidentification diagnostics."
+      panel_data:
+        label: "Panel Data"
+        scope:
+          - "Fixed effects, random effects, within estimation, serial correlation, and clustered inference."
+      time_series_dynamics:
+        label: "Time-Series Dynamics"
+        scope:
+          - "Stationarity, lags, autocorrelation, forecasting, unit roots, and temporal ordering."
+    primary_sources:
+      - verbeek_modern_econometrics
+      - wooldridge_cross_section_panel
+      - hansen_econometrics_2022
+      - greene_econometric_analysis
+    method_ids:
+      - panel_fe
+      - gmm
+      - time_series
+
+  advanced_empirical_research:
+    label: "Advanced Empirical Research (The Modern Frontier)"
+    focus: "Identification strategies that approximate experimental contrasts with observational data."
+    audience_stage: "Applied micro research, dissertation work, faculty projects, and referee-facing empirical papers"
+    topics:
+      potential_outcomes:
+        label: "Potential Outcomes Framework"
+        scope:
+          - "Counterfactual outcomes, treatment effects, estimands, SUTVA-style concerns, and assignment mechanisms."
+      matching:
+        label: "Matching and Balance"
+        scope:
+          - "Selection on observables, propensity scores, balance diagnostics, common support, and discarded units."
+      randomized_control_trials:
+        label: "Randomized Controlled Trials and Field Experiments"
+        scope:
+          - "Random assignment, treatment arms, ATE/ITT/ATT/LATE estimands, compliance, attrition, spillovers, power, and randomization inference."
+      did_staggered:
+        label: "Difference-in-Differences"
+        scope:
+          - "Parallel trends, event studies, anticipation, treatment timing, and staggered-adoption estimators."
+      rdd:
+        label: "Regression Discontinuity"
+        scope:
+          - "Sharp and fuzzy RD, cutoffs, bandwidths, density manipulation, and local inference."
+      synthetic_control:
+        label: "Synthetic Control"
+        scope:
+          - "Donor pools, pre-treatment fit, weights, placebo checks, and aggregate treated units."
+      structural_blp:
+        label: "Structural Modeling and BLP"
+        scope:
+          - "Deep parameters, discrete choice demand, equilibrium restrictions, and model-driven counterfactuals."
+      double_machine_learning:
+        label: "Machine Learning for Econometrics"
+        scope:
+          - "Orthogonal scores, cross-fitting, nuisance functions, and high-dimensional controls."
+    primary_sources:
+      - angrist_pischke_mhe
+      - hansen_econometrics_2022
+      - cameron_trivedi_microeconometrics
+      - cunningham_mixtape
+      - jpal_randomization
+      - jpal_data_analysis
+      - bedecarrats_guerin_roubaud_2015
+      - chernozhukov_dml_2018
+      - berry_levinsohn_pakes_1995
+    method_ids:
+      - did
+      - rdd
+      - matching
+      - experimental_rct
+      - synthetic_control
+      - nonlinear_did

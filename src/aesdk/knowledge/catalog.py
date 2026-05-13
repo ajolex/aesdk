@@ -53,6 +53,12 @@ def load_source_inventory() -> dict[str, Any]:
     return _load_yaml_resource("source_inventory.yaml")
 
 
+def load_curriculum() -> dict[str, Any]:
+    """Return the standard econometrics curriculum map used by governance."""
+
+    return _load_yaml_resource("curriculum.yaml")
+
+
 def load_official_software_sources() -> dict[str, Any]:
     """Return official software documentation sources used by code recipes."""
 
@@ -86,6 +92,12 @@ def list_source_ids() -> list[str]:
 
     sources = load_sources().get("sources", {})
     return sorted(sources)
+
+
+def list_curriculum_stage_ids() -> list[str]:
+    """Return sorted curriculum stage ids."""
+
+    return sorted(load_curriculum().get("curriculum", {}))
 
 
 def get_source(source_id: str) -> dict[str, Any]:
@@ -135,15 +147,51 @@ def validate_knowledge_base() -> list[str]:
 
     errors: list[str] = []
     sources = load_sources().get("sources", {})
+    curriculum = load_curriculum().get("curriculum", {})
     software_sources = load_official_software_sources().get("sources", {})
     protocols = load_method_protocols().get("methods", {})
     source_map = load_source_map().get("method_sources", {})
     pack_ids = list_knowledge_pack_ids()
+    curriculum_topic_ids: dict[str, set[str]] = {}
+
+    for stage_id, stage in curriculum.items():
+        if not isinstance(stage, dict):
+            errors.append(f"Curriculum stage is not a mapping: {stage_id}")
+            continue
+        topics = stage.get("topics", {})
+        if not topics:
+            errors.append(f"Curriculum stage missing topics: {stage_id}")
+        curriculum_topic_ids[stage_id] = set(topics)
+        for source_id in stage.get("primary_sources", []):
+            if source_id not in sources:
+                errors.append(f"Curriculum stage {stage_id} references unknown source: {source_id}")
+        for method_id in stage.get("method_ids", []):
+            if method_id not in protocols:
+                errors.append(f"Curriculum stage {stage_id} references unknown method: {method_id}")
+
+    for source_id, source in sources.items():
+        if not isinstance(source, dict):
+            errors.append(f"Source is not a mapping: {source_id}")
+            continue
+        online = source.get("online")
+        if not isinstance(online, dict) or not (online.get("doi") or online.get("url")):
+            errors.append(f"Source missing online DOI or URL locator: {source_id}")
 
     for method_id, protocol in protocols.items():
         if not isinstance(protocol, dict):
             errors.append(f"Method protocol is not a mapping: {method_id}")
             continue
+        curriculum_ref = protocol.get("curriculum")
+        if not isinstance(curriculum_ref, dict):
+            errors.append(f"Method {method_id} missing curriculum metadata")
+        else:
+            stage_id = curriculum_ref.get("stage")
+            if stage_id not in curriculum:
+                errors.append(f"Method {method_id} references unknown curriculum stage: {stage_id}")
+            known_topics = curriculum_topic_ids.get(stage_id, set())
+            for topic_id in curriculum_ref.get("topics", []):
+                if topic_id not in known_topics:
+                    errors.append(f"Method {method_id} references unknown curriculum topic: {stage_id}.{topic_id}")
         for source_ref in protocol.get("sources", []):
             source_id = source_ref.get("id") if isinstance(source_ref, dict) else None
             if source_id not in sources:
@@ -169,6 +217,19 @@ def validate_knowledge_base() -> list[str]:
             errors.append(f"Knowledge pack references unknown method protocol: {method_id}")
         if pack.get("method_id") != method_id:
             errors.append(f"Knowledge pack method_id mismatch: {method_id}")
+        organization = pack.get("organization")
+        protocol_curriculum = protocols.get(method_id, {}).get("curriculum", {})
+        if not isinstance(organization, dict):
+            errors.append(f"Knowledge pack missing organization metadata: {method_id}")
+        else:
+            if organization.get("type") != "method_topic_pack":
+                errors.append(f"Knowledge pack organization must be method_topic_pack: {method_id}")
+            if organization.get("curriculum_stage") != protocol_curriculum.get("stage"):
+                errors.append(f"Knowledge pack curriculum stage mismatch: {method_id}")
+            pack_topics = set(organization.get("curriculum_topics", []))
+            protocol_topics = set(protocol_curriculum.get("topics", []))
+            if pack_topics != protocol_topics:
+                errors.append(f"Knowledge pack curriculum topics mismatch: {method_id}")
         for required in ["decision_tree", "assumptions", "required_inputs", "diagnostics", "failure_modes", "code_recipes", "reporting_checklist", "source_anchors"]:
             if not pack.get(required):
                 errors.append(f"Knowledge pack missing {required}: {method_id}")

@@ -1,6 +1,11 @@
 version: "0.1.0"
 method_id: "nonlinear_did"
 name: "Nonlinear Difference-in-Differences"
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "advanced_empirical_research"
+  curriculum_topics: ["potential_outcomes", "did_staggered"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
   status: "pending_human_review"
   source_review: "ai_source_audited_pending_human_review"

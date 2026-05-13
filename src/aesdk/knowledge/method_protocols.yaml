@@ -3,6 +3,14 @@ methods:
   ols_cef:
     name: "OLS / CEF Regression"
     status: "initial"
+    curriculum:
+      stage: "foundations_mechanics"
+      topics:
+        - "simple_linear_regression"
+        - "gauss_markov"
+        - "multiple_regression_ovb"
+        - "inference"
+        - "functional_forms"
     data_structures: ["cross-section", "pooled", "panel"]
     estimators: ["OLS"]
     purpose: "Estimate conditional mean relationships and, under stated identification assumptions, causal parameters."
@@ -27,11 +35,19 @@ methods:
       - "Warn when conventional standard errors are used without justification."
       - "Block post-hoc covariate selection that is not declared in the PAP."
     sources:
+      - {id: "wooldridge_intro_modern", chapters: ["1", "2", "3", "4"]}
+      - {id: "stock_watson_intro_econometrics"}
       - {id: "wooldridge_cross_section_panel", chapters: ["4"]}
       - {id: "angrist_pischke_mhe", chapters: ["3"]}
   iv_2sls:
     name: "Instrumental Variables / 2SLS"
     status: "initial"
+    curriculum:
+      stage: "identification_pivot"
+      topics:
+        - "iv_2sls"
+        - "simultaneous_equations"
+        - "heteroskedasticity_robust_se"
     data_structures: ["cross-section", "pooled", "panel"]
     estimators: ["IV", "2SLS"]
     purpose: "Estimate causal effects when treatment or exposure is endogenous and valid excluded instruments are available."
@@ -61,6 +77,12 @@ methods:
   panel_fe:
     name: "Panel Fixed Effects / Unobserved Effects"
     status: "initial"
+    curriculum:
+      stage: "theoretical_microfoundations"
+      topics:
+        - "panel_data"
+        - "matrix_ols"
+        - "asymptotic_theory"
     data_structures: ["panel"]
     estimators: ["FE", "TWFE", "POLS", "RE"]
     purpose: "Use repeated observations to control for time-invariant unobserved heterogeneity or model panel dependence."
@@ -91,6 +113,11 @@ methods:
   did:
     name: "Differences-in-Differences"
     status: "initial"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics:
+        - "potential_outcomes"
+        - "did_staggered"
     data_structures: ["panel", "pooled"]
     estimators: ["DiD", "TWFE", "EventStudy"]
     purpose: "Estimate treatment effects by comparing outcome changes between treated and comparison groups under a parallel-trends design."
@@ -123,6 +150,11 @@ methods:
   rdd:
     name: "Regression Discontinuity Design"
     status: "planned"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics:
+        - "potential_outcomes"
+        - "rdd"
     data_structures: ["cross-section", "pooled", "panel"]
     estimators: ["RDD"]
     purpose: "Estimate causal effects near a treatment assignment cutoff under continuity of potential outcomes around the threshold."
@@ -152,6 +184,11 @@ methods:
   matching:
     name: "Matching / Propensity Score Preprocessing"
     status: "starter"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics:
+        - "potential_outcomes"
+        - "matching"
     data_structures: ["cross-section", "pooled"]
     estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
     purpose: "Improve treated-control comparability on pre-treatment covariates before estimating treatment effects."
@@ -178,9 +215,54 @@ methods:
     sources:
       - {id: "rosenbaum_rubin_1983"}
       - {id: "world_bank_impact_eval"}
+  experimental_rct:
+    name: "Randomized Controlled Trials / Experimental Methods"
+    status: "starter"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics:
+        - "potential_outcomes"
+        - "randomized_control_trials"
+    data_structures: ["cross-section", "pooled", "panel"]
+    estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
+    purpose: "Estimate causal effects from randomized assignment while keeping the target estimand, assignment process, compliance, attrition, and spillovers explicit."
+    assumptions:
+      - "Treatment assignment is randomized according to a documented and reproducible assignment rule."
+      - "The estimand is declared before analysis, such as ITT, ATE, ATT/ToT, or LATE."
+      - "Interference, attrition, noncompliance, and implementation deviations are checked before causal claims."
+      - "Inference matches the randomization unit and any clustering or stratification."
+    required_pap_fields:
+      - "rct_block.randomization_unit"
+      - "rct_block.assignment_variable"
+      - "rct_block.treatment_arms"
+      - "rct_block.estimand"
+      - "identification.outcome_variable"
+      - "identification.treatment_variable"
+      - "identification.standard_errors"
+    diagnostics:
+      - "Report baseline balance and assignment reproducibility."
+      - "Report compliance/take-up when estimating ATT/ToT or LATE."
+      - "Report attrition, spillover checks, and a SUTVA rationale."
+      - "Cluster at the randomization unit when assignment is clustered, or document a valid randomization-inference plan."
+    blocks_or_warnings:
+      - "Block RCT analysis without randomization unit, assignment variable, treatment arms, or estimand."
+      - "Block LATE when compliance/take-up and exclusion/monotonicity arguments are missing."
+      - "Block unqualified ATE claims when assignment is an encouragement or compliance is imperfect."
+      - "Block cluster-randomized designs that omit the cluster level or cluster below the randomization unit."
+      - "Warn when attrition, spillovers, power, trial registration, SUTVA rationale, or PAP registration are missing."
+    sources:
+      - {id: "jpal_randomization"}
+      - {id: "jpal_data_analysis"}
+      - {id: "bedecarrats_guerin_roubaud_2015"}
+      - {id: "world_bank_impact_eval"}
   synthetic_control:
     name: "Synthetic Control"
     status: "starter"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics:
+        - "potential_outcomes"
+        - "synthetic_control"
     data_structures: ["panel"]
     estimators: ["SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
     purpose: "Estimate effects for one or a few treated aggregate units using weighted donor units that match pre-treatment outcomes or predictors."
@@ -212,6 +294,11 @@ methods:
   nonlinear_did:
     name: "Nonlinear Difference-in-Differences"
     status: "starter"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics:
+        - "potential_outcomes"
+        - "did_staggered"
     data_structures: ["panel", "pooled"]
     estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"]
     purpose: "Handle DiD designs where the outcome, link function, or target effect is nonlinear and a linear TWFE coefficient is not the desired estimand."
@@ -240,6 +327,11 @@ methods:
   gmm:
     name: "Generalized Method of Moments"
     status: "starter"
+    curriculum:
+      stage: "theoretical_microfoundations"
+      topics:
+        - "gmm"
+        - "asymptotic_theory"
     data_structures: ["cross-section", "time-series", "panel"]
     estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
     purpose: "Estimate parameters from moment restrictions when the model is defined by orthogonality or equilibrium conditions."
@@ -269,6 +361,11 @@ methods:
   limited_dependent:
     name: "Limited Dependent Variable Models"
     status: "starter"
+    curriculum:
+      stage: "identification_pivot"
+      topics:
+        - "limited_dependent"
+        - "binary_dummy_variables"
     data_structures: ["cross-section", "pooled", "panel"]
     estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     purpose: "Model binary, censored, truncated, ordered, multinomial, or count outcomes with estimators and interpretations suited to the outcome support."
@@ -298,6 +395,11 @@ methods:
   time_series:
     name: "Time-Series Econometrics"
     status: "starter"
+    curriculum:
+      stage: "theoretical_microfoundations"
+      topics:
+        - "time_series_dynamics"
+        - "asymptotic_theory"
     data_structures: ["time-series"]
     estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"]
     purpose: "Model serial dependence, dynamics, forecasting, or time-series causal/regression designs with explicit attention to stationarity and temporal ordering."

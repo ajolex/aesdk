@@ -1,0 +1,83 @@
+source:
+  id: "RDD_GOVERNANCE"
+  method_id: "rdd"
+  topic: "regression_discontinuity"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "potential_outcomes"
+    - "rdd"
+rules:
+  - id: RDD-001
+    name: "RDD Requires Running Variable and Cutoff"
+    severity: "error"
+    estimators: ["RDD"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rdd_running_variable is None or rdd_running_variable == '' or rdd_cutoff is None"
+    requirement: "RDD cannot be run without a declared running variable and cutoff."
+    guidance: "Name the assignment score and cutoff before estimation."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "Regression discontinuity design"
+
+  - id: RDD-002
+    name: "RDD Requires Bandwidth Rule"
+    severity: "error"
+    estimators: ["RDD"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rdd_bandwidth_rule is None or rdd_bandwidth_rule == ''"
+    requirement: "RDD must register a bandwidth rule before estimation."
+    guidance: "Declare the main bandwidth rule and how bandwidth sensitivity will be reported."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "RDD local comparison and bandwidth choice"
+
+  - id: RDD-003
+    name: "RDD Requires Sharp or Fuzzy Design Declaration"
+    severity: "error"
+    estimators: ["RDD"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rdd_sharp_or_fuzzy is None or rdd_sharp_or_fuzzy == ''"
+    requirement: "RDD must declare whether assignment is sharp or fuzzy."
+    guidance: "State whether crossing the cutoff deterministically assigns treatment or changes treatment probability."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "Sharp and fuzzy regression discontinuity"
+
+  - id: RDD-004
+    name: "RDD Requires Manipulation Check"
+    severity: "warning"
+    estimators: ["RDD"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rdd_manipulation_check != true"
+    requirement: "RDD should include a density/manipulation check around the cutoff."
+    guidance: "Run or document a manipulation/density diagnostic and explain the sorting risk."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "No precise manipulation around the cutoff"
+
+  - id: RDD-005
+    name: "RDD Requires Covariate Continuity Check"
+    severity: "warning"
+    estimators: ["RDD"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rdd_covariate_continuity != true"
+    requirement: "RDD should inspect predetermined covariate continuity at the cutoff."
+    guidance: "Add covariate continuity or local balance checks before presenting the design as credible."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "RDD covariate continuity diagnostics"
+
+  - id: RDD-006
+    name: "High-Order Global Polynomial RDD Warns"
+    severity: "warning"
+    estimators: ["RDD"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "rdd_polynomial_order is not None and rdd_polynomial_order > 2"
+    requirement: "High-order global polynomial RDD specifications are discouraged as defaults."
+    guidance: "Prefer local methods and report bandwidth/polynomial sensitivity."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      title: "RDD functional-form sensitivity"

@@ -1,0 +1,95 @@
+source:
+  id: "TIME_SERIES_GOVERNANCE"
+  method_id: "time_series"
+  topic: "time_series_econometrics"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "theoretical_microfoundations"
+  topics:
+    - "time_series_dynamics"
+    - "asymptotic_theory"
+rules:
+  - id: TS-001
+    name: "Time-Series Workflow Requires Time Index"
+    severity: "error"
+    estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"]
+    data_structures: ["time-series"]
+    condition: "time_index is None or time_index == ''"
+    requirement: "Time-series workflows must declare the time index."
+    guidance: "Name the variable defining temporal order before constructing lags, splits, or forecasts."
+    reference:
+      authors: "Stock, James H.; Watson, Mark W.; Box, George E. P.; Jenkins, Gwilym M."
+      title: "Time-series ordering"
+
+  - id: TS-002
+    name: "Time-Series Workflow Requires Frequency"
+    severity: "warning"
+    estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"]
+    data_structures: ["time-series"]
+    condition: "time_frequency is None or time_frequency == ''"
+    requirement: "Time-series workflows should declare frequency for lags, seasonality, and forecast horizon."
+    guidance: "State daily, monthly, quarterly, annual, irregular, or another frequency and how missing periods are handled."
+    reference:
+      authors: "Stock, James H.; Watson, Mark W."
+      title: "Time-series frequency and lags"
+
+  - id: TS-003
+    name: "Time-Series Workflow Requires Stationarity Plan"
+    severity: "error"
+    estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"]
+    data_structures: ["time-series"]
+    condition: "stationarity_plan is None or stationarity_plan == ''"
+    requirement: "Time-series workflows must address stationarity, trends, seasonality, or cointegration before estimation."
+    guidance: "Register differencing, deterministic trends, unit-root checks, cointegration logic, or a model that explicitly handles nonstationarity."
+    reference:
+      authors: "Stock, James H.; Watson, Mark W.; Greene, William H."
+      title: "Stationarity and spurious regression"
+
+  - id: TS-004
+    name: "Time-Series Workflow Requires Lag-Order Plan"
+    severity: "warning"
+    estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"]
+    data_structures: ["time-series"]
+    condition: "lag_order_plan is None or lag_order_plan == ''"
+    requirement: "Time-series workflows should register how lag order is chosen."
+    guidance: "Declare theory-driven lags, information criteria, pre-analysis lag sets, or another non-leaking choice rule."
+    reference:
+      authors: "Stock, James H.; Watson, Mark W.; Box, George E. P.; Jenkins, Gwilym M."
+      title: "Lag-order selection"
+
+  - id: TS-005
+    name: "Look-Ahead Bias Blocks Time-Series Forecast Evaluation"
+    severity: "error"
+    estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"]
+    data_structures: ["time-series"]
+    condition: "lookahead_bias == true"
+    requirement: "Forecasting or dynamic evaluation cannot use future information."
+    guidance: "Rebuild the split, lag construction, and model-selection procedure using only information available at the forecast origin."
+    reference:
+      authors: "Stock, James H.; Watson, Mark W."
+      title: "Forecast evaluation and temporal ordering"
+
+  - id: TS-006
+    name: "Forecasting Requires Backtest"
+    severity: "warning"
+    estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL"]
+    data_structures: ["time-series"]
+    condition: "forecast_or_causal_target == 'forecast' and forecast_backtest != true"
+    requirement: "Forecasting workflows should use temporal out-of-sample evaluation."
+    guidance: "Add rolling, expanding, or holdout backtests that respect time order."
+    reference:
+      authors: "Stock, James H.; Watson, Mark W.; Box, George E. P.; Jenkins, Gwilym M."
+      title: "Forecast backtesting"
+
+  - id: TS-007
+    name: "Time-Series Regression Requires Autocorrelation Diagnostic"
+    severity: "warning"
+    estimators: ["HACRegression", "ARMAX", "ARDL"]
+    data_structures: ["time-series"]
+    condition: "autocorrelation_diagnostic != true"
+    requirement: "Time-series regression should inspect serial correlation and use appropriate inference/modeling."
+    guidance: "Report ACF/PACF, residual autocorrelation tests, HAC/Newey-West inference, or an explicit serial-correlation model."
+    reference:
+      authors: "Stock, James H.; Watson, Mark W.; Greene, William H."
+      title: "Serial correlation and HAC inference"

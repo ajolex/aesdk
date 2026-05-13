@@ -1,0 +1,107 @@
+source:
+  id: "GMM_GOVERNANCE"
+  method_id: "gmm"
+  topic: "generalized_method_of_moments"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "theoretical_microfoundations"
+  topics:
+    - "gmm"
+    - "asymptotic_theory"
+rules:
+  - id: GMM-001
+    name: "GMM Requires Moment Conditions"
+    severity: "error"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "len(gmm_moment_conditions) == 0"
+    requirement: "GMM is undefined without explicit moment conditions."
+    guidance: "Write each moment condition and the assumption that makes it valid before estimating."
+    reference:
+      authors: "Hansen, Lars Peter"
+      title: "Large Sample Properties of Generalized Method of Moments Estimators"
+
+  - id: GMM-002
+    name: "GMM Requires Parameters"
+    severity: "error"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "len(gmm_parameters) == 0"
+    requirement: "GMM must declare the parameter vector being estimated."
+    guidance: "List parameters so moment count, rank, and identification can be audited."
+    reference:
+      authors: "Hansen, Lars Peter"
+      title: "GMM parameter identification"
+
+  - id: GMM-003
+    name: "GMM Blocks Fewer Moments Than Parameters"
+    severity: "error"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "len(gmm_moment_conditions) > 0 and len(gmm_parameters) > 0 and len(gmm_moment_conditions) < len(gmm_parameters)"
+    requirement: "GMM is underidentified when there are fewer credible moments than parameters."
+    guidance: "Add valid moments, reduce parameters, or choose another estimator."
+    reference:
+      authors: "Hansen, Lars Peter"
+      title: "GMM identification"
+
+  - id: GMM-004
+    name: "GMM Requires Weighting Matrix Choice"
+    severity: "error"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "gmm_weighting_matrix is None or gmm_weighting_matrix == ''"
+    requirement: "GMM must register the weighting matrix or weighting strategy."
+    guidance: "State whether the estimator is one-step, two-step, continuously updated, robust, HAC, clustered, or another registered variant."
+    reference:
+      authors: "Hansen, Lars Peter; Greene, William H."
+      title: "GMM weighting matrix"
+
+  - id: GMM-005
+    name: "Overidentified GMM Requires Diagnostic"
+    severity: "warning"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "len(gmm_moment_conditions) > len(gmm_parameters) and gmm_overidentification_diagnostic != true"
+    requirement: "Overidentified GMM should report overidentification diagnostics as stress tests."
+    guidance: "Report a J-test or related diagnostic and interpret it as diagnostic evidence, not proof of validity."
+    reference:
+      authors: "Hansen, Lars Peter"
+      title: "Overidentification diagnostics"
+
+  - id: GMM-006
+    name: "Many-Instrument GMM Warns"
+    severity: "warning"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "gmm_many_instruments == true"
+    requirement: "Many instruments can weaken finite-sample GMM performance."
+    guidance: "Reduce instruments, collapse instruments, or document finite-sample risk and sensitivity."
+    reference:
+      authors: "Hansen, Lars Peter; Wooldridge, Jeffrey M."
+      title: "GMM instrument proliferation risk"
+
+  - id: GMM-007
+    name: "GMM Requires Identification Rank Audit"
+    severity: "error"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "gmm_identification_rank is None"
+    requirement: "GMM must report an identification-rank audit or equivalent justification."
+    guidance: "Check the rank condition for the moment Jacobian or relevant identification matrix before estimating."
+    reference:
+      authors: "Hansen, Lars Peter; Greene, William H.; Wooldridge, Jeffrey M."
+      title: "GMM rank identification"
+
+  - id: GMM-008
+    name: "Insufficient GMM Rank Blocks Estimation"
+    severity: "error"
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    data_structures: ["cross-section", "time-series", "panel"]
+    condition: "gmm_identification_rank is not None and len(gmm_parameters) > 0 and gmm_identification_rank < len(gmm_parameters)"
+    requirement: "The reported GMM rank is insufficient to identify the parameter vector."
+    guidance: "Revise moments, instruments, or parameters until the rank condition supports identification."
+    reference:
+      authors: "Hansen, Lars Peter; Greene, William H.; Wooldridge, Jeffrey M."
+      title: "GMM rank condition"

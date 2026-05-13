@@ -20,6 +20,7 @@ The first layer is compact method protocols for common empirical workflows:
 - IV / 2SLS
 - panel fixed effects
 - differences-in-differences
+- randomized controlled trials and experimental methods
 - regression discontinuity
 - matching and propensity-score preprocessing
 - synthetic control
@@ -30,7 +31,18 @@ The first layer is compact method protocols for common empirical workflows:
 
 The protocols summarize assumptions, diagnostics, standard-error expectations, and source references. They are designed for AI agents to read before writing code.
 
-The mature rule-enforced coverage is currently strongest for DiD, panel fixed effects, IV, and citation integrity. The expanded starter methods are available as source-anchored context and PAP strategy support, but their method-specific rule packs are still a hardening target.
+The protocols are also mapped into a curriculum structure that looks like a standard econometrics sequence:
+
+- Foundations: regression mechanics, Gauss-Markov, omitted variable bias, inference, and functional forms
+- Identification Pivot: endogeneity, robust inference, IV/2SLS, simultaneity, and limited dependent variables
+- Theoretical and Micro-foundations: matrix OLS, asymptotics, MLE, GMM, panel data, and time-series dynamics
+- Advanced Empirical Research: potential outcomes, randomized controlled trials and field experiments, DiD, RDD, matching, synthetic control, nonlinear DiD, structural models, and double machine learning
+
+This makes AESDK easier for RAs and professors to audit: a method is not just a code recipe, it has a place in the econometrics curriculum and a set of assumptions attached to that place.
+
+Rule files and knowledge packs are method/topic organized rather than author organized. For example, DiD rules live under a DiD rule file, while Angrist-Pischke, Callaway-Sant'Anna, Wooldridge, or other sources appear as supporting references inside the rules and source metadata. That separation reduces the chance that an AI agent treats a source name as a method or invents source-specific rules.
+
+Executable rule coverage now exists for every bundled method pack. AESDK ships 94 runnable governance rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The expanded methods still carry maturity labels where human econometrician review is pending, but they are no longer guidance-only.
 
 The second layer is the Real Knowledge Pack system. A knowledge pack is a self-contained, source-anchored method guide with:
 
@@ -51,6 +63,7 @@ Current packs are available with:
 aesdk agent context --method did --depth full
 aesdk methods packs
 aesdk methods pack did --format yaml
+aesdk rules list --format text
 ```
 
 AESDK also includes metadata-only source inventory and topic locator reports for all local textbook/source PDFs. These reports point to source files and pages but do not package long textbook text.
@@ -63,7 +76,7 @@ python scripts/deep_knowledge_audit.py --tools-dir tools --write-report docs/dee
 
 The audit checks every local PDF page for method-topic signals, compares those signals with existing packs, and reports source hits, missing packs, duplicate IDs, and long-text risks. Use it to guide human review and pack expansion.
 
-The newest expanded packs are `pending_human_review` and `ai_source_audited_pending_human_review`. They are ready for a human econometrician's final review, but they are not labeled as reviewed or final audited doctrine.
+The newest expanded packs are `pending_human_review` and `ai_source_audited_pending_human_review`. Their core guardrails are executable, and they are ready for a human econometrician's final review, but they are not labeled as reviewed or final audited doctrine.
 
 ### Preflight Checks
 
@@ -105,7 +118,7 @@ aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file
 
 If the proposal is blocked, the code does not run.
 Stata runs require a licensed local Stata executable on `PATH` or in `AESDK_STATA`. R runs require `Rscript` on `PATH` or in `AESDK_R`.
-R package imports are checked against the sandbox allowlist before execution, mirroring Python's import-whitelist posture.
+Python and R package imports are checked against the sandbox allowlists before execution. The bundled method-pack recipes are tested against those allowlists so AESDK does not recommend a package that its own execution guard would reject.
 
 ### Reproducibility Record
 
@@ -126,6 +139,8 @@ AESDK includes utilities to verify citation metadata in agent-generated text. Th
 ```bash
 aesdk cite verify --text reasoning_log.txt
 ```
+
+Online verification is mandatory. DOI-like citations must resolve online, and public AESDK source metadata must include a DOI or public URL. A citation that cannot be found online is treated as a research-integrity problem, not a cosmetic warning.
 
 ## More Advanced Features
 
@@ -164,7 +179,7 @@ AESDK helps enforce a disciplined workflow:
 ## Remaining Hardening Opportunities
 
 - deeper human-audited maturity upgrades from `starter_guardrail` to `reviewed_guardrail` and eventually `audited`
-- deeper Stata/R recipe parity for specialized methods where official package support is mature
+- human-audited expansion of specialized Stata/R/Python recipes as official package support matures
 - conversion from PDF-page locators to cleaner printed-page/chapter anchors where possible
 - container isolation for high-stakes regulated execution
 - signed replay reports for external auditors
