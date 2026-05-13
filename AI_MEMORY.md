@@ -10,3 +10,9 @@
 - **Implications:** Updated sandbox runner/whitelist, agent and CLI run paths, trace replay, knowledge packs, official software source metadata, docs, templates, and tests; nonlinear DiD remains explicitly R-only until mature Python/Stata recipes are registered.
 - **Difficulty:** Hard - Required reconciling runtime behavior, audit-trace semantics, package data, econometric recipe coverage, and documented exceptions across multiple public surfaces.
 - **Lessons:** When adding a language bridge, audit execution cwd, runtime diagnostics, replay metadata, import/package allowlists, official recipe sources, package-data inclusion, and per-pack parity tests together.
+### 2026-05-13 - Bug - Panel Cluster Declaration Guardrails
+- **Issue:** Panel proposals could claim clustered or two-way-clustered inference without declaring the cluster level or both cluster dimensions.
+- **Resolution:** Added Wooldridge panel rules blocking missing cluster levels and one-dimensional two-way clustering, plus validator helpers for parsing scalar and list-valued cluster declarations.
+- **Implications:** Changed `src/aesdk/protocol/validator.py`, `src/aesdk/governance/rules/wooldridge_panel.rules.yaml`, and `tests/unit/protocol/test_validator_rules.py`; full suite passed with 78 tests.
+- **Difficulty:** Medium - The fix required extending the safe rule-expression evaluator while preserving existing panel and DiD validation behavior.
+- **Lessons:** Inference guardrails must force cluster levels and multiway cluster dimensions into the PAP/proposal record rather than treating the word "clustered" as sufficient.

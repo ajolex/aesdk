@@ -79,14 +79,35 @@ class AttrDict(dict):
         return value
 
 
-def _cluster_hierarchy_rank(level: str | None) -> int:
-    order = ["individual", "firm", "school", "county", "state", "region", "country"]
+def _cluster_level_parts(level: Any) -> list[str]:
     if level is None:
+        return []
+    if isinstance(level, (list, tuple, set)):
+        return [str(item).strip().lower() for item in level if str(item).strip()]
+    text = str(level).strip().lower()
+    if not text:
+        return []
+    for separator in [",", ";", "+", "&", "/"]:
+        text = text.replace(separator, " ")
+    if "-" in text:
+        text = text.replace("-", " ")
+    return [part for part in text.split() if part]
+
+
+def _cluster_level_missing(level: Any) -> bool:
+    return not _cluster_level_parts(level)
+
+
+def _cluster_level_count(level: Any) -> int:
+    return len(_cluster_level_parts(level))
+
+
+def _cluster_hierarchy_rank(level: Any) -> int:
+    order = ["individual", "firm", "school", "county", "state", "region", "country"]
+    parts = _cluster_level_parts(level)
+    if not parts:
         return -1
-    try:
-        return order.index(level)
-    except ValueError:
-        return -1
+    return max((order.index(part) for part in parts if part in order), default=-1)
 
 
 class _SafeEval(ast.NodeVisitor):
@@ -197,6 +218,10 @@ class _SafeEval(ast.NodeVisitor):
             return all(args[0])
         if fn_name == "cluster_hierarchy_rank":
             return _cluster_hierarchy_rank(args[0])
+        if fn_name == "cluster_level_missing":
+            return _cluster_level_missing(args[0])
+        if fn_name == "cluster_level_count":
+            return _cluster_level_count(args[0])
         raise RuleEvaluationError(f"Function '{fn_name}' is not allowed")
 
     def visit_GeneratorExp(self, node: ast.GeneratorExp) -> Any:

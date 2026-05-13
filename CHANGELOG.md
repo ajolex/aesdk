@@ -29,6 +29,7 @@
 - Provider-based KMS adapters for KMS-HTTP, AWS KMS, GCP KMS, and Azure Key Vault.
 - CSV and styled HTML trace exporters.
 - Public distribution docs and Trusted Publishing workflows.
+- Wooldridge panel guardrails now block clustered inference without a declared cluster level and two-way clustering without two declared dimensions.
 
 ### Notes
 

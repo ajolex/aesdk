@@ -30,3 +30,31 @@ rules:
       chapter: 7
       section: "7.8"
       title: "Cluster-Sample Methods"
+  - id: W-PANEL-003
+    name: "Clustered Inference Requires Declared Cluster Level"
+    severity: "error"
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "standard_errors in ['cluster', 'robust-cluster', 'two-way-cluster', 'wild-cluster-bootstrap'] and cluster_level_missing(clustering_level)"
+    requirement: "Clustered inference must declare the clustering level or cluster dimensions."
+    guidance: "Name the cluster level, such as unit, state, school, or county; for multiway clustering, name each dimension explicitly."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      chapter: 7
+      section: "7.8"
+      title: "Cluster-Sample Methods"
+  - id: W-PANEL-004
+    name: "Two-Way Cluster Requires Two Declared Dimensions"
+    severity: "error"
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "standard_errors == 'two-way-cluster' and cluster_level_count(clustering_level) < 2"
+    requirement: "Two-way clustered inference must declare two clustering dimensions."
+    guidance: "Declare both dimensions, for example ['state', 'year'] or 'state year', so reviewers can assess the intended dependence structure."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      chapter: 7
+      section: "7.8"
+      title: "Cluster-Sample Methods"

@@ -56,6 +56,49 @@ def test_rule_engine_blocks_clustering_below_assignment_level(valid_pap_dict: di
     assert result.status == "block"
 
 
+def test_rule_engine_blocks_clustered_inference_without_level(valid_pap_dict: dict) -> None:
+    pap = dict(valid_pap_dict)
+    pap["identification"] = {
+        **valid_pap_dict["identification"],
+        "standard_errors": "cluster",
+    }
+    pap["identification"].pop("clustering")
+    proposal = {"estimator": "DiD", "standard_errors": "cluster"}
+
+    result = Validator().validate(pap, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-PANEL-003" in ids
+    assert result.status == "block"
+
+
+def test_rule_engine_blocks_one_dimension_for_two_way_cluster(valid_pap_dict: dict) -> None:
+    proposal = {"estimator": "DiD", "standard_errors": "two-way-cluster", "clustering": "state"}
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-PANEL-004" in ids
+    assert result.status == "block"
+
+
+def test_rule_engine_accepts_two_way_cluster_dimensions(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "two-way-cluster",
+        "clustering": ["state", "year"],
+        "treatment_level": "state",
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-PANEL-002" not in ids
+    assert "W-PANEL-003" not in ids
+    assert "W-PANEL-004" not in ids
+    assert result.status == "pass"
+
+
 def test_rule_engine_warns_when_iv_first_stage_missing(valid_pap_dict: dict) -> None:
     pap = dict(valid_pap_dict)
     pap["identification"] = {
