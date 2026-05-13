@@ -16,6 +16,20 @@ dist/
 tests/.runtime/
 tools/
 
+# Local agent/project memory
+AGENTS.md
+CLAUDE.md
+AI_MEMORY.md
+CHANGELOG.md
+docs/HANDOFF.md
+docs/phases/
+
+# Generated local audit reports
+docs/deep_knowledge_audit_report.yaml
+docs/knowledge_pack_audit_log.yaml
+docs/source_inventory_generated.yaml
+docs/source_topic_locator_report.yaml
+
 # Virtual environments
 .venv/
 venv/
