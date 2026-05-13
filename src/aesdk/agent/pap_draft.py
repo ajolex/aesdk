@@ -34,7 +34,11 @@ def _project_id(goal: str) -> str:
 
 def _infer_data(data_path: str | Path | None, unit: str | None, time: str | None) -> dict[str, Any]:
     if data_path is None:
-        return {"source": "TBD", "unit": unit or "unit", "structure": "cross-section"}
+        structure = "panel" if unit and time else "cross-section"
+        data = {"source": "TBD", "unit": unit or "unit", "structure": structure}
+        if time:
+            data["time_index"] = time
+        return data
     path = Path(data_path)
     if path.suffix.lower() == ".csv":
         df = pd.read_csv(path)
@@ -63,6 +67,7 @@ def draft_pap(
     time: str | None = None,
     author: str = "AESDK Agent",
     expected_sign: str = "ambiguous",
+    design_origin: str | None = None,
 ) -> dict[str, Any]:
     """Draft a minimal PAP dictionary from agent-known analysis metadata."""
 
@@ -89,6 +94,8 @@ def draft_pap(
 
     if unit and method in {"did", "panel_fe"}:
         pap["identification"]["clustering"] = unit
+    if design_origin:
+        pap["identification"]["design_origin"] = design_origin
     if method in {"did", "panel_fe"}:
         fixed_effects = [item for item in [unit, time] if item]
         if fixed_effects:

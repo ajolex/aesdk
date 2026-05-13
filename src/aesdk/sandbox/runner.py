@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+import hashlib
 import importlib.util
 import os
 import re
@@ -10,7 +11,8 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Iterator
 
@@ -99,6 +101,7 @@ class SandboxResult:
     diagnostics: list[SandboxDiagnostic]
     stdout: str = ""
     stderr: str = ""
+    artifacts: dict[str, str] = field(default_factory=dict)
 
 
 class SandboxRunner:
@@ -110,6 +113,10 @@ class SandboxRunner:
         cpu_limit_sec: int = 30,
         stata_executable: str | Path | None = None,
         r_executable: str | Path | None = None,
+        artifact_dir: str | Path | None = None,
+        python_seed: int | str | None = None,
+        r_seed: int | str | None = None,
+        stata_seed: int | str | None = None,
     ):
         self.whitelist_path = Path(whitelist_path or DEFAULT_WHITELIST_PATH)
         whitelist = self._load_whitelist(self.whitelist_path)
@@ -119,6 +126,10 @@ class SandboxRunner:
         self.cpu_limit_sec = cpu_limit_sec
         self.stata_executable = str(stata_executable) if stata_executable else None
         self.r_executable = str(r_executable) if r_executable else None
+        self.artifact_dir = Path(artifact_dir) if artifact_dir else None
+        self.python_seed = str(python_seed) if python_seed is not None else None
+        self.r_seed = str(r_seed) if r_seed is not None else None
+        self.stata_seed = str(stata_seed) if stata_seed is not None else None
 
     def _load_whitelist(self, path: Path) -> dict[str, list[str]]:
         with path.open("r", encoding="utf-8") as handle:
@@ -176,28 +187,41 @@ class SandboxRunner:
             )
             return SandboxResult(status="block", diagnostics=diagnostics)
 
+        seed_value, seed_injected = self._prepare_python_seed(tree)
+        artifacts = {"python_seed": seed_value, "python_seed_injected": str(seed_injected).lower()}
+
         with tempfile.TemporaryDirectory() as tmpdir:
             script_path = Path(tmpdir) / "sandbox_entry.py"
             script_path.write_text(code, encoding="utf-8")
+            execution_path = script_path
+            if seed_injected:
+                execution_path = Path(tmpdir) / "aesdk_python_runner.py"
+                execution_path.write_text(self._python_seed_runner(script_path, seed_value), encoding="utf-8")
             try:
                 proc = subprocess.run(
-                    [sys.executable, str(script_path)],
+                    [sys.executable, str(execution_path)],
                     capture_output=True,
                     text=True,
                     timeout=active_timeout,
                     check=False,
-                    preexec_fn=self._preexec_resource_limits(),
+                    preexec_fn=self._preexec_resource_limits(active_timeout),
                 )
             except subprocess.TimeoutExpired as exc:
                 diagnostics.append(SandboxDiagnostic("TIMEOUT", str(exc), "error"))
-                return SandboxResult(status="block", diagnostics=diagnostics)
+                return SandboxResult(status="block", diagnostics=diagnostics, artifacts=artifacts)
 
         if proc.returncode != 0:
             diagnostics.append(SandboxDiagnostic("RUNTIME", proc.stderr.strip() or "Execution failed", "error"))
-            return SandboxResult(status="block", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
+            return SandboxResult(
+                status="block",
+                diagnostics=diagnostics,
+                stdout=proc.stdout,
+                stderr=proc.stderr,
+                artifacts=artifacts,
+            )
 
         diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
-        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
+        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr, artifacts=artifacts)
 
     def run_stata(self, code: str, timeout_seconds: int | None = None) -> SandboxResult:
         diagnostics: list[SandboxDiagnostic] = []
@@ -222,8 +246,14 @@ class SandboxRunner:
 
         with tempfile.TemporaryDirectory() as tmpdir:
             script_path = Path(tmpdir) / "sandbox_entry.do"
-            script_path.write_text(code, encoding="utf-8")
+            seed_value, seeded_code, seed_injected = self._prepare_stata_code(code)
+            artifact_stem = f"stata_sandbox_{hashlib.sha256(seeded_code.encode('utf-8')).hexdigest()[:12]}"
+            script_path.write_text(seeded_code, encoding="utf-8")
             command = self._stata_command(executable, script_path)
+            cwd_log_path = Path.cwd() / script_path.with_suffix(".log").name
+            cwd_log_preexisting = cwd_log_path.exists()
+            cwd_log_mtime = cwd_log_path.stat().st_mtime if cwd_log_preexisting else None
+            cwd_log_size = cwd_log_path.stat().st_size if cwd_log_preexisting else None
             try:
                 proc = subprocess.run(
                     command,
@@ -231,23 +261,42 @@ class SandboxRunner:
                     text=True,
                     timeout=active_timeout,
                     check=False,
-                    preexec_fn=self._preexec_resource_limits(),
+                    preexec_fn=self._preexec_resource_limits(active_timeout),
                 )
             except subprocess.TimeoutExpired as exc:
                 diagnostics.append(SandboxDiagnostic("TIMEOUT", str(exc), "error"))
                 return SandboxResult(status="block", diagnostics=diagnostics)
 
             log_path = script_path.with_suffix(".log")
-            log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.exists() else ""
+            log_candidates = [log_path]
+            if cwd_log_path != log_path:
+                log_candidates.append(cwd_log_path)
+            active_log_path = self._active_stata_log_path(
+                log_candidates,
+                cwd_log_path=cwd_log_path,
+                cwd_log_preexisting=cwd_log_preexisting,
+                cwd_log_mtime=cwd_log_mtime,
+                cwd_log_size=cwd_log_size,
+            )
+            log_text = active_log_path.read_text(encoding="utf-8", errors="replace") if active_log_path else ""
+            artifacts = self._capture_stata_log_artifact(
+                active_log_path,
+                cwd_log_path=cwd_log_path,
+                cwd_log_preexisting=cwd_log_preexisting,
+                cwd_log_mtime=cwd_log_mtime,
+                artifact_stem=artifact_stem,
+            )
+            artifacts["stata_seed"] = seed_value
+            artifacts["stata_seed_injected"] = str(seed_injected).lower()
 
         stdout = "\n".join(item for item in [proc.stdout, log_text] if item).strip()
         if proc.returncode != 0:
             message = proc.stderr.strip() or "Stata execution failed"
             diagnostics.append(SandboxDiagnostic("RUNTIME", message, "error"))
-            return SandboxResult(status="block", diagnostics=diagnostics, stdout=stdout, stderr=proc.stderr)
+            return SandboxResult(status="block", diagnostics=diagnostics, stdout=stdout, stderr=proc.stderr, artifacts=artifacts)
 
         diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
-        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=stdout, stderr=proc.stderr)
+        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=stdout, stderr=proc.stderr, artifacts=artifacts)
 
     def run_r(self, code: str, timeout_seconds: int | None = None) -> SandboxResult:
         diagnostics: list[SandboxDiagnostic] = []
@@ -284,9 +333,12 @@ class SandboxRunner:
             )
             return SandboxResult(status="block", diagnostics=diagnostics)
 
+        seed_value, seeded_code, seed_injected = self._prepare_r_code(code)
+        artifacts = {"r_seed": seed_value, "r_seed_injected": str(seed_injected).lower()}
+
         with tempfile.TemporaryDirectory() as tmpdir:
             script_path = Path(tmpdir) / "sandbox_entry.R"
-            script_path.write_text(code, encoding="utf-8")
+            script_path.write_text(seeded_code, encoding="utf-8")
             try:
                 proc = subprocess.run(
                     [executable, "--vanilla", str(script_path)],
@@ -294,32 +346,38 @@ class SandboxRunner:
                     text=True,
                     timeout=active_timeout,
                     check=False,
-                    preexec_fn=self._preexec_resource_limits(),
+                    preexec_fn=self._preexec_resource_limits(active_timeout),
                 )
             except subprocess.TimeoutExpired as exc:
                 diagnostics.append(SandboxDiagnostic("TIMEOUT", str(exc), "error"))
-                return SandboxResult(status="block", diagnostics=diagnostics)
+                return SandboxResult(status="block", diagnostics=diagnostics, artifacts=artifacts)
 
         if proc.returncode != 0:
             diagnostics.append(SandboxDiagnostic("RUNTIME", proc.stderr.strip() or "R execution failed", "error"))
-            return SandboxResult(status="block", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
+            return SandboxResult(
+                status="block",
+                diagnostics=diagnostics,
+                stdout=proc.stdout,
+                stderr=proc.stderr,
+                artifacts=artifacts,
+            )
 
         diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
-        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
+        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr, artifacts=artifacts)
 
-    def _preexec_resource_limits(self):
+    def _preexec_resource_limits(self, cpu_limit_sec: int | None = None):
         if os.name == "nt" or resource is None:
             return None
 
         mem_limit_mb = self.mem_limit_mb
-        cpu_limit_sec = self.cpu_limit_sec
+        active_cpu_limit_sec = cpu_limit_sec or self.cpu_limit_sec
 
         def apply_limits() -> None:
             if mem_limit_mb > 0:
                 mem_bytes = mem_limit_mb * 1024 * 1024
                 resource.setrlimit(resource.RLIMIT_AS, (mem_bytes, mem_bytes))
-            if cpu_limit_sec > 0:
-                resource.setrlimit(resource.RLIMIT_CPU, (cpu_limit_sec, cpu_limit_sec))
+            if active_cpu_limit_sec > 0:
+                resource.setrlimit(resource.RLIMIT_CPU, (active_cpu_limit_sec, active_cpu_limit_sec))
 
         return apply_limits
 
@@ -345,6 +403,65 @@ class SandboxRunner:
             if isinstance(node.func, ast.Attribute) and node.func.attr in _FORBIDDEN_ATTR_CALLS:
                 found.add(node.func.attr)
         return found
+
+    def _prepare_python_seed(self, tree: ast.AST) -> tuple[str, bool]:
+        existing_seed = self._extract_python_seed(tree)
+        if existing_seed:
+            return existing_seed, False
+        return self.python_seed or _date_seed(), True
+
+    @staticmethod
+    def _extract_python_seed(tree: ast.AST) -> str | None:
+        random_aliases = {"random"}
+        numpy_aliases = {"numpy"}
+        random_seed_aliases: set[str] = set()
+        numpy_seed_aliases: set[str] = set()
+        default_rng_aliases: set[str] = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name == "random":
+                        random_aliases.add(alias.asname or alias.name)
+                    if alias.name == "numpy":
+                        numpy_aliases.add(alias.asname or alias.name)
+            if isinstance(node, ast.ImportFrom):
+                if node.module == "random":
+                    for alias in node.names:
+                        if alias.name == "seed":
+                            random_seed_aliases.add(alias.asname or alias.name)
+                if node.module == "numpy.random":
+                    for alias in node.names:
+                        if alias.name == "seed":
+                            numpy_seed_aliases.add(alias.asname or alias.name)
+                        if alias.name == "default_rng":
+                            default_rng_aliases.add(alias.asname or alias.name)
+
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call) or not node.args:
+                continue
+            if not isinstance(node.args[0], ast.Constant) or not isinstance(node.args[0].value, int):
+                continue
+            if _is_python_seed_call(node.func, random_aliases, numpy_aliases, random_seed_aliases, numpy_seed_aliases):
+                return str(node.args[0].value)
+            if _is_python_default_rng_call(node.func, numpy_aliases, default_rng_aliases):
+                return str(node.args[0].value)
+        return None
+
+    @staticmethod
+    def _python_seed_runner(script_path: Path, seed_value: str) -> str:
+        script_literal = repr(str(script_path))
+        return f"""import random as _aesdk_random
+import runpy as _aesdk_runpy
+
+_aesdk_random.seed({seed_value})
+try:
+    import numpy as _aesdk_numpy
+    _aesdk_numpy.random.seed({seed_value})
+except Exception:
+    pass
+
+_aesdk_runpy.run_path({script_literal}, run_name="__main__")
+"""
 
     def _resolve_stata_executable(self) -> str | None:
         configured = self.stata_executable or os.getenv(_STATA_EXECUTABLE_ENV)
@@ -380,6 +497,85 @@ class SandboxRunner:
     def _stata_command(executable: str, script_path: Path) -> list[str]:
         batch_flag = "/e" if os.name == "nt" or executable.lower().endswith(".exe") else "-b"
         return [executable, batch_flag, "do", str(script_path)]
+
+    def _prepare_stata_code(self, code: str) -> tuple[str, str, bool]:
+        existing_seed = self._extract_stata_seed(code)
+        if existing_seed:
+            return existing_seed, code, False
+        seed_value = self.stata_seed or _date_seed()
+        return seed_value, f"set seed {seed_value}\n{code}", True
+
+    @staticmethod
+    def _extract_stata_seed(code: str) -> str | None:
+        for line in _iter_stata_code_lines(code):
+            match = re.match(r"^set\s+seed\s+([0-9]+)\b", line, flags=re.IGNORECASE)
+            if match:
+                return match.group(1)
+        return None
+
+    def _prepare_r_code(self, code: str) -> tuple[str, str, bool]:
+        existing_seed = self._extract_r_seed(code)
+        if existing_seed:
+            return existing_seed, code, False
+        seed_value = self.r_seed or _date_seed()
+        return seed_value, f"set.seed({seed_value})\n{code}", True
+
+    @staticmethod
+    def _extract_r_seed(code: str) -> str | None:
+        for line in _iter_r_code_lines(code):
+            match = re.match(r"^set\.seed\s*\(\s*([0-9]+)\s*\)", line, flags=re.IGNORECASE)
+            if match:
+                return match.group(1)
+        return None
+
+    def _capture_stata_log_artifact(
+        self,
+        log_path: Path | None,
+        *,
+        cwd_log_path: Path,
+        cwd_log_preexisting: bool,
+        cwd_log_mtime: float | None,
+        artifact_stem: str,
+    ) -> dict[str, str]:
+        if log_path is None or not log_path.exists():
+            return {}
+        artifacts: dict[str, str] = {}
+        if self.artifact_dir is not None:
+            self.artifact_dir.mkdir(parents=True, exist_ok=True)
+            target = self.artifact_dir / f"{artifact_stem}.log"
+            shutil.copyfile(log_path, target)
+            artifacts["stata_log_path"] = str(target)
+        elif log_path == cwd_log_path:
+            artifacts["stata_log_path"] = str(log_path)
+
+        if log_path == cwd_log_path and cwd_log_path.name == "sandbox_entry.log":
+            changed = not cwd_log_preexisting
+            if cwd_log_preexisting and cwd_log_mtime is not None:
+                changed = cwd_log_path.stat().st_mtime != cwd_log_mtime
+            if changed and not cwd_log_preexisting:
+                cwd_log_path.unlink(missing_ok=True)
+        return artifacts
+
+    @staticmethod
+    def _active_stata_log_path(
+        log_candidates: list[Path],
+        *,
+        cwd_log_path: Path,
+        cwd_log_preexisting: bool,
+        cwd_log_mtime: float | None,
+        cwd_log_size: int | None,
+    ) -> Path | None:
+        for path in log_candidates:
+            if not path.exists():
+                continue
+            if path != cwd_log_path:
+                return path
+            if not cwd_log_preexisting:
+                return path
+            current = path.stat()
+            if current.st_mtime != cwd_log_mtime or current.st_size != cwd_log_size:
+                return path
+        return None
 
     @staticmethod
     def _find_forbidden_stata_patterns(code: str) -> set[str]:
@@ -472,6 +668,42 @@ def infer_language_from_path(path: str | Path | None, default: str = "python") -
     if suffix == ".r":
         return "r"
     return normalize_language(default)
+
+
+def _date_seed() -> str:
+    return date.today().strftime("%Y%m%d")
+
+
+def _is_python_seed_call(
+    func: ast.expr,
+    random_aliases: set[str],
+    numpy_aliases: set[str],
+    random_seed_aliases: set[str],
+    numpy_seed_aliases: set[str],
+) -> bool:
+    if isinstance(func, ast.Name):
+        return func.id in random_seed_aliases or func.id in numpy_seed_aliases
+    if not isinstance(func, ast.Attribute) or func.attr != "seed":
+        return False
+    owner = func.value
+    if isinstance(owner, ast.Name):
+        return owner.id in random_aliases
+    if isinstance(owner, ast.Attribute) and owner.attr == "random" and isinstance(owner.value, ast.Name):
+        return owner.value.id in numpy_aliases
+    return False
+
+
+def _is_python_default_rng_call(
+    func: ast.expr,
+    numpy_aliases: set[str],
+    default_rng_aliases: set[str],
+) -> bool:
+    if isinstance(func, ast.Name):
+        return func.id in default_rng_aliases
+    if not isinstance(func, ast.Attribute) or func.attr != "default_rng":
+        return False
+    owner = func.value
+    return isinstance(owner, ast.Attribute) and owner.attr == "random" and isinstance(owner.value, ast.Name) and owner.value.id in numpy_aliases
 
 
 def _iter_stata_code_lines(code: str) -> Iterator[str]:

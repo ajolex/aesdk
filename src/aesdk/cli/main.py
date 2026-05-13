@@ -10,7 +10,8 @@ from pathlib import Path
 import typer
 import yaml
 
-from aesdk.agent import agent_context, draft_pap, preflight, run_analysis
+from aesdk.agent import agent_context, draft_pap, intake_task, preflight, run_analysis, write_workflow_report
+from aesdk.config import config
 from aesdk.core.project import Project
 from aesdk.governance.checks.citation_validator import verify_text
 from aesdk.governance.policy import ConformanceLevel
@@ -28,7 +29,7 @@ from aesdk.knowledge import (
     validate_knowledge_base,
 )
 from aesdk.protocol.validator import RuleRegistry, Validator
-from aesdk.sandbox.runner import infer_language_from_path, normalize_language
+from aesdk.sandbox.runner import SandboxRunner, infer_language_from_path, normalize_language
 from aesdk.trace import replay_execute_events
 from aesdk.trace.blob import ReplicationBlob, sign_blob, verify_blob_signature
 
@@ -104,6 +105,10 @@ def agent_draft_pap_cmd(
     unit: str | None = typer.Option(None, help="Panel/group unit variable."),
     time: str | None = typer.Option(None, help="Time variable."),
     author: str = typer.Option("AESDK Agent", help="PAP author."),
+    design_origin: str | None = typer.Option(
+        None,
+        help="Optional design provenance: experimental_rct|observational|natural_experiment|administrative_rollout|unknown.",
+    ),
     output: Path | None = typer.Option(None, help="Write YAML PAP to this path."),
 ) -> None:
     pap = draft_pap(
@@ -116,6 +121,7 @@ def agent_draft_pap_cmd(
         unit=unit,
         time=time,
         author=author,
+        design_origin=design_origin,
     )
     rendered = yaml.safe_dump(pap, sort_keys=False)
     if output:
@@ -124,6 +130,51 @@ def agent_draft_pap_cmd(
         typer.echo(f"pap_written={output}")
     else:
         typer.echo(rendered)
+
+
+@agent_app.command("intake")
+def agent_intake_cmd(
+    task: Path = typer.Option(..., exists=True, help="Task document path. PDF, TXT, and MD are supported."),
+    data: Path | None = typer.Option(None, exists=True, help="Optional analysis data path."),
+    method: str | None = typer.Option(None, help="Optional method id. If omitted, AESDK infers a first draft."),
+    output_dir: Path | None = typer.Option(None, help="Folder for pap.yaml, proposal.json, and extracted task text."),
+    outcome: str = typer.Option("outcome", help="Outcome variable."),
+    treatment: str = typer.Option("treatment", help="Treatment variable."),
+    unit: str | None = typer.Option(None, help="Panel/group unit variable."),
+    time: str | None = typer.Option(None, help="Time variable."),
+    design_origin: str | None = typer.Option(
+        None,
+        help="Optional design provenance: experimental_rct|observational|natural_experiment|administrative_rollout|unknown.",
+    ),
+    title: str | None = typer.Option(None, help="Optional PAP title."),
+) -> None:
+    result = intake_task(
+        task_path=task,
+        data_path=data,
+        method=method,
+        output_dir=output_dir,
+        outcome=outcome,
+        treatment=treatment,
+        unit=unit,
+        time=time,
+        design_origin=design_origin,
+        title=title,
+    )
+    typer.echo(f"method={result.method}")
+    typer.echo(f"pap_written={result.pap_path}")
+    typer.echo(f"proposal_written={result.proposal_path}")
+    if result.task_text_path:
+        typer.echo(f"task_text_written={result.task_text_path}")
+
+
+@agent_app.command("report")
+def agent_report_cmd(
+    blob: Path = typer.Option(..., exists=True, help="AESDK replication blob path."),
+    output: Path | None = typer.Option(None, help="Optional HTML report output path."),
+    title: str = typer.Option("AESDK Workflow Report", help="Report title."),
+) -> None:
+    target = write_workflow_report(blob_path=blob, output_path=output, title=title)
+    typer.echo(f"report_written={target}")
 
 
 @agent_app.command("run")
@@ -146,6 +197,11 @@ def agent_run_cmd(
         "--acknowledge-warnings",
         help="Proceed when preflight returns warn after researcher acknowledgement.",
     ),
+    timeout_seconds: int | None = typer.Option(
+        None,
+        "--timeout-seconds",
+        help="Execution timeout for Python, Stata, or R code. Useful for longer Stata/R jobs.",
+    ),
 ) -> None:
     result = run_analysis(
         method=method,
@@ -158,6 +214,7 @@ def agent_run_cmd(
         conformance=conformance,
         policy_version=policy_version,
         acknowledge_warnings=acknowledge_warnings,
+        timeout_seconds=timeout_seconds,
     )
     typer.echo(f"status={result.status} blocked={result.blocked} blob={result.blob_path}")
     if result.preflight.blocked or result.warning_acknowledgement_required:
@@ -397,6 +454,11 @@ def execute_cmd(
     context: str = typer.Option("research"),
     conformance: str | None = typer.Option(None),
     policy_version: str = typer.Option("1.0.0"),
+    timeout_seconds: int | None = typer.Option(
+        None,
+        "--timeout-seconds",
+        help="Execution timeout for Python, Stata, or R code.",
+    ),
 ) -> None:
     project = Project.create(
         pap_path=pap,
@@ -404,6 +466,11 @@ def execute_cmd(
         context=context,
         conformance=conformance,
         policy_version=policy_version,
+        sandbox_runner=SandboxRunner(
+            mem_limit_mb=config.sandbox_mem_limit_mb,
+            cpu_limit_sec=timeout_seconds or config.sandbox_cpu_limit_sec,
+            artifact_dir=(blob.parent if blob else pap.parent),
+        ),
     )
     proposal_dict = _load_json(proposal)
     project.propose_model(proposal_dict)
@@ -416,7 +483,7 @@ def execute_cmd(
 
     code = code_file.read_text(encoding="utf-8-sig")
     active_language = normalize_language(language) if language else infer_language_from_path(code_file)
-    run_result = project.execute(code, language=active_language)
+    run_result = project.execute(code, language=active_language, timeout_seconds=timeout_seconds)
     typer.echo(f"execution_status={run_result.status}")
     if run_result.status == "block":
         for diagnostic in run_result.diagnostics:

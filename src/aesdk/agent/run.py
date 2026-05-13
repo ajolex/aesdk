@@ -7,7 +7,9 @@ from pathlib import Path
 from typing import Any
 
 from aesdk.agent.preflight import PreflightResult, preflight
+from aesdk.config import config
 from aesdk.core.project import Project
+from aesdk.sandbox.runner import SandboxRunner
 from aesdk.sandbox.runner import SandboxResult, infer_language_from_path, normalize_language
 
 
@@ -45,6 +47,7 @@ def run_analysis(
     conformance: str = "strict",
     policy_version: str = "1.0.0",
     acknowledge_warnings: bool = False,
+    timeout_seconds: int | None = None,
 ) -> AnalysisRunResult:
     """Run preflight, then execute analysis code only if governance passes."""
 
@@ -71,6 +74,11 @@ def run_analysis(
         context=context,
         conformance=conformance,
         policy_version=policy_version,
+        sandbox_runner=SandboxRunner(
+            mem_limit_mb=config.sandbox_mem_limit_mb,
+            cpu_limit_sec=timeout_seconds or config.sandbox_cpu_limit_sec,
+            artifact_dir=(Path(blob_path).parent if blob_path else Path(pap_path).parent),
+        ),
     )
     project.propose_model(gate.proposal or {})
     validation = project.validate()
@@ -86,5 +94,5 @@ def run_analysis(
             sandbox=None,
             blob_path=str(project.blob_path),
         )
-    sandbox = project.execute(active_code, language=active_language)
+    sandbox = project.execute(active_code, language=active_language, timeout_seconds=timeout_seconds)
     return AnalysisRunResult(preflight=gate, sandbox=sandbox, blob_path=str(project.blob_path))

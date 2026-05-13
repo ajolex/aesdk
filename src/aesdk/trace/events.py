@@ -48,15 +48,22 @@ def execute_payload(
     status: str,
     diagnostics: list[dict[str, Any]],
     language: str = "python",
+    timeout_seconds: int | None = None,
+    artifacts: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     code_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
-    return {
+    payload: dict[str, Any] = {
         "status": status,
         "diagnostics": diagnostics,
         "language": language,
         "code": code,
         "code_sha256": code_hash,
     }
+    if timeout_seconds is not None:
+        payload["timeout_seconds"] = timeout_seconds
+    if artifacts:
+        payload["artifacts"] = artifacts
+    return payload
 
 
 def override_payload(*, rule_ids: list[str], justification: str) -> dict[str, Any]:

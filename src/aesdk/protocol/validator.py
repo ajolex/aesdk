@@ -330,6 +330,17 @@ def _normalized_citation_report(value: Any) -> Any:
     return report
 
 
+def _first_present(*values: Any) -> Any:
+    for value in values:
+        if isinstance(value, str):
+            if not _text_missing(value):
+                return value
+            continue
+        if value is not None:
+            return value
+    return None
+
+
 def _format_reference(ref: dict[str, Any] | str | None) -> str:
     if isinstance(ref, str):
         return ref
@@ -402,6 +413,8 @@ class ValidationContext:
             "G": data.get("G"),
             "time_invariant_vars": data.get("time_invariant_vars", []),
             "identification_strategy": identification.get("strategy"),
+            "design_origin": _first_present(self._proposal.get("design_origin"), identification.get("design_origin")),
+            "design_note": _first_present(self._proposal.get("design_note"), identification.get("design_note")),
             "estimator": self._proposal.get("estimator", identification.get("strategy")),
             "outcome_variable": outcome_variable,
             "treatment_variable": treatment_variable,

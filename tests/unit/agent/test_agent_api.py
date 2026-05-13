@@ -91,6 +91,20 @@ def test_draft_pap_infers_panel_shape(tmp_path) -> None:
     assert "did_block" in pap
 
 
+def test_draft_pap_records_design_origin() -> None:
+    pap = ae.draft_pap(
+        goal="Estimate randomized rollout effect",
+        method="did",
+        outcome="earnings",
+        treatment="offer",
+        unit="village",
+        time="month",
+        design_origin="experimental_rct",
+    )
+
+    assert pap["identification"]["design_origin"] == "experimental_rct"
+
+
 def test_run_analysis_returns_block_without_execution(valid_pap_file, tmp_path) -> None:
     proposal_path = tmp_path / "proposal.json"
     proposal_path.write_text(json.dumps({"estimator": "DiD", "standard_errors": "HC3"}), encoding="utf-8")
@@ -123,6 +137,34 @@ def test_run_analysis_executes_when_preflight_passes(valid_pap_file, tmp_path) -
     assert result.sandbox is not None
     assert result.sandbox.stdout.strip() == "ran"
     assert blob_path.exists()
+
+
+def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_path) -> None:
+    proposal_path = tmp_path / "proposal.json"
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+    code_path = tmp_path / "analysis.py"
+    code_path.write_text("print('ran')", encoding="utf-8")
+    blob_path = tmp_path / ".aesdk.json"
+
+    result = ae.run_analysis(
+        method="did",
+        pap_path=valid_pap_file,
+        proposal=proposal_path,
+        code_path=code_path,
+        blob_path=blob_path,
+        timeout_seconds=77,
+    )
+    report_path = ae.write_workflow_report(blob_path=blob_path)
+    blob = json.loads(blob_path.read_text(encoding="utf-8"))
+    execute_payload = next(event["payload"] for event in blob["events"] if event["event_type"] == "execute")
+
+    assert result.status == "pass"
+    assert execute_payload["timeout_seconds"] == 77
+    assert report_path.exists()
+    assert "AESDK Workflow Report" in report_path.read_text(encoding="utf-8")
 
 
 def test_run_analysis_requires_acknowledgement_for_warnings(valid_pap_dict, tmp_path) -> None:
@@ -205,6 +247,54 @@ def test_drafted_pap_can_be_serialized_and_validated(tmp_path) -> None:
     pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
     result = ae.preflight(method="ols_cef", pap_path=pap_path, proposal={"estimator": "OLS", "standard_errors": "HC3"})
     assert result.status in {"pass", "warn"}
+
+
+def test_intake_task_writes_reviewable_pap_and_proposal(tmp_path) -> None:
+    task_path = tmp_path / "Stata_Task.txt"
+    task_path.write_text(
+        "Estimate a randomized rollout using two-way fixed effects and an event study.",
+        encoding="utf-8",
+    )
+
+    result = ae.intake_task(
+        task_path=task_path,
+        outcome="employment",
+        treatment="assigned_training",
+        unit="county",
+        time="year",
+        design_origin="experimental_rct",
+    )
+    pap = yaml.safe_load(result.pap_path.read_text(encoding="utf-8"))
+    proposal = json.loads(result.proposal_path.read_text(encoding="utf-8"))
+
+    assert result.method == "did"
+    assert result.task_text_path is not None and result.task_text_path.exists()
+    assert pap["data"]["structure"] == "panel"
+    assert pap["identification"]["design_origin"] == "experimental_rct"
+    assert "design_note" in pap["identification"]
+    assert proposal["design_origin"] == "experimental_rct"
+
+
+def test_intake_task_infers_randomized_did_design_origin(tmp_path) -> None:
+    task_path = tmp_path / "Stata_Task.txt"
+    task_path.write_text(
+        "Use an event study for a randomized rollout of the training offer.",
+        encoding="utf-8",
+    )
+
+    result = ae.intake_task(
+        task_path=task_path,
+        outcome="employment",
+        treatment="offer",
+        unit="county",
+        time="year",
+    )
+    pap = yaml.safe_load(result.pap_path.read_text(encoding="utf-8"))
+    proposal = json.loads(result.proposal_path.read_text(encoding="utf-8"))
+
+    assert result.method == "did"
+    assert pap["identification"]["design_origin"] == "experimental_rct"
+    assert proposal["design_origin"] == "experimental_rct"
 
 
 def test_drafted_rct_pap_can_be_serialized_and_validated(tmp_path) -> None:

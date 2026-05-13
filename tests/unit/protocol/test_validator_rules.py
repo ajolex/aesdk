@@ -61,6 +61,24 @@ def test_rule_engine_triggers_ap_did_003(valid_pap_dict: dict) -> None:
     assert result.status == "block"
 
 
+def test_did_design_origin_falls_back_to_pap_when_proposal_null(valid_pap_dict: dict) -> None:
+    pap = deepcopy(valid_pap_dict)
+    pap["identification"]["design_origin"] = "experimental_rct"
+    pap["identification"].pop("design_note", None)
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "design_origin": None,
+    }
+
+    result = Validator().validate(pap, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AP-DID-005" in ids
+    assert result.status == "warn"
+
+
 def test_rule_engine_triggers_ci_001_for_hallucinated_citations(valid_pap_dict: dict) -> None:
     proposal = {
         "estimator": "DiD",

@@ -52,3 +52,9 @@
 - **Implications:** Changed `src/aesdk/sandbox/runner.py`, `src/aesdk/trace/replay.py`, `src/aesdk/core/project.py`, `src/aesdk/protocol/validator.py`, `src/aesdk/agent/intake.py`, `src/aesdk/agent/report.py`, README, and regression tests; full suite passed with 139 tests and knowledge validation passed.
 - **Difficulty:** Hard - The fixes spanned execution semantics, trace replay, evidence durability, econometric governance context, and researcher-facing presentation.
 - **Lessons:** Independent audits should be treated as implementation input: replay must preserve the original run envelope, artifacts must be durable and event-specific, and fallback/default metadata must never override stronger PAP commitments with null proposal fields.
+### 2026-05-14 - Feature - Committed Agent Workflow Evidence Release
+- **Issue:** The workflow-evidence and seeded-execution feature set needed to be captured as a coherent committed release after implementation and audit fixes.
+- **Resolution:** Finalized task intake, workflow HTML reporting, timeout-aware governed execution, durable execution artifacts, design-origin governance, and cross-language seed trace/replay behavior, then prepared the full working set for commit.
+- **Implications:** The committed changes span agent APIs, CLI commands, sandbox execution, trace replay, governance/schema/context, docs/templates, and regression coverage for the new agent-facing workflow.
+- **Difficulty:** Medium - The main work was ensuring the final commit represented one coherent researcher-facing workflow rather than scattered patches.
+- **Lessons:** Commit workflow features only after memory, independent audit, targeted fixes, full tests, and knowledge validation all agree on the same behavior.

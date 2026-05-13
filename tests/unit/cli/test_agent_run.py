@@ -67,3 +67,76 @@ def test_agent_run_prints_sandbox_diagnostics_for_missing_stata_runtime(valid_pa
     assert "status=block blocked=True" in result.output
     assert "MISSING_RUNTIME" in result.output
     assert "Stata executable was not found" in result.output
+
+
+def test_agent_run_accepts_timeout_and_agent_report(valid_pap_file, tmp_path) -> None:
+    proposal_path = tmp_path / "proposal.json"
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+    code_path = tmp_path / "analysis.py"
+    code_path.write_text("print('ok')", encoding="utf-8")
+    blob_path = tmp_path / ".aesdk.json"
+    report_path = tmp_path / "workflow.html"
+    runner = CliRunner()
+
+    run_result = runner.invoke(
+        app,
+        [
+            "agent",
+            "run",
+            "--method",
+            "did",
+            "--pap",
+            str(valid_pap_file),
+            "--proposal",
+            str(proposal_path),
+            "--code-file",
+            str(code_path),
+            "--blob",
+            str(blob_path),
+            "--timeout-seconds",
+            "5",
+        ],
+    )
+    report_result = runner.invoke(
+        app,
+        ["agent", "report", "--blob", str(blob_path), "--output", str(report_path)],
+    )
+
+    assert run_result.exit_code == 0
+    assert "status=pass blocked=False" in run_result.output
+    assert report_result.exit_code == 0
+    assert report_path.exists()
+    assert "Workflow Events" in report_path.read_text(encoding="utf-8")
+
+
+def test_agent_intake_writes_scaffold_files(tmp_path) -> None:
+    task_path = tmp_path / "task.txt"
+    task_path.write_text("Run an event study for a randomized training rollout.", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agent",
+            "intake",
+            "--task",
+            str(task_path),
+            "--outcome",
+            "wage",
+            "--treatment",
+            "offer",
+            "--unit",
+            "worker",
+            "--time",
+            "quarter",
+            "--design-origin",
+            "experimental_rct",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "method=did" in result.output
+    assert (tmp_path / "pap.yaml").exists()
+    assert (tmp_path / "proposal.json").exists()

@@ -37,6 +37,8 @@ AESDK currently provides:
 - governed execution that refuses to run blocked analysis code
 - governed execution for Python scripts, Stata `.do` files, and R scripts
 - reproducibility records through an `.aesdk.json` audit file
+- task-folder intake helpers that draft a reviewable `pap.yaml` and `proposal.json`
+- HTML workflow reports that supervisors can inspect without reading raw JSON
 - replay checks for recorded execution
 - enforced online citation/source integrity checks for agent-generated research text
 
@@ -78,20 +80,39 @@ AI agents can use the top-level Python API:
 ```python
 import aesdk as ae
 
+intake = ae.intake_task(
+    task_path="Stata_Task.pdf",
+    method="did",
+    output_dir=".",
+    outcome="employment",
+    treatment="treated",
+    unit="county",
+    time="year",
+)
+
 gate = ae.preflight(
     method="did",
-    pap_path="docs/examples/simulated_did_training_policy/pap.yaml",
-    proposal="docs/examples/simulated_did_training_policy/proposal_pass.json",
+    pap_path=intake.pap_path,
+    proposal=intake.proposal_path,
     conformance="strict",
 )
 
 if gate.blocked:
     raise RuntimeError(gate.explain())
 
-print(gate.agent_context_markdown())
+run = ae.run_analysis(
+    method="did",
+    pap_path=intake.pap_path,
+    proposal=intake.proposal_path,
+    code_path="analysis.do",
+    blob_path=".aesdk.json",
+    timeout_seconds=300,
+)
+
+report_path = ae.write_workflow_report(blob_path=run.blob_path, output_path="workflow.html")
 ```
 
-The important rule is: if `gate.blocked` is true, the agent should stop and explain why.
+The important rule is: if `gate.blocked` is true, the agent should stop and explain why. Drafted intake files still need researcher review before they are treated as binding.
 
 ## Use AESDK From The Command Line
 
@@ -102,9 +123,11 @@ aesdk agent context --method did
 aesdk agent context --method did --depth full
 aesdk agent preflight --method did --pap pap.yaml --proposal proposal.json --conformance strict
 aesdk agent draft-pap --method did --goal "Estimate policy effects" --data panel.csv --outcome y --treatment treated --unit state --time year --output pap.yaml
+aesdk agent intake --task Stata_Task.pdf --method did --output-dir .
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.R --language r
+aesdk agent report --blob .aesdk.json --output workflow.html
 ```
 
 You can also print ready-to-use agent instructions:
@@ -121,6 +144,7 @@ For most users, the most useful setup is to tell the AI agent:
 ```text
 Before writing econometric analysis code, use AESDK.
 Load method context with `aesdk agent context --method <method>`.
+Run intake when starting from a task document: `aesdk agent intake --task <task.pdf> --output-dir .`.
 Run preflight with `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`.
 If AESDK returns block, stop and explain the violated assumptions.
 Do not invent econometric assumptions, diagnostics, citations, or estimator requirements.
@@ -135,7 +159,8 @@ The repository includes a simulated DiD example:
 ```bash
 python docs/examples/simulated_did_training_policy/generate_data.py
 aesdk agent preflight --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json --conformance strict
-aesdk agent run --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json --code-file docs/examples/simulated_did_training_policy/exec_code.py
+aesdk agent run --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json --code-file docs/examples/simulated_did_training_policy/exec_code.py --blob docs/examples/simulated_did_training_policy/.aesdk.json
+aesdk agent report --blob docs/examples/simulated_did_training_policy/.aesdk.json --output docs/examples/simulated_did_training_policy/workflow.html
 ```
 
 The same example intentionally includes a bad proposal:
@@ -155,14 +180,14 @@ aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.R
 ```
 
-The language is inferred from `.do`, `.R`, or `.r`, or can be set with `--language stata` or `--language r`. AESDK runs Stata in batch mode through a local licensed Stata installation and runs R through `Rscript`. If the runtimes are not on `PATH`, set:
+The language is inferred from `.do`, `.R`, or `.r`, or can be set with `--language stata` or `--language r`. Longer jobs can use `--timeout-seconds`. AESDK runs Stata in batch mode through a local licensed Stata installation and runs R through `Rscript`. If the runtimes are not on `PATH`, set:
 
 ```bash
 AESDK_STATA="C:\Program Files\Stata18\StataMP-64.exe"
 AESDK_R="C:\Program Files\R\R-4.5.0\bin\Rscript.exe"
 ```
 
-Stata and R execution record `language=stata` or `language=r` in the `.aesdk.json` audit file. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. The R guard blocks shell calls, file deletion helpers, package installs, network `source`/`url` helpers, and `library()`/`require()` calls outside the AESDK R package allowlist. Python and R recipe packages are checked against the sandbox allowlists, so bundled recipes and governed execution stay aligned.
+Python, Stata, and R execution record `language=...` in the `.aesdk.json` audit file. When code does not already declare a seed, AESDK uses a date seed (`yyyymmdd`) and records it in the execution artifacts: Python seeds `random` and NumPy when available, Stata prepends `set seed yyyymmdd`, and R prepends `set.seed(yyyymmdd)`. If the researcher already declared a seed, AESDK preserves it and records that it was not injected. Stata logs are captured as execution artifacts when available, so the HTML workflow report can point reviewers to the actual run log. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. The R guard blocks shell calls, file deletion helpers, package installs, network `source`/`url` helpers, and `library()`/`require()` calls outside the AESDK R package allowlist. Python and R recipe packages are checked against the sandbox allowlists, so bundled recipes and governed execution stay aligned.
 
 ## Method Protocols
 
@@ -196,7 +221,7 @@ Each method protocol now declares its curriculum stage and topic tags, so an AI 
 
 Governance files and knowledge packs are organized by econometric topic or method, not by textbook author. Textbooks and papers remain registered as sources inside the rule or pack, but the file identity is the research decision being governed: `did`, `iv_2sls`, `panel_inference`, `citation_integrity`, and the method pack ids. This is deliberate: it helps AI agents treat sources as evidence rather than inventing author-specific doctrine.
 
-Every bundled method pack now has an executable governance rule file. AESDK currently ships 94 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
+Every bundled method pack now has an executable governance rule file. AESDK currently ships 95 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
 
 The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Gujarati, Verbeek, Heiss, World Bank impact evaluation material, J-PAL randomized-evaluation resources, critical RCT scope sources, recent Wooldridge DiD sources, and package documentation. Public source registry entries must include an online locator such as a DOI, publisher page, journal page, author page, or official package page. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
 
@@ -216,9 +241,10 @@ When AESDK runs analysis code, it writes a replication record:
 
 ```bash
 aesdk reproduce --blob .aesdk.json --replay
+aesdk agent report --blob .aesdk.json --output workflow.html
 ```
 
-This lets a supervisor, coauthor, or future RA inspect what was proposed, validated, and executed.
+This lets a supervisor, coauthor, or future RA inspect what was proposed, validated, and executed. The HTML report summarizes the workflow events, execution diagnostics, recorded artifacts, and nearby output files in the task folder.
 
 ## What AESDK Does Not Do
 

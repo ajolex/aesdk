@@ -115,6 +115,7 @@ class Project:
             or SandboxRunner(
                 mem_limit_mb=config.sandbox_mem_limit_mb,
                 cpu_limit_sec=config.sandbox_cpu_limit_sec,
+                artifact_dir=blob_target.parent,
             ),
             state_machine=state_machine,
             governance_passport=passport,
@@ -167,6 +168,7 @@ class Project:
         proposal: dict[str, Any] | None = None,
         *,
         language: str = "python",
+        timeout_seconds: int | None = None,
     ) -> SandboxResult:
         if proposal is not None:
             self.propose_model(proposal)
@@ -178,7 +180,7 @@ class Project:
 
         self.state_machine.on_execute()
         active_language = normalize_language(language)
-        sandbox_result = self.sandbox_runner.run(code, language=active_language)
+        sandbox_result = self.sandbox_runner.run(code, language=active_language, timeout_seconds=timeout_seconds)
         self.blob.record(
             "execute",
             trace_events.execute_payload(
@@ -186,6 +188,8 @@ class Project:
                 status=sandbox_result.status,
                 diagnostics=[item.to_dict() for item in sandbox_result.diagnostics],
                 language=active_language,
+                timeout_seconds=timeout_seconds,
+                artifacts=sandbox_result.artifacts,
             ),
         )
         self._flush()

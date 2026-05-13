@@ -42,7 +42,7 @@ This makes AESDK easier for RAs and professors to audit: a method is not just a 
 
 Rule files and knowledge packs are method/topic organized rather than author organized. For example, DiD rules live under a DiD rule file, while Angrist-Pischke, Callaway-Sant'Anna, Wooldridge, or other sources appear as supporting references inside the rules and source metadata. That separation reduces the chance that an AI agent treats a source name as a method or invents source-specific rules.
 
-Executable rule coverage now exists for every bundled method pack. AESDK ships 94 runnable governance rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The expanded methods still carry maturity labels where human econometrician review is pending, but they are no longer guidance-only.
+Executable rule coverage now exists for every bundled method pack. AESDK ships 95 runnable governance rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The expanded methods still carry maturity labels where human econometrician review is pending, but they are no longer guidance-only.
 
 The second layer is the Real Knowledge Pack system. A knowledge pack is a self-contained, source-anchored method guide with:
 
@@ -106,19 +106,28 @@ aesdk agent draft-pap --method did --goal "Estimate policy effects" --data panel
 
 The draft still needs researcher review.
 
+When a researcher starts from a task folder or assignment document, agents can use intake to create the starter files in the same folder:
+
+```bash
+aesdk agent intake --task Stata_Task.pdf --method did --output-dir .
+```
+
+The intake command extracts task text when possible, infers or accepts a method, and writes a reviewable `pap.yaml` and `proposal.json`. It is intentionally a first draft, not a substitute for the researcher checking the design.
+
 ### Governed Execution
 
 AESDK can run Python, Stata, or R code only after the analysis passes preflight:
 
 ```bash
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
-aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
+aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata --timeout-seconds 300
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.R --language r
 ```
 
 If the proposal is blocked, the code does not run.
 Stata runs require a licensed local Stata executable on `PATH` or in `AESDK_STATA`. R runs require `Rscript` on `PATH` or in `AESDK_R`.
 Python and R package imports are checked against the sandbox allowlists before execution. The bundled method-pack recipes are tested against those allowlists so AESDK does not recommend a package that its own execution guard would reject.
+When Python, Stata, or R code does not already declare a seed, AESDK uses a date seed (`yyyymmdd`) and records it in the execution artifacts. Python seeds `random` and NumPy when available, Stata prepends `set seed yyyymmdd`, and R prepends `set.seed(yyyymmdd)`. If the researcher already declared a seed, AESDK preserves it. Stata logs are captured as execution artifacts when available, which makes it easier to audit what happened during a `.do` file run.
 
 ### Reproducibility Record
 
@@ -128,9 +137,10 @@ Replay check:
 
 ```bash
 aesdk reproduce --blob .aesdk.json --replay
+aesdk agent report --blob .aesdk.json --output workflow.html
 ```
 
-This is useful for supervisors, coauthors, future RAs, and audit trails.
+This is useful for supervisors, coauthors, future RAs, and audit trails. The HTML report gives a plain workflow view of validation, execution, diagnostics, recorded run artifacts, and nearby task-folder outputs.
 
 ### Citation and Source Checks
 

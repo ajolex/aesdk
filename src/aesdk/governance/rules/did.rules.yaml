@@ -63,3 +63,16 @@ rules:
       book: "Mostly Harmless Econometrics"
       chapter: 5
       title: "Fixed Effects, Differences-in-Differences, and Panel Data"
+  - id: AP-DID-005
+    name: "Randomized-Design DiD Requires Provenance Note"
+    severity: "warning"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "design_origin == 'experimental_rct' and text_missing(design_note)"
+    requirement: "A DiD analysis that comes from randomized assignment or rollout should say so explicitly."
+    guidance: "Document what was randomized, why a DiD/event-study estimator is being used, and which experimental assumptions or spillover risks remain relevant."
+    reference:
+      authors: "Angrist, Joshua D.; Pischke, Jorn-Steffen"
+      book: "Mostly Harmless Econometrics"
+      chapter: 5
+      title: "Fixed Effects, Differences-in-Differences, and Panel Data"

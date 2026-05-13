@@ -102,6 +102,10 @@ properties:
           - other
       treatment_variable: {type: string}
       outcome_variable: {type: string}
+      design_origin:
+        type: string
+        enum: [experimental_rct, observational, natural_experiment, administrative_rollout, unknown]
+      design_note: {type: string}
       covariates:
         type: object
         required: [mandatory]
