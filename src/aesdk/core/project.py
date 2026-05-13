@@ -15,7 +15,7 @@ from aesdk.core.state_machine import ProjectStateMachine
 from aesdk.governance.pap import validate_pap_file
 from aesdk.governance.policy import compute_rulepack_hash, resolve_profile
 from aesdk.protocol.validator import RuleRegistry, ValidationResult, Validator
-from aesdk.sandbox.runner import SandboxResult, SandboxRunner
+from aesdk.sandbox.runner import SandboxResult, SandboxRunner, normalize_language
 from aesdk.trace import events as trace_events
 from aesdk.trace.blob import ReasoningLog, ReplicationBlob
 
@@ -161,7 +161,13 @@ class Project:
         self._flush()
         return result
 
-    def execute(self, code: str, proposal: dict[str, Any] | None = None) -> SandboxResult:
+    def execute(
+        self,
+        code: str,
+        proposal: dict[str, Any] | None = None,
+        *,
+        language: str = "python",
+    ) -> SandboxResult:
         if proposal is not None:
             self.propose_model(proposal)
         if self._last_validation is None:
@@ -171,13 +177,15 @@ class Project:
             raise GovernanceBlockError("Execution blocked by governance rules.")
 
         self.state_machine.on_execute()
-        sandbox_result = self.sandbox_runner.run_python(code)
+        active_language = normalize_language(language)
+        sandbox_result = self.sandbox_runner.run(code, language=active_language)
         self.blob.record(
             "execute",
             trace_events.execute_payload(
                 code=code,
                 status=sandbox_result.status,
                 diagnostics=[item.to_dict() for item in sandbox_result.diagnostics],
+                language=active_language,
             ),
         )
         self._flush()

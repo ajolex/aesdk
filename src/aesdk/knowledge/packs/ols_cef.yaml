@@ -1,0 +1,113 @@
+version: "0.1.0"
+method_id: "ols_cef"
+name: "OLS / Conditional Expectation Function"
+maturity:
+  status: "reviewed_guardrail"
+  source_review: "partial_multi_source"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "The estimand is a conditional mean relationship or a causal parameter justified by design."
+    - "The analysis can state treatment, outcome, covariates, and inference plan before estimation."
+  do_not_use_when:
+    - "The agent wants causal language but cannot state an identification assumption."
+    - "Covariates are chosen after seeing results without disclosure."
+estimand:
+  default: "Conditional mean slope or causal effect under a stated exogeneity/design assumption."
+  agent_instruction: "Separate descriptive CEF interpretation from causal interpretation."
+decision_tree:
+  - id: "ols-design-001"
+    if: "The goal is prediction or descriptive association."
+    then: "Use OLS/CEF language and avoid causal claims."
+  - id: "ols-design-002"
+    if: "The goal is causal and treatment is as-good-as-random conditional on controls."
+    then: "Use OLS with registered covariates and robust or clustered inference."
+  - id: "ols-design-003"
+    if: "Treatment varies at group level or observations are repeated."
+    then: "Use clustered inference at the assignment/repeated-observation level."
+assumptions:
+  - id: "ols-assumption-001"
+    plain: "The comparison after controls answers the research question."
+    formal: "Conditional mean independence or a design-specific exogeneity condition."
+    evidence: "Registered covariates, design narrative, and support checks."
+  - id: "ols-assumption-002"
+    plain: "The standard errors match the sampling or assignment structure."
+    formal: "Robust or clustered covariance is used when heteroskedasticity or dependence is plausible."
+    evidence: "Registered covariance type and clustering level."
+required_inputs:
+  - id: "ols-input-001"
+    name: "outcome_variable"
+    reason: "Defines the dependent variable."
+  - id: "ols-input-002"
+    name: "treatment_or_regressor"
+    reason: "Defines the coefficient of interest."
+  - id: "ols-input-003"
+    name: "covariates"
+    reason: "Prevents undisclosed post-hoc specification search."
+  - id: "ols-input-004"
+    name: "standard_errors"
+    reason: "Inference choice must match the design."
+diagnostics:
+  - id: "ols-diagnostic-001"
+    name: "support"
+    instruction: "Check overlap or support where causal interpretation is used."
+  - id: "ols-diagnostic-002"
+    name: "robust_inference"
+    instruction: "Use heteroskedasticity-robust inference unless conventional inference is justified."
+  - id: "ols-diagnostic-003"
+    name: "specification_curve"
+    instruction: "For sensitive causal claims, report registered alternative specifications."
+failure_modes:
+  - id: "ols-failure-001"
+    risk: "Causal language without identification."
+    response: "Block or rewrite as descriptive."
+  - id: "ols-failure-002"
+    risk: "Conventional standard errors with plausible heteroskedasticity or dependence."
+    response: "Warn or block under strict conformance."
+  - id: "ols-failure-003"
+    risk: "Post-hoc covariate selection."
+    response: "Require disclosure and move to robustness/specification-curve workflow."
+code_recipes:
+  - id: "ols-python-statsmodels"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels"
+    template: |
+      import statsmodels.formula.api as smf
+
+      fit = smf.ols("outcome ~ treatment + covariate_1 + covariate_2", data=df).fit(cov_type="HC1")
+      print(fit.summary())
+  - id: "ols-r-fixest"
+    language: "r"
+    package: "fixest"
+    source: "fixest"
+    template: |
+      library(fixest)
+
+      fit <- feols(outcome ~ treatment + covariate_1 + covariate_2, data = df, vcov = "hetero")
+      summary(fit)
+reporting_checklist:
+  - "State whether the estimate is descriptive or causal."
+  - "List all registered covariates."
+  - "Report covariance estimator and any clustering."
+  - "Discuss support, omitted-variable risk, and robustness checks."
+source_anchors:
+  - source_id: "wooldridge_cross_section_panel"
+    topics:
+      - "OLS assumptions and robust inference"
+    local_pdf_pages: [1, 2, 3, 4, 5, 253]
+  - source_id: "angrist_pischke_mhe"
+    topics:
+      - "Making Regression Make Sense"
+    local_pdf_pages: [37, 38, 40, 42]
+  - source_id: "stock_watson_intro_econometrics"
+    topics:
+      - "applied regression workflow"
+  - source_id: "heiss_using_r_intro_econometrics"
+    topics:
+      - "R implementation of OLS"
+  - source_id: "wooldridge_r_package"
+    topics:
+      - "teaching datasets for replication examples"

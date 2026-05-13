@@ -1,0 +1,118 @@
+version: "0.1.0"
+method_id: "limited_dependent"
+name: "Limited Dependent Variable Models"
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "The outcome is binary, censored, truncated, ordered, multinomial, fractional, or a count."
+    - "The analysis needs effects that respect the outcome support."
+  do_not_use_when:
+    - "The agent reports nonlinear coefficients as probability or count effects without transformation."
+    - "The estimator family does not match the outcome support."
+estimand:
+  default: "Marginal effect, predicted contrast, odds/log-rate coefficient, or latent-index parameter as explicitly declared."
+  agent_instruction: "State whether the report target is a coefficient, marginal effect, predicted probability, or expected count."
+decision_tree:
+  - id: "limited-design-001"
+    if: "Outcome is binary."
+    then: "Use logit/probit or a linear probability model with interpretation and inference explicitly justified."
+  - id: "limited-design-002"
+    if: "Outcome is censored or corner-solution."
+    then: "Consider Tobit or two-part models and state censoring assumptions."
+  - id: "limited-design-003"
+    if: "Outcome is a count."
+    then: "Use Poisson or negative binomial logic and check overdispersion."
+assumptions:
+  - id: "limited-assumption-001"
+    plain: "The model family matches the outcome's support."
+    formal: "The likelihood/quasi-likelihood or link function is appropriate for binary, count, censored, or ordered support."
+    evidence: "Outcome audit and family/link declaration."
+  - id: "limited-assumption-002"
+    plain: "Reported effects are on the intended scale."
+    formal: "Marginal effects or predicted contrasts are computed when coefficients are not directly interpretable as level effects."
+    evidence: "Post-estimation marginal-effect plan."
+required_inputs:
+  - id: "limited-input-001"
+    name: "outcome_type"
+    reason: "Determines estimator family."
+  - id: "limited-input-002"
+    name: "link_or_family"
+    reason: "Defines model interpretation."
+  - id: "limited-input-003"
+    name: "target_effect"
+    reason: "Prevents accidental reporting of raw coefficients."
+  - id: "limited-input-004"
+    name: "marginal_effect_plan"
+    reason: "Required for probability/count-scale reporting."
+diagnostics:
+  - id: "limited-diagnostic-001"
+    name: "marginal_effects"
+    instruction: "Report marginal effects or predicted contrasts where substantive interpretation requires them."
+  - id: "limited-diagnostic-002"
+    name: "convergence"
+    instruction: "Check optimizer convergence and numerical warnings."
+  - id: "limited-diagnostic-003"
+    name: "separation"
+    instruction: "Check complete or quasi-complete separation for binary outcomes."
+  - id: "limited-diagnostic-004"
+    name: "overdispersion"
+    instruction: "For counts, compare mean/variance and assess Poisson versus negative binomial or robust alternatives."
+failure_modes:
+  - id: "limited-failure-001"
+    risk: "Logit/probit coefficient interpreted as probability effect."
+    response: "Block or require marginal effects."
+  - id: "limited-failure-002"
+    risk: "Complete separation."
+    response: "Warn or block and revise model/data."
+  - id: "limited-failure-003"
+    risk: "Count model ignores overdispersion."
+    response: "Warn and require robust or alternative count specification."
+code_recipes:
+  - id: "limited-python-statsmodels-logit"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels_discrete"
+    template: |
+      import statsmodels.formula.api as smf
+
+      fit = smf.logit("binary_outcome ~ treatment + covariate_1 + covariate_2", data=df).fit()
+      print(fit.summary())
+      print(fit.get_margeff().summary())
+  - id: "limited-python-statsmodels-poisson"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels_discrete"
+    template: |
+      import statsmodels.formula.api as smf
+
+      fit = smf.poisson("count_outcome ~ treatment + covariate_1 + covariate_2", data=df).fit(cov_type="HC1")
+      print(fit.summary())
+reporting_checklist:
+  - "State outcome type, link/family, and target effect scale."
+  - "Report marginal effects or predicted contrasts when needed."
+  - "Report convergence, separation, and overdispersion checks."
+  - "Avoid causal language unless identification is separately justified."
+source_anchors:
+  - source_id: "greene_econometric_analysis"
+    topics:
+      - "limited dependent variable and nonlinear models"
+    local_pdf_pages: [179, 211, 212, 214, 450]
+  - source_id: "wooldridge_cross_section_panel"
+    topics:
+      - "binary response and nonlinear models"
+    local_pdf_pages: [534, 535, 536, 537, 538, 539]
+  - source_id: "stock_watson_intro_econometrics"
+    topics:
+      - "applied binary outcome and nonlinear model discussion"
+    local_pdf_pages: [393, 394, 398, 400]
+audit:
+  stage: "ai_reviewed_pending_human"
+  audit_report: "docs/deep_knowledge_audit_report.yaml"
+  notes:
+    - "Local Greene, Wooldridge, and Stock-Watson anchors were checked against page-level limited-dependent/nonlinear keyword evidence."
+    - "Interpretation guidance was kept conservative to avoid overclaiming causal validity."

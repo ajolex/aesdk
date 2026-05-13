@@ -1,0 +1,1833 @@
+version: 0.1.0
+policy:
+  stores_textbook_text: false
+  stores_page_locators: true
+  requires_human_review_for_maturity_upgrade: true
+scanned_sources:
+- file_name: econometric_analysis_by_greence.pdf
+  local_path: tools/econometric_analysis_by_greence.pdf
+  topics:
+    ols_cef:
+      candidate_pages: &id001
+      - 8
+      - 9
+      - 12
+      - 65
+      - 87
+      - 88
+      - 116
+      - 170
+      - 202
+      - 219
+      - 223
+      - 224
+      - 232
+      - 237
+      - 238
+      - 239
+      - 241
+      - 242
+      - 244
+      - 247
+      keyword_hits: &id002
+        ordinary least squares: 101
+        conditional expectation: 2
+        robust standard errors: 1
+    iv_2sls:
+      candidate_pages: &id015
+      - 7
+      - 8
+      - 9
+      - 10
+      - 12
+      - 100
+      - 102
+      - 104
+      - 105
+      - 108
+      - 111
+      - 112
+      - 113
+      - 114
+      - 115
+      - 116
+      - 168
+      - 205
+      - 206
+      - 207
+      keyword_hits: &id016
+        instrumental variables: 116
+        two-stage least squares: 15
+        2sls: 69
+        weak instruments: 1
+    panel_fe:
+      candidate_pages: &id029
+      - 3
+      - 9
+      - 10
+      - 11
+      - 14
+      - 16
+      - 17
+      - 22
+      - 23
+      - 24
+      - 30
+      - 90
+      - 97
+      - 100
+      - 108
+      - 116
+      - 165
+      - 217
+      - 238
+      - 275
+      keyword_hits: &id030
+        panel data: 135
+        serial correlation: 50
+        fixed effects: 18
+        unobserved effects: 2
+    rdd:
+      candidate_pages: &id059
+      - 165
+      - 474
+      - 479
+      - 480
+      - 481
+      - 483
+      - 491
+      - 492
+      - 728
+      - 730
+      - 732
+      keyword_hits: &id060
+        bandwidth: 23
+    matching:
+      candidate_pages: &id069
+      - 10
+      - 143
+      - 318
+      - 321
+      - 343
+      - 359
+      - 361
+      - 445
+      - 482
+      - 491
+      - 698
+      - 700
+      - 701
+      - 709
+      - 710
+      - 714
+      - 748
+      - 755
+      - 777
+      - 778
+      keyword_hits: &id070
+        balance: 20
+        nearest neighbor: 2
+        matched: 1
+    nonlinear_did:
+      candidate_pages: &id097
+      - 16
+      - 17
+      - 108
+      - 179
+      - 211
+      - 212
+      - 214
+      - 450
+      - 465
+      - 466
+      - 467
+      - 470
+      - 474
+      - 480
+      - 481
+      - 483
+      - 490
+      - 491
+      - 495
+      - 496
+      keyword_hits: &id098
+        logit: 169
+        poisson: 104
+        binary outcome: 1
+    gmm:
+      candidate_pages: &id111
+      - 3
+      - 9
+      - 10
+      - 11
+      - 12
+      - 14
+      - 22
+      - 31
+      - 68
+      - 164
+      - 165
+      - 166
+      - 167
+      - 168
+      - 190
+      - 194
+      - 207
+      - 214
+      - 217
+      - 226
+      keyword_hits: &id112
+        generalized method of moments: 49
+        gmm: 265
+        weighting matrix: 41
+        overidentifying restrictions: 13
+        moment conditions: 11
+    limited_dependent:
+      candidate_pages: &id121
+      - 3
+      - 16
+      - 17
+      - 22
+      - 23
+      - 31
+      - 108
+      - 179
+      - 211
+      - 212
+      - 214
+      - 309
+      - 450
+      - 465
+      - 466
+      - 467
+      - 468
+      - 470
+      - 474
+      - 477
+      keyword_hits: &id122
+        limited dependent: 56
+        logit: 169
+        probit: 192
+        tobit: 73
+        poisson: 104
+        negative binomial: 25
+        binary response: 2
+    time_series:
+      candidate_pages: &id137
+      - 3
+      - 9
+      - 10
+      - 14
+      - 15
+      - 23
+      - 24
+      - 30
+      - 31
+      - 58
+      - 84
+      - 86
+      - 90
+      - 92
+      - 98
+      - 99
+      - 100
+      - 101
+      - 116
+      - 118
+      keyword_hits: &id138
+        serial correlation: 50
+        time series: 103
+        forecast: 129
+        stationary: 131
+        unit root: 38
+        cointegration: 41
+        arima: 3
+- file_name: FlorianHeiss.pdf
+  local_path: tools/FlorianHeiss.pdf
+  topics:
+    ols_cef:
+      candidate_pages: &id003
+      - 179
+      - 220
+      - 244
+      - 247
+      keyword_hits: &id004
+        robust standard errors: 4
+    iv_2sls:
+      candidate_pages: &id017
+      - 5
+      - 18
+      - 122
+      - 235
+      - 247
+      - 248
+      - 250
+      - 251
+      - 252
+      - 253
+      - 254
+      - 255
+      - 257
+      - 258
+      - 259
+      - 260
+      - 261
+      - 359
+      - 360
+      - 373
+      keyword_hits: &id018
+        instrumental variables: 26
+        2sls: 43
+    panel_fe:
+      candidate_pages: &id031
+      - 5
+      - 18
+      - 122
+      - 195
+      - 215
+      - 216
+      - 217
+      - 218
+      - 220
+      - 222
+      - 225
+      - 226
+      - 228
+      - 229
+      - 230
+      - 231
+      - 232
+      - 234
+      - 235
+      - 236
+      keyword_hits: &id032
+        fixed effects: 2
+        panel data: 52
+        serial correlation: 27
+        unobserved effects: 5
+        clustered standard errors: 2
+    did:
+      candidate_pages: &id045
+      - 5
+      - 225
+      - 226
+      - 227
+      - 374
+      keyword_hits: &id046
+        difference-in-differences: 6
+    rdd:
+      candidate_pages: &id061
+      - 61
+      - 63
+      - 137
+      keyword_hits: &id062
+        bandwidth: 2
+        cutoff: 1
+    matching:
+      candidate_pages: &id071
+      - 229
+      - 230
+      - 234
+      - 235
+      - 236
+      - 237
+      - 243
+      - 255
+      keyword_hits: &id072
+        balance: 14
+    nonlinear_did:
+      candidate_pages: &id099
+      - 5
+      - 65
+      - 66
+      - 265
+      - 266
+      - 269
+      - 270
+      - 271
+      - 272
+      - 273
+      - 274
+      - 275
+      - 276
+      - 361
+      - 362
+      - 363
+      - 375
+      - 376
+      keyword_hits: &id100
+        poisson: 40
+        logit: 56
+    gmm:
+      candidate_pages: &id113
+      - 5
+      - 253
+      - 376
+      keyword_hits: &id114
+        overidentifying restrictions: 4
+    limited_dependent:
+      candidate_pages: &id123
+      - 5
+      - 9
+      - 18
+      - 65
+      - 66
+      - 263
+      - 264
+      - 265
+      - 266
+      - 267
+      - 268
+      - 269
+      - 270
+      - 271
+      - 272
+      - 273
+      - 274
+      - 275
+      - 276
+      - 277
+      keyword_hits: &id124
+        limited dependent: 13
+        binary response: 13
+        logit: 56
+        probit: 66
+        tobit: 31
+        poisson: 40
+    time_series:
+      candidate_pages: &id139
+      - 5
+      - 9
+      - 10
+      - 12
+      - 18
+      - 19
+      - 193
+      - 195
+      - 196
+      - 197
+      - 198
+      - 199
+      - 200
+      - 201
+      - 202
+      - 203
+      - 204
+      - 205
+      - 207
+      - 208
+      keyword_hits: &id140
+        time series: 128
+        unit root: 22
+        serial correlation: 27
+        cointegration: 9
+        forecast: 33
+        stationary: 3
+        arima: 2
+- file_name: JamesHStock.pdf
+  local_path: tools/JamesHStock.pdf
+  topics:
+    ols_cef:
+      candidate_pages: &id005
+      - 9
+      - 10
+      - 11
+      - 18
+      - 19
+      - 20
+      - 26
+      - 29
+      - 32
+      - 33
+      - 35
+      - 68
+      - 69
+      - 70
+      - 80
+      - 93
+      - 100
+      - 122
+      - 145
+      - 149
+      keyword_hits: &id006
+        conditional expectation: 54
+        ordinary least squares: 41
+        heteroskedasticity: 235
+        robust standard errors: 42
+    iv_2sls:
+      candidate_pages: &id019
+      - 6
+      - 15
+      - 16
+      - 21
+      - 23
+      - 26
+      - 29
+      - 30
+      - 31
+      - 33
+      - 35
+      - 36
+      - 37
+      - 38
+      - 337
+      - 340
+      - 343
+      - 382
+      - 428
+      - 429
+      keyword_hits: &id020
+        instrumental variables: 123
+        weak instruments: 32
+        first stage: 11
+    panel_fe:
+      candidate_pages: &id033
+      - 6
+      - 14
+      - 15
+      - 17
+      - 22
+      - 23
+      - 30
+      - 35
+      - 37
+      - 38
+      - 51
+      - 53
+      - 54
+      - 55
+      - 336
+      - 344
+      - 345
+      - 346
+      - 362
+      - 363
+      keyword_hits: &id034
+        panel data: 126
+        fixed effects: 155
+        serial correlation: 35
+        clustered standard errors: 29
+    did:
+      candidate_pages: &id047
+      - 16
+      - 493
+      - 494
+      - 495
+      - 504
+      - 505
+      - 508
+      - 509
+      - 772
+      - 778
+      - 787
+      - 788
+      - 789
+      - 795
+      keyword_hits: &id048
+        differences-in-differences: 30
+    rdd:
+      candidate_pages: &id063
+      - 16
+      - 410
+      - 425
+      - 426
+      - 448
+      - 492
+      - 496
+      - 497
+      - 505
+      - 783
+      - 789
+      - 790
+      - 795
+      - 796
+      keyword_hits: &id064
+        regression discontinuity: 19
+        cutoff: 6
+    matching:
+      candidate_pages: &id073
+      - 86
+      - 288
+      - 363
+      - 374
+      - 383
+      - 386
+      - 387
+      - 484
+      - 489
+      - 527
+      - 577
+      - 582
+      - 623
+      - 678
+      - 776
+      - 784
+      - 786
+      - 794
+      - 797
+      keyword_hits: &id074
+        balance: 26
+    synthetic_control:
+      candidate_pages: &id087
+      - 475
+      - 481
+      - 506
+      keyword_hits: &id088
+        placebo: 4
+    nonlinear_did:
+      candidate_pages: &id101
+      - 14
+      - 23
+      - 30
+      - 33
+      - 393
+      - 394
+      - 398
+      - 400
+      - 402
+      - 403
+      - 404
+      - 405
+      - 406
+      - 407
+      - 408
+      - 410
+      - 411
+      - 412
+      - 414
+      - 415
+      keyword_hits: &id102
+        logit: 106
+        binary outcome: 1
+        poisson: 1
+    gmm:
+      candidate_pages: &id115
+      - 21
+      - 31
+      - 38
+      - 449
+      - 450
+      - 453
+      - 455
+      - 457
+      - 461
+      - 462
+      - 503
+      - 682
+      - 702
+      - 714
+      - 715
+      - 730
+      - 731
+      - 734
+      - 736
+      - 738
+      keyword_hits: &id116
+        generalized method of moments: 19
+        gmm: 106
+        overidentifying restrictions: 20
+        moment conditions: 4
+        weighting matrix: 1
+    limited_dependent:
+      candidate_pages: &id125
+      - 14
+      - 23
+      - 30
+      - 33
+      - 37
+      - 38
+      - 393
+      - 394
+      - 398
+      - 399
+      - 400
+      - 401
+      - 402
+      - 403
+      - 404
+      - 405
+      - 406
+      - 407
+      - 408
+      - 410
+      keyword_hits: &id126
+        limited dependent: 15
+        logit: 106
+        probit: 155
+        binary response: 1
+        tobit: 4
+        poisson: 1
+        negative binomial: 1
+    time_series:
+      candidate_pages: &id141
+      - 6
+      - 8
+      - 17
+      - 18
+      - 19
+      - 22
+      - 23
+      - 24
+      - 26
+      - 28
+      - 29
+      - 30
+      - 32
+      - 33
+      - 36
+      - 37
+      - 38
+      - 39
+      - 40
+      - 44
+      keyword_hits: &id142
+        time series: 339
+        forecast: 736
+        serial correlation: 35
+        unit root: 54
+        cointegration: 34
+        stationary: 82
+- file_name: MostlyHarmlessEconometrics.pdf
+  local_path: tools/MostlyHarmlessEconometrics.pdf
+  topics:
+    ols_cef:
+      candidate_pages: &id007
+      - 3
+      - 5
+      - 10
+      - 22
+      - 31
+      - 33
+      - 38
+      - 39
+      - 40
+      - 47
+      - 48
+      - 51
+      - 52
+      - 82
+      - 85
+      - 108
+      - 121
+      - 122
+      - 123
+      - 137
+      keyword_hits: &id008
+        conditional expectation: 12
+        robust standard errors: 31
+        heteroskedasticity: 41
+        ordinary least squares: 2
+    iv_2sls:
+      candidate_pages: &id021
+      - 4
+      - 7
+      - 9
+      - 11
+      - 12
+      - 15
+      - 86
+      - 99
+      - 100
+      - 101
+      - 104
+      - 105
+      - 106
+      - 107
+      - 108
+      - 109
+      - 110
+      - 111
+      - 114
+      - 115
+      keyword_hits: &id022
+        two-stage least squares: 5
+        2sls: 297
+        first stage: 5
+        instrumental variables: 58
+        weak instruments: 8
+    panel_fe:
+      candidate_pages: &id035
+      - 4
+      - 5
+      - 96
+      - 182
+      - 183
+      - 184
+      - 185
+      - 186
+      - 188
+      - 190
+      - 192
+      - 194
+      - 196
+      - 198
+      - 199
+      - 200
+      - 201
+      - 202
+      - 237
+      - 238
+      keyword_hits: &id036
+        panel data: 28
+        serial correlation: 33
+        fixed effects: 14
+        clustered standard errors: 3
+    did:
+      candidate_pages: &id049
+      - 185
+      - 187
+      - 189
+      - 191
+      - 193
+      - 195
+      - 197
+      keyword_hits: &id050
+        differences-in-differences: 7
+    rdd:
+      candidate_pages: &id065
+      - 5
+      - 7
+      - 15
+      - 205
+      - 206
+      - 207
+      - 208
+      - 209
+      - 210
+      - 212
+      - 214
+      - 216
+      - 218
+      - 264
+      - 268
+      - 278
+      - 284
+      - 286
+      - 287
+      - 289
+      keyword_hits: &id066
+        regression discontinuity: 19
+        bandwidth: 3
+        running variable: 1
+        density test: 1
+    matching:
+      candidate_pages: &id075
+      - 3
+      - 4
+      - 9
+      - 30
+      - 32
+      - 34
+      - 38
+      - 58
+      - 59
+      - 63
+      - 67
+      - 68
+      - 69
+      - 70
+      - 72
+      - 73
+      - 75
+      - 76
+      - 77
+      - 78
+      keyword_hits: &id076
+        matching: 97
+        propensity score: 41
+        balance: 8
+        matched: 1
+        common support: 6
+    synthetic_control:
+      candidate_pages: &id089
+      - 273
+      keyword_hits: &id090
+        synthetic control: 1
+        comparative case: 1
+    nonlinear_did:
+      candidate_pages: &id103
+      - 76
+      - 77
+      - 163
+      - 210
+      - 211
+      keyword_hits: &id104
+        logit: 5
+    gmm:
+      candidate_pages: &id117
+      - 121
+      - 122
+      - 123
+      - 124
+      - 125
+      - 264
+      - 273
+      - 282
+      - 287
+      - 289
+      keyword_hits: &id118
+        generalized method of moments: 5
+        gmm: 11
+        moment conditions: 1
+        weighting matrix: 5
+    limited_dependent:
+      candidate_pages: &id127
+      - 4
+      - 9
+      - 54
+      - 75
+      - 76
+      - 77
+      - 85
+      - 86
+      - 88
+      - 90
+      - 91
+      - 92
+      - 93
+      - 94
+      - 95
+      - 96
+      - 151
+      - 159
+      - 163
+      - 164
+      keyword_hits: &id128
+        limited dependent: 10
+        probit: 47
+        tobit: 28
+        logit: 5
+    time_series:
+      candidate_pages: &id143
+      - 5
+      - 78
+      - 96
+      - 97
+      - 201
+      - 237
+      - 238
+      - 247
+      - 249
+      - 251
+      - 252
+      - 253
+      - 254
+      - 255
+      - 256
+      - 263
+      keyword_hits: &id144
+        serial correlation: 33
+        time series: 8
+        stationary: 3
+- file_name: US25_Wooldridge.pdf
+  local_path: tools/US25_Wooldridge.pdf
+  topics:
+    panel_fe:
+      candidate_pages: &id037
+      - 7
+      keyword_hits: &id038
+        panel data: 1
+    did:
+      candidate_pages: &id051
+      - 1
+      - 2
+      - 3
+      - 10
+      - 20
+      - 30
+      keyword_hits: &id052
+        difference-in-differences: 1
+        staggered: 3
+        event study: 2
+        parallel trends: 1
+    matching:
+      candidate_pages: &id077
+      - 5
+      - 6
+      - 7
+      keyword_hits: &id078
+        balance: 3
+        matching: 1
+    synthetic_control:
+      candidate_pages: &id091
+      - 15
+      keyword_hits: &id092
+        treated unit: 2
+- file_name: utad016.pdf
+  local_path: tools/utad016.pdf
+  topics:
+    ols_cef:
+      candidate_pages: &id009
+      - 1
+      - 2
+      - 3
+      - 9
+      - 12
+      - 18
+      - 30
+      keyword_hits: &id010
+        ordinary least squares: 3
+        conditional expectation: 3
+        heteroskedasticity: 1
+    panel_fe:
+      candidate_pages: &id039
+      - 1
+      - 3
+      - 5
+      - 6
+      - 7
+      - 9
+      - 11
+      - 12
+      - 13
+      - 15
+      - 17
+      - 19
+      - 21
+      - 23
+      - 25
+      - 26
+      - 27
+      - 29
+      - 31
+      - 32
+      keyword_hits: &id040
+        panel data: 25
+        unobserved effects: 2
+        serial correlation: 5
+        fixed effects: 1
+    did:
+      candidate_pages: &id053
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 9
+      - 14
+      - 15
+      - 22
+      - 23
+      - 24
+      - 25
+      - 27
+      - 28
+      - 29
+      - 32
+      - 33
+      keyword_hits: &id054
+        difference-in-differences: 1
+        parallel trends: 8
+        event study: 7
+        staggered: 19
+        differences-in-differences: 1
+    matching:
+      candidate_pages: &id079
+      - 13
+      - 32
+      - 33
+      keyword_hits: &id080
+        propensity score: 1
+        matching: 1
+        balance: 1
+    synthetic_control:
+      candidate_pages: &id093
+      - 1
+      - 6
+      - 7
+      - 8
+      - 9
+      - 11
+      - 13
+      - 15
+      - 16
+      - 24
+      - 27
+      keyword_hits: &id094
+        treated unit: 16
+    nonlinear_did:
+      candidate_pages: &id105
+      - 1
+      - 2
+      - 3
+      - 12
+      - 14
+      - 17
+      - 21
+      - 22
+      - 24
+      - 25
+      - 26
+      - 27
+      - 31
+      - 32
+      keyword_hits: &id106
+        nonlinear difference-in-differences: 1
+        poisson: 31
+        logit: 21
+        binary outcome: 2
+    limited_dependent:
+      candidate_pages: &id129
+      - 1
+      - 3
+      - 9
+      - 12
+      - 13
+      - 14
+      - 17
+      - 21
+      - 22
+      - 24
+      - 25
+      - 26
+      - 27
+      - 31
+      - 32
+      keyword_hits: &id130
+        logit: 21
+        poisson: 31
+        binary response: 3
+        probit: 4
+        limited dependent: 1
+        tobit: 3
+    time_series:
+      candidate_pages: &id145
+      - 6
+      - 12
+      - 17
+      - 26
+      - 32
+      keyword_hits: &id146
+        serial correlation: 5
+        time series: 1
+- file_name: Wooldridge.pdf
+  local_path: tools/Wooldridge.pdf
+  topics:
+    ols_cef:
+      candidate_pages: &id011
+      - 27
+      - 30
+      - 31
+      - 53
+      - 54
+      - 55
+      - 59
+      - 60
+      - 66
+      - 69
+      - 70
+      - 71
+      - 72
+      - 87
+      - 93
+      - 100
+      - 102
+      - 103
+      - 105
+      - 137
+      keyword_hits: &id012
+        ordinary least squares: 30
+        conditional expectation: 27
+        heteroskedasticity: 353
+        robust standard errors: 45
+    iv_2sls:
+      candidate_pages: &id023
+      - 466
+      - 467
+      - 468
+      - 470
+      - 471
+      - 472
+      - 473
+      - 474
+      - 476
+      - 478
+      - 479
+      - 480
+      - 481
+      - 482
+      - 483
+      - 484
+      - 485
+      - 486
+      - 487
+      - 488
+      keyword_hits: &id024
+        instrumental variables: 76
+        2sls: 150
+        first stage: 4
+    panel_fe:
+      candidate_pages: &id041
+      - 11
+      - 12
+      - 13
+      - 14
+      - 18
+      - 19
+      - 20
+      - 93
+      - 295
+      - 323
+      - 324
+      - 326
+      - 338
+      - 345
+      - 358
+      - 359
+      - 369
+      - 371
+      - 380
+      - 381
+      keyword_hits: &id042
+        panel data: 191
+        serial correlation: 232
+        fixed effects: 87
+        unobserved effects: 28
+    did:
+      candidate_pages: &id055
+      - 330
+      - 332
+      - 345
+      - 390
+      - 394
+      - 409
+      - 418
+      - 419
+      - 422
+      - 432
+      - 438
+      - 807
+      keyword_hits: &id056
+        event study: 9
+        difference-in-differences: 5
+    matching:
+      candidate_pages: &id081
+      - 63
+      - 434
+      - 438
+      - 446
+      - 453
+      - 454
+      - 455
+      - 459
+      - 460
+      - 461
+      - 495
+      - 629
+      - 642
+      - 645
+      - 732
+      - 743
+      - 788
+      - 804
+      - 811
+      - 813
+      keyword_hits: &id082
+        matched: 12
+        balance: 24
+        matching: 1
+    nonlinear_did:
+      candidate_pages: &id107
+      - 236
+      - 534
+      - 535
+      - 537
+      - 538
+      - 539
+      - 540
+      - 541
+      - 542
+      - 543
+      - 544
+      - 545
+      - 546
+      - 547
+      - 551
+      - 552
+      - 553
+      - 554
+      - 555
+      - 556
+      keyword_hits: &id108
+        binary outcome: 4
+        logit: 60
+        poisson: 56
+    gmm:
+      candidate_pages: &id119
+      - 487
+      - 489
+      - 490
+      - 496
+      - 520
+      - 521
+      - 531
+      - 813
+      keyword_hits: &id120
+        overidentifying restrictions: 13
+    limited_dependent:
+      candidate_pages: &id131
+      - 236
+      - 244
+      - 534
+      - 535
+      - 536
+      - 537
+      - 538
+      - 539
+      - 540
+      - 541
+      - 542
+      - 543
+      - 544
+      - 545
+      - 546
+      - 547
+      - 548
+      - 549
+      - 550
+      - 551
+      keyword_hits: &id132
+        binary response: 25
+        limited dependent: 31
+        logit: 60
+        probit: 78
+        tobit: 73
+        poisson: 56
+    time_series:
+      candidate_pages: &id147
+      - 2
+      - 9
+      - 10
+      - 11
+      - 14
+      - 18
+      - 19
+      - 20
+      - 47
+      - 51
+      - 93
+      - 165
+      - 194
+      - 314
+      - 315
+      - 316
+      - 317
+      - 318
+      - 319
+      - 320
+      keyword_hits: &id148
+        time series: 435
+        forecast: 294
+        serial correlation: 232
+        stationary: 52
+        unit root: 98
+        cointegration: 30
+- file_name: wooldridgePackage.pdf
+  local_path: tools/wooldridgePackage.pdf
+  topics:
+    iv_2sls:
+      candidate_pages: &id025
+      - 65
+      - 143
+      keyword_hits: &id026
+        instrumental variables: 2
+    panel_fe:
+      candidate_pages: &id043
+      - 7
+      - 13
+      - 22
+      - 25
+      - 43
+      - 52
+      - 58
+      - 62
+      - 79
+      - 99
+      - 113
+      - 124
+      - 127
+      - 142
+      keyword_hits: &id044
+        fixed effects: 5
+        panel data: 9
+        serial correlation: 1
+    matching:
+      candidate_pages: &id083
+      - 13
+      - 22
+      - 42
+      - 130
+      keyword_hits: &id084
+        matched: 2
+        balance: 2
+    nonlinear_did:
+      candidate_pages: &id109
+      - 6
+      - 62
+      - 89
+      - 91
+      - 114
+      - 133
+      keyword_hits: &id110
+        poisson: 6
+        logit: 4
+    limited_dependent:
+      candidate_pages: &id133
+      - 6
+      - 33
+      - 62
+      - 67
+      - 89
+      - 91
+      - 114
+      - 133
+      keyword_hits: &id134
+        logit: 4
+        probit: 5
+        poisson: 6
+        tobit: 3
+        binary response: 1
+    time_series:
+      candidate_pages: &id149
+      - 35
+      - 127
+      keyword_hits: &id150
+        time series: 1
+        serial correlation: 1
+- file_name: WorldBankImpactEval.pdf
+  local_path: tools/WorldBankImpactEval.pdf
+  topics:
+    ols_cef:
+      candidate_pages: &id013
+      - 200
+      keyword_hits: &id014
+        ordinary least squares: 1
+    iv_2sls:
+      candidate_pages: &id027
+      - 8
+      - 11
+      - 19
+      - 29
+      - 75
+      - 119
+      - 120
+      - 121
+      - 123
+      - 125
+      - 127
+      - 129
+      - 131
+      - 133
+      - 135
+      - 137
+      - 139
+      - 141
+      - 159
+      - 180
+      keyword_hits: &id028
+        instrumental variables: 30
+    did:
+      candidate_pages: &id057
+      - 8
+      - 11
+      - 13
+      - 14
+      - 15
+      - 75
+      - 100
+      - 160
+      - 161
+      - 162
+      - 163
+      - 164
+      - 165
+      - 166
+      - 167
+      - 168
+      - 169
+      - 170
+      - 171
+      - 178
+      keyword_hits: &id058
+        difference-in-differences: 53
+    rdd:
+      candidate_pages: &id067
+      - 8
+      - 11
+      - 14
+      - 19
+      - 29
+      - 75
+      - 143
+      - 144
+      - 145
+      - 146
+      - 147
+      - 148
+      - 149
+      - 150
+      - 151
+      - 153
+      - 154
+      - 155
+      - 156
+      - 157
+      keyword_hits: &id068
+        regression discontinuity: 50
+        cutoff: 97
+        bandwidth: 4
+    matching:
+      candidate_pages: &id085
+      - 8
+      - 11
+      - 13
+      - 14
+      - 15
+      - 19
+      - 39
+      - 45
+      - 75
+      - 109
+      - 111
+      - 113
+      - 115
+      - 116
+      - 140
+      - 155
+      - 159
+      - 173
+      - 174
+      - 175
+      keyword_hits: &id086
+        matching: 131
+        propensity score: 45
+        matched: 37
+        common support: 18
+        balance: 26
+        nearest neighbor: 2
+    synthetic_control:
+      candidate_pages: &id095
+      - 11
+      - 123
+      - 141
+      - 167
+      - 168
+      - 169
+      - 174
+      - 178
+      - 180
+      - 181
+      - 307
+      - 361
+      - 364
+      keyword_hits: &id096
+        synthetic control: 8
+        treated unit: 23
+        placebo: 10
+    limited_dependent:
+      candidate_pages: &id135
+      - 182
+      keyword_hits: &id136
+        probit: 1
+    time_series:
+      candidate_pages: &id151
+      - 213
+      - 326
+      keyword_hits: &id152
+        arima: 1
+        time series: 1
+coverage:
+  ols_cef:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id001
+      keyword_hits: *id002
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id003
+      keyword_hits: *id004
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id005
+      keyword_hits: *id006
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id007
+      keyword_hits: *id008
+    - file_name: utad016.pdf
+      candidate_pages: *id009
+      keyword_hits: *id010
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id011
+      keyword_hits: *id012
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id013
+      keyword_hits: *id014
+    suggested_next_action: human_audit_candidate_pages
+  iv_2sls:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id015
+      keyword_hits: *id016
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id017
+      keyword_hits: *id018
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id019
+      keyword_hits: *id020
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id021
+      keyword_hits: *id022
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id023
+      keyword_hits: *id024
+    - file_name: wooldridgePackage.pdf
+      candidate_pages: *id025
+      keyword_hits: *id026
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id027
+      keyword_hits: *id028
+    suggested_next_action: human_audit_candidate_pages
+  panel_fe:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id029
+      keyword_hits: *id030
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id031
+      keyword_hits: *id032
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id033
+      keyword_hits: *id034
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id035
+      keyword_hits: *id036
+    - file_name: US25_Wooldridge.pdf
+      candidate_pages: *id037
+      keyword_hits: *id038
+    - file_name: utad016.pdf
+      candidate_pages: *id039
+      keyword_hits: *id040
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id041
+      keyword_hits: *id042
+    - file_name: wooldridgePackage.pdf
+      candidate_pages: *id043
+      keyword_hits: *id044
+    suggested_next_action: human_audit_candidate_pages
+  did:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id045
+      keyword_hits: *id046
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id047
+      keyword_hits: *id048
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id049
+      keyword_hits: *id050
+    - file_name: US25_Wooldridge.pdf
+      candidate_pages: *id051
+      keyword_hits: *id052
+    - file_name: utad016.pdf
+      candidate_pages: *id053
+      keyword_hits: *id054
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id055
+      keyword_hits: *id056
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id057
+      keyword_hits: *id058
+    suggested_next_action: human_audit_candidate_pages
+  rdd:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id059
+      keyword_hits: *id060
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id061
+      keyword_hits: *id062
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id063
+      keyword_hits: *id064
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id065
+      keyword_hits: *id066
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id067
+      keyword_hits: *id068
+    suggested_next_action: human_audit_candidate_pages
+  matching:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id069
+      keyword_hits: *id070
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id071
+      keyword_hits: *id072
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id073
+      keyword_hits: *id074
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id075
+      keyword_hits: *id076
+    - file_name: US25_Wooldridge.pdf
+      candidate_pages: *id077
+      keyword_hits: *id078
+    - file_name: utad016.pdf
+      candidate_pages: *id079
+      keyword_hits: *id080
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id081
+      keyword_hits: *id082
+    - file_name: wooldridgePackage.pdf
+      candidate_pages: *id083
+      keyword_hits: *id084
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id085
+      keyword_hits: *id086
+    suggested_next_action: human_audit_candidate_pages
+  synthetic_control:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id087
+      keyword_hits: *id088
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id089
+      keyword_hits: *id090
+    - file_name: US25_Wooldridge.pdf
+      candidate_pages: *id091
+      keyword_hits: *id092
+    - file_name: utad016.pdf
+      candidate_pages: *id093
+      keyword_hits: *id094
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id095
+      keyword_hits: *id096
+    suggested_next_action: human_audit_candidate_pages
+  nonlinear_did:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id097
+      keyword_hits: *id098
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id099
+      keyword_hits: *id100
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id101
+      keyword_hits: *id102
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id103
+      keyword_hits: *id104
+    - file_name: utad016.pdf
+      candidate_pages: *id105
+      keyword_hits: *id106
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id107
+      keyword_hits: *id108
+    - file_name: wooldridgePackage.pdf
+      candidate_pages: *id109
+      keyword_hits: *id110
+    suggested_next_action: human_audit_candidate_pages
+  gmm:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id111
+      keyword_hits: *id112
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id113
+      keyword_hits: *id114
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id115
+      keyword_hits: *id116
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id117
+      keyword_hits: *id118
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id119
+      keyword_hits: *id120
+    suggested_next_action: human_audit_candidate_pages
+  limited_dependent:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id121
+      keyword_hits: *id122
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id123
+      keyword_hits: *id124
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id125
+      keyword_hits: *id126
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id127
+      keyword_hits: *id128
+    - file_name: utad016.pdf
+      candidate_pages: *id129
+      keyword_hits: *id130
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id131
+      keyword_hits: *id132
+    - file_name: wooldridgePackage.pdf
+      candidate_pages: *id133
+      keyword_hits: *id134
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id135
+      keyword_hits: *id136
+    suggested_next_action: human_audit_candidate_pages
+  time_series:
+    pack_exists: true
+    duplicate_ids: {}
+    long_text_warnings: []
+    source_hits:
+    - file_name: econometric_analysis_by_greence.pdf
+      candidate_pages: *id137
+      keyword_hits: *id138
+    - file_name: FlorianHeiss.pdf
+      candidate_pages: *id139
+      keyword_hits: *id140
+    - file_name: JamesHStock.pdf
+      candidate_pages: *id141
+      keyword_hits: *id142
+    - file_name: MostlyHarmlessEconometrics.pdf
+      candidate_pages: *id143
+      keyword_hits: *id144
+    - file_name: utad016.pdf
+      candidate_pages: *id145
+      keyword_hits: *id146
+    - file_name: Wooldridge.pdf
+      candidate_pages: *id147
+      keyword_hits: *id148
+    - file_name: wooldridgePackage.pdf
+      candidate_pages: *id149
+      keyword_hits: *id150
+    - file_name: WorldBankImpactEval.pdf
+      candidate_pages: *id151
+      keyword_hits: *id152
+    suggested_next_action: human_audit_candidate_pages

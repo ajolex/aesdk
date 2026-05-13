@@ -12,15 +12,56 @@ It does three main things:
 
 ### Method Guidance
 
-AESDK stores compact method protocols for common empirical workflows:
+AESDK stores two layers of method guidance.
+
+The first layer is compact method protocols for common empirical workflows:
 
 - OLS / CEF regression
 - IV / 2SLS
 - panel fixed effects
 - differences-in-differences
-- initial RDD support
+- regression discontinuity
+- matching and propensity-score preprocessing
+- synthetic control
+- nonlinear DiD
+- generalized method of moments
+- limited dependent variable models
+- time-series econometrics
 
 The protocols summarize assumptions, diagnostics, standard-error expectations, and source references. They are designed for AI agents to read before writing code.
+
+The second layer is the Real Knowledge Pack system. A knowledge pack is a self-contained, source-anchored method guide with:
+
+- when to use or avoid the method
+- estimand language
+- estimator decision tree
+- assumptions in plain and formal language
+- required inputs
+- diagnostics
+- failure modes
+- Python, R, or Stata starter recipes from official package documentation
+- reporting checklist
+- maturity labels that tell the agent how much confidence to place in the pack
+
+Current packs are available with:
+
+```bash
+aesdk agent context --method did --depth full
+aesdk methods packs
+aesdk methods pack did --format yaml
+```
+
+AESDK also includes metadata-only source inventory and topic locator reports for all local textbook/source PDFs. These reports point to source files and pages but do not package long textbook text.
+
+Maintainers can refresh the page-by-page knowledge audit whenever new books or papers are added:
+
+```bash
+python scripts/deep_knowledge_audit.py --tools-dir tools --write-report docs/deep_knowledge_audit_report.yaml
+```
+
+The audit checks every local PDF page for method-topic signals, compares those signals with existing packs, and reports source hits, missing packs, duplicate IDs, and long-text risks. Use it to guide human review and pack expansion.
+
+The newest expanded packs are `pending_human_review` and `ai_source_audited_pending_human_review`. They are ready for a human econometrician's final review, but they are not labeled as reviewed or final audited doctrine.
 
 ### Preflight Checks
 
@@ -52,13 +93,15 @@ The draft still needs researcher review.
 
 ### Governed Execution
 
-AESDK can run code only after the analysis passes preflight:
+AESDK can run Python or Stata code only after the analysis passes preflight:
 
 ```bash
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
+aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
 ```
 
 If the proposal is blocked, the code does not run.
+Stata runs require a licensed local Stata executable on `PATH` or in `AESDK_STATA`.
 
 ### Reproducibility Record
 
@@ -90,6 +133,7 @@ AESDK also includes:
 - replay checks
 - HMAC and KMS signing options
 - sandboxed execution controls
+- Python and Stata execution dispatch, with R planned next
 - CSV and HTML trace export
 - optional LLM adapters
 
@@ -115,8 +159,9 @@ AESDK helps enforce a disciplined workflow:
 
 ## Remaining Hardening Opportunities
 
-- richer method coverage for RDD, matching, synthetic control, and modern DiD estimators
-- clearer printed-page locators for textbook-derived source metadata
+- deeper human-audited maturity upgrades from `starter_guardrail` to `reviewed_guardrail` and eventually `audited`
+- an R execution bridge with the same preflight and replay semantics as Python and Stata
+- conversion from PDF-page locators to cleaner printed-page/chapter anchors where possible
 - container isolation for high-stakes regulated execution
 - signed replay reports for external auditors
 - live examples for AWS/GCP/Azure KMS setups

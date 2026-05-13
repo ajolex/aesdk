@@ -15,14 +15,19 @@ from aesdk.core.project import Project
 from aesdk.governance.checks.citation_validator import verify_text
 from aesdk.governance.policy import ConformanceLevel
 from aesdk.knowledge import (
+    get_knowledge_pack,
     get_method_protocol,
     get_method_source_map,
     get_source,
+    list_knowledge_pack_ids,
     list_method_ids,
     list_source_ids,
+    load_official_software_sources,
+    load_source_inventory,
     validate_knowledge_base,
 )
 from aesdk.protocol.validator import RuleRegistry, Validator
+from aesdk.sandbox.runner import infer_language_from_path, normalize_language
 from aesdk.trace import replay_execute_events
 from aesdk.trace.blob import ReplicationBlob, sign_blob, verify_blob_signature
 
@@ -47,9 +52,10 @@ def _load_json(path: str | Path) -> dict:
 @agent_app.command("context")
 def agent_context_cmd(
     method: str = typer.Option(..., help="Method id, for example did or iv_2sls."),
+    depth: str = typer.Option("protocol", help="Context depth: protocol|full"),
     output_format: str = typer.Option("markdown", "--format", help="Output format: markdown|json|yaml"),
 ) -> None:
-    ctx = agent_context(method)
+    ctx = agent_context(method, depth=depth)
     if output_format.lower() == "markdown":
         typer.echo(ctx.to_markdown())
     elif output_format.lower() == "yaml":
@@ -123,6 +129,11 @@ def agent_run_cmd(
     pap: Path = typer.Option(..., exists=True),
     proposal: Path = typer.Option(..., exists=True),
     code_file: Path = typer.Option(..., exists=True),
+    language: str | None = typer.Option(
+        None,
+        "--language",
+        help="Analysis code language: python|stata. Defaults from code-file extension.",
+    ),
     blob: Path | None = typer.Option(None),
     context: str = typer.Option("production"),
     conformance: str = typer.Option("strict"),
@@ -133,6 +144,7 @@ def agent_run_cmd(
         pap_path=pap,
         proposal=proposal,
         code_path=code_file,
+        language=normalize_language(language) if language else infer_language_from_path(code_file),
         blob_path=blob,
         context=context,
         conformance=conformance,
@@ -141,6 +153,11 @@ def agent_run_cmd(
     typer.echo(f"status={result.status} blocked={result.blocked} blob={result.blob_path}")
     if result.blocked:
         typer.echo(result.preflight.explain())
+        raise typer.Exit(code=1)
+    if result.status == "block":
+        if result.sandbox is not None:
+            for diagnostic in result.sandbox.diagnostics:
+                typer.echo(f"- {diagnostic.code} severity={diagnostic.severity} message={diagnostic.message}")
         raise typer.Exit(code=1)
 
 
@@ -192,6 +209,26 @@ def methods_sources_cmd(
     typer.echo(json.dumps(locators, indent=2))
 
 
+@methods_app.command("packs")
+def methods_packs_cmd() -> None:
+    for method_id in list_knowledge_pack_ids():
+        typer.echo(method_id)
+
+
+@methods_app.command("pack")
+def methods_pack_cmd(
+    method_id: str = typer.Argument(..., help="Knowledge pack id, for example did or iv_2sls."),
+    output_format: str = typer.Option("json", "--format", help="Output format: json|yaml"),
+) -> None:
+    pack = get_knowledge_pack(method_id)
+    if output_format.lower() == "yaml":
+        typer.echo(yaml.safe_dump(pack, sort_keys=False))
+        return
+    if output_format.lower() != "json":
+        raise typer.BadParameter("format must be json or yaml")
+    typer.echo(json.dumps(pack, indent=2))
+
+
 @methods_app.command("validate")
 def methods_validate_cmd() -> None:
     errors = validate_knowledge_base()
@@ -224,6 +261,32 @@ def sources_show_cmd(
     if output_format.lower() != "json":
         raise typer.BadParameter("format must be json or yaml")
     typer.echo(json.dumps(source, indent=2))
+
+
+@sources_app.command("inventory")
+def sources_inventory_cmd(
+    output_format: str = typer.Option("json", "--format", help="Output format: json|yaml"),
+) -> None:
+    inventory = load_source_inventory()
+    if output_format.lower() == "yaml":
+        typer.echo(yaml.safe_dump(inventory, sort_keys=False))
+        return
+    if output_format.lower() != "json":
+        raise typer.BadParameter("format must be json or yaml")
+    typer.echo(json.dumps(inventory, indent=2))
+
+
+@sources_app.command("software")
+def sources_software_cmd(
+    output_format: str = typer.Option("json", "--format", help="Output format: json|yaml"),
+) -> None:
+    sources = load_official_software_sources()
+    if output_format.lower() == "yaml":
+        typer.echo(yaml.safe_dump(sources, sort_keys=False))
+        return
+    if output_format.lower() != "json":
+        raise typer.BadParameter("format must be json or yaml")
+    typer.echo(json.dumps(sources, indent=2))
 
 
 @app.command("init")
@@ -281,6 +344,11 @@ def execute_cmd(
     pap: Path = typer.Option(..., exists=True),
     proposal: Path = typer.Option(..., exists=True),
     code_file: Path = typer.Option(..., exists=True),
+    language: str | None = typer.Option(
+        None,
+        "--language",
+        help="Analysis code language: python|stata. Defaults from code-file extension.",
+    ),
     blob: Path | None = typer.Option(None),
     context: str = typer.Option("research"),
     conformance: str | None = typer.Option(None),
@@ -303,8 +371,13 @@ def execute_cmd(
         raise typer.Exit(code=1)
 
     code = code_file.read_text(encoding="utf-8-sig")
-    run_result = project.execute(code)
+    active_language = normalize_language(language) if language else infer_language_from_path(code_file)
+    run_result = project.execute(code, language=active_language)
     typer.echo(f"execution_status={run_result.status}")
+    if run_result.status == "block":
+        for diagnostic in run_result.diagnostics:
+            typer.echo(f"- {diagnostic.code} severity={diagnostic.severity} message={diagnostic.message}")
+        raise typer.Exit(code=1)
 
 
 @app.command("reproduce")

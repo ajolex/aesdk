@@ -1,0 +1,124 @@
+version: "0.1.0"
+method_id: "iv_2sls"
+name: "Instrumental Variables / 2SLS"
+maturity:
+  status: "reviewed_guardrail"
+  source_review: "partial_multi_source"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "The treatment or exposure is endogenous because of omitted variables, simultaneity, measurement error, or selection."
+    - "There is at least one excluded instrument with a substantive relevance and exclusion argument."
+  do_not_use_when:
+    - "The instrument directly affects the outcome outside the endogenous variable."
+    - "The first stage is weak and no weak-instrument robust plan is registered."
+estimand:
+  default: "Causal effect identified by the instrument-induced variation; often a local average treatment effect under heterogeneity."
+  agent_instruction: "State the endogenous variable, excluded instruments, first stage, exclusion restriction, and heterogeneity interpretation."
+decision_tree:
+  - id: "iv-design-001"
+    if: "One endogenous regressor and one excluded instrument."
+    then: "Use just-identified 2SLS; focus on relevance and exclusion rather than overidentification."
+  - id: "iv-design-002"
+    if: "More excluded instruments than endogenous regressors."
+    then: "Use overidentified 2SLS; report overidentification diagnostics as stress tests, not proof of validity."
+  - id: "iv-design-003"
+    if: "First-stage evidence is weak."
+    then: "Block default 2SLS interpretation; require stronger instruments, weak-IV robust inference, or design revision."
+assumptions:
+  - id: "iv-assumption-001"
+    plain: "The instrument moves the endogenous variable."
+    formal: "Instrument relevance: excluded instruments have explanatory power in the first stage conditional on controls."
+    evidence: "First-stage coefficient, F statistic or appropriate weak-instrument diagnostic."
+  - id: "iv-assumption-002"
+    plain: "The instrument affects the outcome only through the endogenous variable."
+    formal: "Exclusion restriction in the structural outcome equation."
+    evidence: "Institutional argument and falsification checks where available."
+  - id: "iv-assumption-003"
+    plain: "The instrument is as-good-as-random after the registered design controls."
+    formal: "Instrument exogeneity or independence from unobserved outcome determinants."
+    evidence: "Design narrative, balance checks, or source of quasi-random variation."
+required_inputs:
+  - id: "iv-input-001"
+    name: "endogenous_variable"
+    reason: "The variable whose variation is instrumented."
+  - id: "iv-input-002"
+    name: "excluded_instruments"
+    reason: "The variables excluded from the outcome equation but used in the first stage."
+  - id: "iv-input-003"
+    name: "first_stage_threshold"
+    reason: "Prevents silent use of weak instruments."
+  - id: "iv-input-004"
+    name: "exclusion_argument"
+    reason: "IV validity rests on design logic, not only statistics."
+diagnostics:
+  - id: "iv-diagnostic-001"
+    name: "first_stage_strength"
+    instruction: "Report excluded-instrument first-stage strength and threshold."
+  - id: "iv-diagnostic-002"
+    name: "reduced_form"
+    instruction: "Report or inspect the reduced-form relationship when useful for interpretation."
+  - id: "iv-diagnostic-003"
+    name: "overidentification"
+    instruction: "If overidentified, report diagnostics as consistency checks."
+failure_modes:
+  - id: "iv-failure-001"
+    risk: "No excluded instrument."
+    response: "Block IV execution."
+  - id: "iv-failure-002"
+    risk: "Weak first stage."
+    response: "Block standard IV interpretation until weak-instrument handling is registered."
+  - id: "iv-failure-003"
+    risk: "Exclusion restriction is asserted but not argued."
+    response: "Warn or block under strict conformance."
+code_recipes:
+  - id: "iv-python-linearmodels"
+    language: "python"
+    package: "linearmodels"
+    source: "linearmodels"
+    template: |
+      from linearmodels.iv import IV2SLS
+
+      fit = IV2SLS.from_formula(
+          "outcome ~ 1 + covariate_1 + covariate_2 + [endog ~ instrument]",
+          data=df,
+      ).fit(cov_type="robust")
+      print(fit.summary)
+  - id: "iv-stata-ivregress"
+    language: "stata"
+    package: "Stata"
+    source: "stata_ivregress"
+    template: |
+      ivregress 2sls outcome covariate_1 covariate_2 (endog = instrument), vce(robust)
+      estat firststage
+  - id: "iv-r-fixest"
+    language: "r"
+    package: "fixest"
+    source: "fixest"
+    template: |
+      library(fixest)
+
+      fit <- feols(outcome ~ covariate_1 + covariate_2 | 0 | endog ~ instrument, data = df, vcov = "hetero")
+      summary(fit)
+reporting_checklist:
+  - "Name every endogenous variable and excluded instrument."
+  - "Report the first stage and weak-instrument threshold."
+  - "Explain the exclusion restriction in substantive terms."
+  - "State whether the estimate is interpreted as LATE or another instrument-specific estimand."
+source_anchors:
+  - source_id: "wooldridge_cross_section_panel"
+    topics:
+      - "instrumental variables estimation"
+    local_pdf_pages: [466, 468, 470, 472, 474]
+  - source_id: "angrist_pischke_mhe"
+    topics:
+      - "IV and causality"
+    local_pdf_pages: [100, 101, 103, 105]
+  - source_id: "stock_watson_intro_econometrics"
+    topics:
+      - "applied IV and weak instrument diagnostics"
+  - source_id: "greene_econometric_analysis"
+    topics:
+      - "advanced IV, GMM, and asymptotic framing"

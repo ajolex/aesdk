@@ -1,0 +1,122 @@
+version: "0.1.0"
+method_id: "time_series"
+name: "Time-Series Econometrics"
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "Temporal ordering, serial dependence, dynamics, forecasting, or nonstationarity are central to the analysis."
+    - "The data have a meaningful time index and frequency."
+  do_not_use_when:
+    - "The agent treats serially dependent observations as iid."
+    - "Forecast evaluation uses future information or leaks post-period data into model selection."
+estimand:
+  default: "Dynamic regression parameter, forecast target, impulse response, or time-series causal contrast as explicitly declared."
+  agent_instruction: "State whether the target is forecasting, dynamic association, causal effect, or structural time-series object."
+decision_tree:
+  - id: "ts-design-001"
+    if: "The goal is forecasting a single series."
+    then: "Use ARIMA/SARIMAX or another forecasting model with train/test temporal split."
+  - id: "ts-design-002"
+    if: "Multiple series interact dynamically."
+    then: "Consider VAR/VECM after stationarity and cointegration checks."
+  - id: "ts-design-003"
+    if: "Regression uses time-series errors."
+    then: "Use HAC/Newey-West or an explicit serial-correlation model."
+assumptions:
+  - id: "ts-assumption-001"
+    plain: "Temporal dependence is modeled or handled in inference."
+    formal: "Errors or innovations satisfy the assumptions required by the chosen dynamic/inference model."
+    evidence: "ACF/PACF, residual diagnostics, HAC choice, or serial-correlation model."
+  - id: "ts-assumption-002"
+    plain: "Trends and unit roots do not create spurious relationships."
+    formal: "Stationarity, cointegration, differencing, deterministic trend, or transformation plan is stated."
+    evidence: "Unit-root/stationarity checks and modeling plan."
+  - id: "ts-assumption-003"
+    plain: "Forecasting uses only information available at the forecast origin."
+    formal: "No look-ahead leakage in splitting, lag construction, or hyperparameter selection."
+    evidence: "Temporal train/test split and data pipeline audit."
+required_inputs:
+  - id: "ts-input-001"
+    name: "time_index"
+    reason: "Defines temporal order."
+  - id: "ts-input-002"
+    name: "frequency"
+    reason: "Required for lags, seasonality, and forecast horizon."
+  - id: "ts-input-003"
+    name: "stationarity_plan"
+    reason: "Prevents spurious dynamic regression."
+  - id: "ts-input-004"
+    name: "lag_order_plan"
+    reason: "Lag choice must not be arbitrary or look-ahead."
+diagnostics:
+  - id: "ts-diagnostic-001"
+    name: "time_plot"
+    instruction: "Plot the series before modeling."
+  - id: "ts-diagnostic-002"
+    name: "unit_root_or_stationarity"
+    instruction: "Check stationarity or explain why the model allows nonstationarity."
+  - id: "ts-diagnostic-003"
+    name: "autocorrelation"
+    instruction: "Inspect ACF/PACF and residual autocorrelation."
+  - id: "ts-diagnostic-004"
+    name: "forecast_backtest"
+    instruction: "Use temporal train/test splits for forecast evaluation."
+failure_modes:
+  - id: "ts-failure-001"
+    risk: "No time index."
+    response: "Block time-series workflow."
+  - id: "ts-failure-002"
+    risk: "Spurious regression with trending nonstationary series."
+    response: "Warn or block until stationarity/cointegration plan is stated."
+  - id: "ts-failure-003"
+    risk: "Look-ahead bias."
+    response: "Block forecast evaluation until data splitting is corrected."
+code_recipes:
+  - id: "ts-python-statsmodels-sarimax"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels_tsa"
+    template: |
+      from statsmodels.tsa.statespace.sarimax import SARIMAX
+
+      y = df.set_index("time_id")["outcome"].asfreq("M")
+      train = y.loc[:train_end]
+      fit = SARIMAX(train, order=registered_arima_order, seasonal_order=registered_seasonal_order).fit()
+      forecast = fit.get_forecast(steps=forecast_horizon)
+      print(fit.summary())
+  - id: "ts-stata-arima"
+    language: "stata"
+    package: "Stata"
+    source: "stata_time_series"
+    template: |
+      tsset time_id
+      arima outcome, arima(<registered_p>,<registered_d>,<registered_q>)
+      estat acplot
+reporting_checklist:
+  - "State time index, frequency, sample period, and forecast/causal target."
+  - "Report stationarity, trend, seasonality, and lag-order choices."
+  - "Report residual autocorrelation diagnostics."
+  - "For forecasting, use temporal out-of-sample evaluation."
+source_anchors:
+  - source_id: "stock_watson_intro_econometrics"
+    topics:
+      - "time-series regression and forecasting"
+    local_pdf_pages: [17, 18, 19, 23, 24, 32, 38]
+  - source_id: "greene_econometric_analysis"
+    topics:
+      - "time-series econometrics"
+    local_pdf_pages: [3, 9, 10, 14, 15, 23, 24, 30]
+  - source_id: "box_jenkins_reinsel_ljung_2015"
+    topics:
+      - "ARIMA and forecasting reference"
+audit:
+  stage: "ai_reviewed_pending_human"
+  audit_report: "docs/deep_knowledge_audit_report.yaml"
+  notes:
+    - "Stock-Watson local anchors were adjusted to pages with stronger time-series and forecasting evidence."
+    - "External Box-Jenkins-Reinsel-Ljung reference requires final human bibliographic review."

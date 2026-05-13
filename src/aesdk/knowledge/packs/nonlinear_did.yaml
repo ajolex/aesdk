@@ -1,0 +1,112 @@
+version: "0.1.0"
+method_id: "nonlinear_did"
+name: "Nonlinear Difference-in-Differences"
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "A DiD design has binary, count, fractional, or otherwise nonlinear outcomes."
+    - "The target effect is on a scale that a linear TWFE coefficient does not directly represent."
+  do_not_use_when:
+    - "The agent cannot state the outcome family or target scale."
+    - "Plain nonlinear fixed-effects coefficients are treated as causal effects without transformation."
+estimand:
+  default: "ATT or group-time effect on a declared scale, such as level, probability, count mean, odds, or incidence-rate scale."
+  agent_instruction: "State the target scale before choosing a nonlinear estimator."
+decision_tree:
+  - id: "nonlinear-did-design-001"
+    if: "Outcome is binary and the target is a probability-scale effect."
+    then: "Prefer estimators or post-estimation transformations that report ATT or marginal effects on the probability scale."
+  - id: "nonlinear-did-design-002"
+    if: "Outcome is count-like and exposure varies."
+    then: "Consider Poisson-style mean models with careful interpretation and robust inference."
+  - id: "nonlinear-did-design-003"
+    if: "Treatment timing is staggered."
+    then: "Use group-time or doubly robust DiD logic and avoid unqualified nonlinear TWFE."
+assumptions:
+  - id: "nonlinear-did-assumption-001"
+    plain: "The parallel-trends claim is meaningful on the target scale."
+    formal: "Parallel trends or a design-specific substitute is stated for the estimand being reported."
+    evidence: "Scale-specific diagnostics, event-study checks, or sensitivity analysis."
+  - id: "nonlinear-did-assumption-002"
+    plain: "Nonlinear model output is transformed into the reported treatment effect."
+    formal: "Reported effects are marginal effects, ATT, or predicted contrasts rather than raw link-scale coefficients."
+    evidence: "Post-estimation transformation plan."
+required_inputs:
+  - id: "nonlinear-did-input-001"
+    name: "outcome_family"
+    reason: "Determines model class and interpretation."
+  - id: "nonlinear-did-input-002"
+    name: "target_scale"
+    reason: "Prevents accidental reporting of link-scale coefficients."
+  - id: "nonlinear-did-input-003"
+    name: "control_group"
+    reason: "DiD still requires a credible comparison group."
+  - id: "nonlinear-did-input-004"
+    name: "clustering_level"
+    reason: "Panel/grouped nonlinear DiD still needs credible inference."
+diagnostics:
+  - id: "nonlinear-did-diagnostic-001"
+    name: "scale_interpretation"
+    instruction: "Report whether effects are on probability, count-mean, odds, log-rate, or level scale."
+  - id: "nonlinear-did-diagnostic-002"
+    name: "functional_form_sensitivity"
+    instruction: "Compare defensible link/family choices where feasible."
+  - id: "nonlinear-did-diagnostic-003"
+    name: "did_design_checks"
+    instruction: "Run standard DiD timing, comparison-group, and clustering checks."
+failure_modes:
+  - id: "nonlinear-did-failure-001"
+    risk: "Raw nonlinear coefficient reported as ATT."
+    response: "Block until post-estimation effect transformation is specified."
+  - id: "nonlinear-did-failure-002"
+    risk: "Target scale is undefined."
+    response: "Block under strict conformance."
+  - id: "nonlinear-did-failure-003"
+    risk: "Staggered timing handled with unqualified nonlinear TWFE."
+    response: "Warn or block and require modern/group-time logic."
+code_recipes:
+  - id: "nonlinear-did-r-drdid"
+    language: "r"
+    package: "DRDID"
+    source: "drdid"
+    template: |
+      library(DRDID)
+
+      fit <- drdid_panel(
+        y1 = df$outcome_post,
+        y0 = df$outcome_pre,
+        D = df$treated,
+        covariates = as.matrix(df[, c("covariate_1", "covariate_2")])
+      )
+      summary(fit)
+  - id: "nonlinear-did-r-nonlinear-did"
+    language: "r"
+    package: "NonlinearDiD"
+    source: "nonlinear_did"
+    template: |
+      # Use package-specific functions after declaring outcome family, target scale,
+      # comparison group, and timing. Report transformed effects, not raw coefficients.
+reporting_checklist:
+  - "State outcome family and target effect scale."
+  - "Report comparison group, timing design, and clustering."
+  - "Report transformed ATT or marginal effects, not only model coefficients."
+  - "Discuss functional-form sensitivity."
+source_anchors:
+  - source_id: "wooldridge_nonlinear_did_2023"
+    topics:
+      - "nonlinear DiD with panel data"
+    local_pdf_pages: [1, 2, 3, 12, 14, 17, 21, 22]
+  - source_id: "callaway_santanna_2021"
+    topics:
+      - "group-time DiD and staggered timing"
+audit:
+  stage: "ai_reviewed_pending_human"
+  audit_report: "docs/deep_knowledge_audit_report.yaml"
+  notes:
+    - "The nonlinear DiD local anchor is the Wooldridge nonlinear DiD paper, not the broader recent DiD notes."
+    - "Public pack stores paraphrased guidance and page locators only."

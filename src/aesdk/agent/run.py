@@ -8,7 +8,7 @@ from typing import Any
 
 from aesdk.agent.preflight import PreflightResult, preflight
 from aesdk.core.project import Project
-from aesdk.sandbox.runner import SandboxResult
+from aesdk.sandbox.runner import SandboxResult, infer_language_from_path, normalize_language
 
 
 @dataclass(frozen=True)
@@ -35,6 +35,7 @@ def run_analysis(
     proposal: dict[str, Any] | str | Path,
     code: str | None = None,
     code_path: str | Path | None = None,
+    language: str | None = None,
     blob_path: str | Path | None = None,
     context: str = "production",
     conformance: str = "strict",
@@ -50,6 +51,7 @@ def run_analysis(
         active_code = Path(code_path).read_text(encoding="utf-8-sig")
     if active_code is None:
         return AnalysisRunResult(preflight=gate, sandbox=None, blob_path=str(blob_path) if blob_path else None)
+    active_language = normalize_language(language) if language else infer_language_from_path(code_path)
 
     project = Project.create(
         pap_path=pap_path,
@@ -72,5 +74,5 @@ def run_analysis(
             sandbox=None,
             blob_path=str(project.blob_path),
         )
-    sandbox = project.execute(active_code)
+    sandbox = project.execute(active_code, language=active_language)
     return AnalysisRunResult(preflight=gate, sandbox=sandbox, blob_path=str(project.blob_path))

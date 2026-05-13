@@ -37,3 +37,137 @@ sources:
     year: 2021
     sdk_use:
       - "modern DiD guidance for staggered treatment timing"
+  greene_econometric_analysis:
+    type: textbook
+    title: "Econometric Analysis"
+    authors:
+      - "William H. Greene"
+    local_path: "tools/econometric_analysis_by_greence.pdf"
+    sdk_use:
+      - "maximum likelihood and generalized method of moments"
+      - "limited dependent variable models"
+      - "panel-data extensions"
+      - "asymptotic inference"
+    notes: "Local source for advanced econometric method packs; compact paraphrased guidance only."
+  heiss_using_r_intro_econometrics:
+    type: textbook
+    title: "Using R for Introductory Econometrics"
+    authors:
+      - "Florian Heiss"
+    local_path: "tools/FlorianHeiss.pdf"
+    sdk_use:
+      - "R implementation patterns for introductory econometrics"
+      - "teaching-oriented OLS, IV, panel, limited dependent variable, and time-series examples"
+    notes: "Local source for teaching-friendly R code recipes and diagnostics."
+  stock_watson_intro_econometrics:
+    type: textbook
+    title: "Introduction to Econometrics"
+    authors:
+      - "James H. Stock"
+      - "Mark W. Watson"
+    local_path: "tools/JamesHStock.pdf"
+    sdk_use:
+      - "applied regression workflow"
+      - "panel data and DiD"
+      - "IV and weak-instrument diagnostics"
+      - "time-series foundations"
+    notes: "Local source for applied method framing and teaching examples."
+  world_bank_impact_eval:
+    type: textbook
+    title: "Impact Evaluation in Practice"
+    authors:
+      - "Paul J. Gertler"
+      - "Sebastian Martinez"
+      - "Patrick Premand"
+      - "Laura B. Rawlings"
+      - "Christel M. J. Vermeersch"
+    local_path: "tools/WorldBankImpactEval.pdf"
+    sdk_use:
+      - "impact-evaluation design selection"
+      - "randomized assignment"
+      - "matching"
+      - "DiD"
+      - "RDD"
+      - "operational research planning"
+    notes: "Local source for practitioner-facing causal-design checklists."
+  wooldridge_recent_did_notes:
+    type: working_paper_or_note
+    title: "Recent Wooldridge DiD / treatment-effect notes"
+    authors:
+      - "Jeffrey M. Wooldridge"
+    local_path: "tools/US25_Wooldridge.pdf"
+    sdk_use:
+      - "recent DiD implementation guidance"
+      - "heterogeneous treatment timing"
+    notes: "Short local source; title should be verified before public citation."
+  wooldridge_nonlinear_did_2023:
+    type: article
+    title: "Simple approaches to nonlinear difference-in-differences with panel data"
+    authors:
+      - "Jeffrey M. Wooldridge"
+    local_path: "tools/utad016.pdf"
+    sdk_use:
+      - "nonlinear DiD"
+      - "panel treatment effects"
+    notes: "Local article source for future nonlinear DiD packs."
+  wooldridge_r_package:
+    type: software_documentation
+    title: "wooldridge: 115 Data Sets from Introductory Econometrics"
+    authors:
+      - "Justin M. Shea"
+    local_path: "tools/wooldridgePackage.pdf"
+    sdk_use:
+      - "replication datasets for examples"
+      - "teaching data references"
+    notes: "Local package manual for examples; not a source for identification rules."
+  rosenbaum_rubin_1983:
+    type: article
+    title: "The Central Role of the Propensity Score in Observational Studies for Causal Effects"
+    authors:
+      - "Paul R. Rosenbaum"
+      - "Donald B. Rubin"
+    journal: "Biometrika"
+    year: 1983
+    sdk_use:
+      - "propensity score and matching identification guidance"
+  abadie_gardeazabal_2003:
+    type: article
+    title: "The Economic Costs of Conflict: A Case Study of the Basque Country"
+    authors:
+      - "Alberto Abadie"
+      - "Javier Gardeazabal"
+    journal: "American Economic Review"
+    year: 2003
+    sdk_use:
+      - "synthetic control comparative case study foundation"
+  abadie_diamond_hainmueller_2010:
+    type: article
+    title: "Synthetic Control Methods for Comparative Case Studies"
+    authors:
+      - "Alberto Abadie"
+      - "Alexis Diamond"
+      - "Jens Hainmueller"
+    journal: "Journal of the American Statistical Association"
+    year: 2010
+    sdk_use:
+      - "synthetic control donor-pool and pre-treatment fit guidance"
+  hansen_1982:
+    type: article
+    title: "Large Sample Properties of Generalized Method of Moments Estimators"
+    authors:
+      - "Lars Peter Hansen"
+    journal: "Econometrica"
+    year: 1982
+    sdk_use:
+      - "generalized method of moments foundation"
+  box_jenkins_reinsel_ljung_2015:
+    type: textbook
+    title: "Time Series Analysis: Forecasting and Control"
+    authors:
+      - "George E. P. Box"
+      - "Gwilym M. Jenkins"
+      - "Gregory C. Reinsel"
+      - "Greta M. Ljung"
+    year: 2015
+    sdk_use:
+      - "ARIMA and time-series modeling reference"

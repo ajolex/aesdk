@@ -30,11 +30,12 @@ You do not need to be a software engineer to benefit from it. The intended workf
 
 AESDK currently provides:
 
-- method guidance for common econometric workflows, including OLS/CEF, IV/2SLS, panel fixed effects, DiD, and planned RDD support
+- method guidance for common econometric workflows, including OLS/CEF, IV/2SLS, panel fixed effects, DiD, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series
 - pre-analysis plan checks
 - proposal validation with `pass`, `warn`, or `block`
 - AI-agent context packets that explain the relevant assumptions and diagnostics
 - governed execution that refuses to run blocked analysis code
+- governed execution for Python scripts and Stata `.do` files
 - reproducibility records through an `.aesdk.json` audit file
 - replay checks for recorded execution
 - citation/source integrity checks for agent-generated research text
@@ -98,9 +99,11 @@ These commands are useful in an AI-agent workflow:
 
 ```bash
 aesdk agent context --method did
+aesdk agent context --method did --depth full
 aesdk agent preflight --method did --pap pap.yaml --proposal proposal.json --conformance strict
 aesdk agent draft-pap --method did --goal "Estimate policy effects" --data panel.csv --outcome y --treatment treated --unit state --time year --output pap.yaml
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
+aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
 ```
 
 You can also print ready-to-use agent instructions:
@@ -142,6 +145,22 @@ aesdk agent preflight --method did --pap docs/examples/simulated_did_training_po
 
 AESDK blocks it because the proposal uses an invalid inference choice for panel DiD.
 
+## Stata Support
+
+AESDK can gate and run Stata `.do` files after preflight passes:
+
+```bash
+aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do
+```
+
+The language is inferred from `.do`, or can be set with `--language stata`. AESDK runs Stata in batch mode through a local licensed Stata installation. If Stata is not on `PATH`, set:
+
+```bash
+AESDK_STATA="C:\Program Files\Stata18\StataMP-64.exe"
+```
+
+Stata execution records `language=stata` in the `.aesdk.json` audit file. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. R support is the next planned language bridge and is not enabled yet.
+
 ## Method Protocols
 
 To see what AESDK tells an agent about a method:
@@ -149,10 +168,29 @@ To see what AESDK tells an agent about a method:
 ```bash
 aesdk methods list
 aesdk methods show did
+aesdk methods packs
+aesdk methods pack did --format yaml
 aesdk methods sources did --format yaml
+aesdk sources inventory --format yaml
+aesdk sources software --format yaml
 ```
 
-The source metadata currently starts from local textbook references such as Wooldridge and Angrist & Pischke, plus selected modern literature for specific designs. The package stores compact method protocols and rule files, not full textbook content.
+AESDK now has two knowledge layers:
+
+- **method protocols**, which are compact guardrails used by preflight checks
+- **Real Knowledge Packs**, which add estimator decision trees, assumptions, required inputs, diagnostics, failure modes, code recipes, reporting checklists, source anchors, and maturity labels
+
+The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Heiss, World Bank impact evaluation material, recent Wooldridge DiD sources, and package documentation. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
+
+For maintainers adding new books or papers, run the deep audit:
+
+```bash
+python scripts/deep_knowledge_audit.py --tools-dir tools --write-report docs/deep_knowledge_audit_report.yaml
+```
+
+The report scans local PDFs page-by-page and records candidate page locators, duplicate pack IDs, long-text warnings, and coverage gaps. It is a maintenance aid, not a substitute for human source review.
+
+The newest packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series are marked `pending_human_review` with `ai_source_audited_pending_human_review`. That means AESDK has checked source anchors, structure, and conservative guidance, but a human econometrician should still sign off before treating them as reviewed or audited references.
 
 ## Reproducibility
 

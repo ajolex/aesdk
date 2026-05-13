@@ -1,0 +1,120 @@
+version: "0.1.0"
+method_id: "panel_fe"
+name: "Panel Fixed Effects / Unobserved Effects"
+maturity:
+  status: "reviewed_guardrail"
+  source_review: "partial_multi_source"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "Repeated observations are available for the same units."
+    - "The design needs to control for time-invariant unobserved heterogeneity."
+    - "Identification comes from within-unit change, time shocks, or both."
+  do_not_use_when:
+    - "The variable of interest is time-invariant and unit fixed effects absorb it."
+    - "The remaining within-unit variation is not described."
+estimand:
+  default: "Within-unit association or causal effect under strict exogeneity/design assumptions."
+  agent_instruction: "State the unit, time index, fixed effects, identifying within variation, and clustering level."
+decision_tree:
+  - id: "panel-design-001"
+    if: "Unobserved unit traits may confound treatment and are plausibly time-invariant."
+    then: "Use unit fixed effects and explain the within-unit identifying variation."
+  - id: "panel-design-002"
+    if: "Common shocks vary by period."
+    then: "Add time fixed effects if they match the estimand."
+  - id: "panel-design-003"
+    if: "Treatment is assigned at a group level."
+    then: "Cluster at least at the assignment level."
+assumptions:
+  - id: "panel-assumption-001"
+    plain: "After fixed effects and controls, changes in treatment are not driven by unobserved time-varying shocks."
+    formal: "Strict exogeneity or a design-specific substitute."
+    evidence: "Timing argument, lag/lead checks, or registered controls."
+  - id: "panel-assumption-002"
+    plain: "Repeated observations are dependent within units."
+    formal: "Inference allows serial correlation and heteroskedasticity within clusters."
+    evidence: "Cluster-robust or stronger covariance estimator."
+  - id: "panel-assumption-003"
+    plain: "Fixed effects change the estimand."
+    formal: "Coefficients are identified from variation left after absorbed effects."
+    evidence: "Within-unit variation summary."
+required_inputs:
+  - id: "panel-input-001"
+    name: "unit_id"
+    reason: "Defines repeated observations and unit fixed effects."
+  - id: "panel-input-002"
+    name: "time_id"
+    reason: "Defines time structure and possible time fixed effects."
+  - id: "panel-input-003"
+    name: "fixed_effects"
+    reason: "Declares absorbed dimensions before estimation."
+  - id: "panel-input-004"
+    name: "clustering_level"
+    reason: "Required for credible panel inference."
+diagnostics:
+  - id: "panel-diagnostic-001"
+    name: "within_variation"
+    instruction: "Report whether key regressors vary within units after fixed effects."
+  - id: "panel-diagnostic-002"
+    name: "cluster_structure"
+    instruction: "Report cluster level and number of clusters."
+  - id: "panel-diagnostic-003"
+    name: "serial_correlation"
+    instruction: "Consider serial-correlation diagnostics for longer panels."
+failure_modes:
+  - id: "panel-failure-001"
+    risk: "Conventional standard errors in panel data."
+    response: "Block when clustered or stronger inference is required."
+  - id: "panel-failure-002"
+    risk: "Claiming identification for a time-invariant regressor under unit FE."
+    response: "Block or rewrite the estimand."
+  - id: "panel-failure-003"
+    risk: "Fixed effects used as automatic causal proof."
+    response: "Require a design argument for within-unit exogeneity."
+code_recipes:
+  - id: "panel-python-linearmodels"
+    language: "python"
+    package: "linearmodels"
+    source: "linearmodels"
+    template: |
+      from linearmodels.panel import PanelOLS
+
+      panel = df.set_index(["unit_id", "time_id"])
+      fit = PanelOLS.from_formula(
+          "outcome ~ 1 + treatment + covariate_1 + EntityEffects + TimeEffects",
+          data=panel,
+      ).fit(cov_type="clustered", cluster_entity=True)
+      print(fit.summary)
+  - id: "panel-r-fixest"
+    language: "r"
+    package: "fixest"
+    source: "fixest"
+    template: |
+      library(fixest)
+
+      fit <- feols(outcome ~ treatment + covariate_1 | unit_id + time_id, data = df, vcov = ~unit_id)
+      summary(fit)
+reporting_checklist:
+  - "Declare unit and time dimensions."
+  - "List all fixed effects and explain what variation remains."
+  - "Report cluster level and cluster count."
+  - "Avoid causal language unless the within-unit identification argument is stated."
+source_anchors:
+  - source_id: "wooldridge_cross_section_panel"
+    topics:
+      - "fixed effects and unobserved effects"
+      - "panel data models"
+    local_pdf_pages: [424, 438, 446, 447, 448, 460, 774, 809]
+  - source_id: "angrist_pischke_mhe"
+    topics:
+      - "fixed effects and panel data"
+    local_pdf_pages: [181]
+  - source_id: "stock_watson_intro_econometrics"
+    topics:
+      - "panel data regression"
+  - source_id: "heiss_using_r_intro_econometrics"
+    topics:
+      - "R implementation of panel models"

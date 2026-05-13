@@ -1,0 +1,44 @@
+version: generated
+policy:
+  packaged_content: metadata only
+  excluded_content:
+  - full PDFs
+  - extracted textbook text
+  - long verbatim passages
+sources:
+- file_name: econometric_analysis_by_greence.pdf
+  local_path: tools/econometric_analysis_by_greence.pdf
+  pages: 827
+  extraction_status: inventory_only
+- file_name: FlorianHeiss.pdf
+  local_path: tools/FlorianHeiss.pdf
+  pages: 378
+  extraction_status: inventory_only
+- file_name: JamesHStock.pdf
+  local_path: tools/JamesHStock.pdf
+  pages: 801
+  extraction_status: inventory_only
+- file_name: MostlyHarmlessEconometrics.pdf
+  local_path: tools/MostlyHarmlessEconometrics.pdf
+  pages: 290
+  extraction_status: inventory_only
+- file_name: US25_Wooldridge.pdf
+  local_path: tools/US25_Wooldridge.pdf
+  pages: 52
+  extraction_status: inventory_only
+- file_name: utad016.pdf
+  local_path: tools/utad016.pdf
+  pages: 36
+  extraction_status: inventory_only
+- file_name: Wooldridge.pdf
+  local_path: tools/Wooldridge.pdf
+  pages: 819
+  extraction_status: inventory_only
+- file_name: wooldridgePackage.pdf
+  local_path: tools/wooldridgePackage.pdf
+  pages: 152
+  extraction_status: inventory_only
+- file_name: WorldBankImpactEval.pdf
+  local_path: tools/WorldBankImpactEval.pdf
+  pages: 367
+  extraction_status: inventory_only

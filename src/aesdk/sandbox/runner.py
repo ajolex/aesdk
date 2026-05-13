@@ -1,15 +1,18 @@
-﻿"""Sandboxed Python execution (MVP)."""
+"""Sandboxed analysis-code execution."""
 
 from __future__ import annotations
 
 import ast
 import importlib.util
 import os
+import re
+import shutil
 import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Iterator
 
 import yaml
 
@@ -18,6 +21,35 @@ from aesdk.core.errors import ForbiddenCodePatternError, ImportWhitelistError
 DEFAULT_WHITELIST_PATH = Path(__file__).resolve().parent / "whitelist.yaml"
 _FORBIDDEN_CALLS = {"open", "exec", "eval", "compile", "__import__", "input", "breakpoint"}
 _FORBIDDEN_ATTR_CALLS = {"system", "popen", "remove", "unlink", "rmdir", "rmtree", "rename", "replace"}
+_STATA_EXECUTABLE_ENV = "AESDK_STATA"
+_STATA_EXECUTABLE_CANDIDATES = (
+    "stata-mp",
+    "stata-se",
+    "stata-be",
+    "stata",
+    "StataMP-64.exe",
+    "StataSE-64.exe",
+    "StataBE-64.exe",
+    "StataNowMP-64.exe",
+    "StataMP.exe",
+    "StataSE.exe",
+    "StataBE.exe",
+)
+_FORBIDDEN_STATA_COMMANDS = {
+    "!",
+    "shell",
+    "winexec",
+    "erase",
+    "rm",
+    "rmdir",
+}
+_FORBIDDEN_STATA_PREFIXES = (
+    "copy http:",
+    "copy https:",
+    "net install",
+    "ssc install",
+    "github install",
+)
 
 try:
     import resource
@@ -50,16 +82,37 @@ class SandboxRunner:
         *,
         mem_limit_mb: int = 512,
         cpu_limit_sec: int = 30,
+        stata_executable: str | Path | None = None,
     ):
         self.whitelist_path = Path(whitelist_path or DEFAULT_WHITELIST_PATH)
         self.allowed_imports = self._load_whitelist(self.whitelist_path)
         self.mem_limit_mb = mem_limit_mb
         self.cpu_limit_sec = cpu_limit_sec
+        self.stata_executable = str(stata_executable) if stata_executable else None
 
     def _load_whitelist(self, path: Path) -> set[str]:
         with path.open("r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle) or {}
         return set(data.get("allowed_imports", []))
+
+    def run(self, code: str, *, language: str = "python", timeout_seconds: int | None = None) -> SandboxResult:
+        """Run analysis code in the requested language."""
+
+        normalized = normalize_language(language)
+        if normalized == "python":
+            return self.run_python(code, timeout_seconds=timeout_seconds)
+        if normalized == "stata":
+            return self.run_stata(code, timeout_seconds=timeout_seconds)
+        return SandboxResult(
+            status="block",
+            diagnostics=[
+                SandboxDiagnostic(
+                    "UNSUPPORTED_LANGUAGE",
+                    f"Unsupported analysis language: {language}. Supported languages: python, stata.",
+                    "error",
+                )
+            ],
+        )
 
     def run_python(self, code: str, timeout_seconds: int | None = None) -> SandboxResult:
         diagnostics: list[SandboxDiagnostic] = []
@@ -114,6 +167,57 @@ class SandboxRunner:
         diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
         return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
 
+    def run_stata(self, code: str, timeout_seconds: int | None = None) -> SandboxResult:
+        diagnostics: list[SandboxDiagnostic] = []
+        active_timeout = timeout_seconds or self.cpu_limit_sec
+
+        forbidden = self._find_forbidden_stata_patterns(code)
+        if forbidden:
+            message = f"Forbidden Stata operations: {', '.join(sorted(forbidden))}"
+            diagnostics.append(SandboxDiagnostic("FORBIDDEN_STATA_COMMAND", message, "error"))
+            raise ForbiddenCodePatternError(message)
+
+        executable = self._resolve_stata_executable()
+        if executable is None:
+            diagnostics.append(
+                SandboxDiagnostic(
+                    "MISSING_RUNTIME",
+                    "Stata executable was not found. Set AESDK_STATA to the Stata executable path.",
+                    "error",
+                )
+            )
+            return SandboxResult(status="block", diagnostics=diagnostics)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            script_path = Path(tmpdir) / "sandbox_entry.do"
+            script_path.write_text(code, encoding="utf-8")
+            command = self._stata_command(executable, script_path)
+            try:
+                proc = subprocess.run(
+                    command,
+                    cwd=tmpdir,
+                    capture_output=True,
+                    text=True,
+                    timeout=active_timeout,
+                    check=False,
+                    preexec_fn=self._preexec_resource_limits(),
+                )
+            except subprocess.TimeoutExpired as exc:
+                diagnostics.append(SandboxDiagnostic("TIMEOUT", str(exc), "error"))
+                return SandboxResult(status="block", diagnostics=diagnostics)
+
+            log_path = script_path.with_suffix(".log")
+            log_text = log_path.read_text(encoding="utf-8", errors="replace") if log_path.exists() else ""
+
+        stdout = "\n".join(item for item in [proc.stdout, log_text] if item).strip()
+        if proc.returncode != 0:
+            message = proc.stderr.strip() or "Stata execution failed"
+            diagnostics.append(SandboxDiagnostic("RUNTIME", message, "error"))
+            return SandboxResult(status="block", diagnostics=diagnostics, stdout=stdout, stderr=proc.stderr)
+
+        diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
+        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=stdout, stderr=proc.stderr)
+
     def _preexec_resource_limits(self):
         if os.name == "nt" or resource is None:
             return None
@@ -152,3 +256,100 @@ class SandboxRunner:
             if isinstance(node.func, ast.Attribute) and node.func.attr in _FORBIDDEN_ATTR_CALLS:
                 found.add(node.func.attr)
         return found
+
+    def _resolve_stata_executable(self) -> str | None:
+        configured = self.stata_executable or os.getenv(_STATA_EXECUTABLE_ENV)
+        if configured:
+            configured_path = Path(configured)
+            if configured_path.exists():
+                return str(configured_path)
+            discovered = shutil.which(configured)
+            return discovered
+
+        for candidate in _STATA_EXECUTABLE_CANDIDATES:
+            discovered = shutil.which(candidate)
+            if discovered:
+                return discovered
+        return None
+
+    @staticmethod
+    def _stata_command(executable: str, script_path: Path) -> list[str]:
+        batch_flag = "/e" if os.name == "nt" or executable.lower().endswith(".exe") else "-b"
+        return [executable, batch_flag, "do", str(script_path)]
+
+    @staticmethod
+    def _find_forbidden_stata_patterns(code: str) -> set[str]:
+        found: set[str] = set()
+        for line in _iter_stata_code_lines(code):
+            normalized = line.lower().strip()
+            if not normalized:
+                continue
+            if normalized.startswith("!"):
+                found.add("!")
+                continue
+            tokens = [token for token in re.split(r"[\s:]+", normalized) if token]
+            for token in tokens:
+                if token in _FORBIDDEN_STATA_COMMANDS:
+                    found.add(token)
+            for index, token in enumerate(tokens[:-1]):
+                pair = f"{token} {tokens[index + 1]}"
+                if pair in _FORBIDDEN_STATA_PREFIXES:
+                    found.add(pair)
+            if "copy" in tokens and any(token.startswith(("http", "https")) for token in tokens):
+                found.add("copy http:")
+            for prefix in _FORBIDDEN_STATA_PREFIXES:
+                if normalized.startswith(prefix):
+                    found.add(prefix)
+        return found
+
+
+def normalize_language(language: str | None) -> str:
+    if not language:
+        return "python"
+    normalized = language.lower().strip()
+    aliases = {
+        "py": "python",
+        "python3": "python",
+        "do": "stata",
+        "do-file": "stata",
+        "dofile": "stata",
+    }
+    return aliases.get(normalized, normalized)
+
+
+def infer_language_from_path(path: str | Path | None, default: str = "python") -> str:
+    if path is None:
+        return normalize_language(default)
+    suffix = Path(path).suffix.lower()
+    if suffix == ".py":
+        return "python"
+    if suffix == ".do":
+        return "stata"
+    return normalize_language(default)
+
+
+def _iter_stata_code_lines(code: str) -> Iterator[str]:
+    in_block_comment = False
+    for raw_line in code.splitlines():
+        line = raw_line.strip()
+        if in_block_comment:
+            end = line.find("*/")
+            if end == -1:
+                continue
+            line = line[end + 2 :].strip()
+            in_block_comment = False
+        while "/*" in line:
+            start = line.find("/*")
+            end = line.find("*/", start + 2)
+            if end == -1:
+                line = line[:start].strip()
+                in_block_comment = True
+                break
+            line = f"{line[:start]} {line[end + 2:]}".strip()
+        if in_block_comment and not line:
+            continue
+        if not line or line.startswith("*"):
+            continue
+        line = re.sub(r"(^|\s)//.*$", "", line).strip()
+        if line:
+            yield line

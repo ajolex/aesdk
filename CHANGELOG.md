@@ -15,9 +15,15 @@
   - `aesdk agent draft-pap`
   - `aesdk agent run`
   - `aesdk agent template`
+- Stata `.do` file execution support behind the same preflight gate and replay audit trail.
 - Bundled `AGENTS.md` and `CLAUDE.md` templates.
 - Textbook-backed knowledge registry and method protocols.
 - Source locators for local textbook-derived SDK context.
+- Real Knowledge Packs with estimator decision trees, assumptions, diagnostics, failure modes, code recipes, reporting checklists, maturity labels, and source anchors.
+- Metadata-only source inventory and topic locator reports for all local textbook/source PDFs.
+- Deep knowledge audit script for page-by-page local PDF scanning and pack coverage reports.
+- Starter packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time-series econometrics.
+- AI source-audited maturity upgrade for the new brain packs, marked pending final human econometrician signoff.
 - Real `statsmodels`-based DiD and panel fixed-effects helpers.
 - Simulated DiD training-policy example.
 - Provider-based KMS adapters for KMS-HTTP, AWS KMS, GCP KMS, and Azure Key Vault.

@@ -17,6 +17,18 @@ def _load_yaml_resource(name: str) -> dict[str, Any]:
     return loaded
 
 
+def _load_pack_resource(method_id: str) -> dict[str, Any]:
+    resource = files("aesdk.knowledge").joinpath("packs", f"{method_id}.yaml")
+    if not resource.is_file():
+        known = ", ".join(list_knowledge_pack_ids())
+        raise KeyError(f"Unknown knowledge pack '{method_id}'. Known packs: {known}")
+    with resource.open("r", encoding="utf-8") as handle:
+        loaded = yaml.safe_load(handle) or {}
+    if not isinstance(loaded, dict):
+        raise ValueError(f"Knowledge pack must be a mapping: {method_id}")
+    return loaded
+
+
 def load_sources() -> dict[str, Any]:
     """Return registered textbook and literature sources."""
 
@@ -35,11 +47,38 @@ def load_source_map() -> dict[str, Any]:
     return _load_yaml_resource("source_map.yaml")
 
 
+def load_source_inventory() -> dict[str, Any]:
+    """Return local source inventory metadata for textbook-derived context."""
+
+    return _load_yaml_resource("source_inventory.yaml")
+
+
+def load_official_software_sources() -> dict[str, Any]:
+    """Return official software documentation sources used by code recipes."""
+
+    return _load_yaml_resource("official_software_sources.yaml")
+
+
+def get_knowledge_pack(method_id: str) -> dict[str, Any]:
+    """Return the full-depth knowledge pack for one econometric method."""
+
+    return _load_pack_resource(method_id)
+
+
 def list_method_ids() -> list[str]:
     """Return sorted method protocol ids."""
 
     protocols = load_method_protocols().get("methods", {})
     return sorted(protocols)
+
+
+def list_knowledge_pack_ids() -> list[str]:
+    """Return sorted full-depth method knowledge pack ids."""
+
+    resource = files("aesdk.knowledge").joinpath("packs")
+    if not resource.is_dir():
+        return []
+    return sorted(item.name.removesuffix(".yaml") for item in resource.iterdir() if item.name.endswith(".yaml"))
 
 
 def list_source_ids() -> list[str]:
@@ -98,6 +137,7 @@ def validate_knowledge_base() -> list[str]:
     sources = load_sources().get("sources", {})
     protocols = load_method_protocols().get("methods", {})
     source_map = load_source_map().get("method_sources", {})
+    pack_ids = list_knowledge_pack_ids()
 
     for method_id, protocol in protocols.items():
         if not isinstance(protocol, dict):
@@ -122,4 +162,34 @@ def validate_knowledge_base() -> list[str]:
             if source_id not in sources:
                 errors.append(f"Source map for {method_id} references unknown source: {source_id}")
 
+    for method_id in pack_ids:
+        pack = get_knowledge_pack(method_id)
+        if method_id not in protocols:
+            errors.append(f"Knowledge pack references unknown method protocol: {method_id}")
+        if pack.get("method_id") != method_id:
+            errors.append(f"Knowledge pack method_id mismatch: {method_id}")
+        for required in ["decision_tree", "assumptions", "required_inputs", "diagnostics", "failure_modes", "code_recipes", "reporting_checklist", "source_anchors"]:
+            if not pack.get(required):
+                errors.append(f"Knowledge pack missing {required}: {method_id}")
+        _validate_unique_pack_items(pack, method_id, errors)
+        for anchor in pack.get("source_anchors", []):
+            source_id = anchor.get("source_id") if isinstance(anchor, dict) else None
+            if source_id not in sources:
+                errors.append(f"Knowledge pack {method_id} references unknown source: {source_id}")
+
     return errors
+
+
+def _validate_unique_pack_items(pack: dict[str, Any], method_id: str, errors: list[str]) -> None:
+    for section in ["decision_tree", "assumptions", "required_inputs", "diagnostics", "failure_modes", "code_recipes"]:
+        seen: set[str] = set()
+        for item in pack.get(section, []):
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id")
+            if not item_id:
+                errors.append(f"Knowledge pack {method_id} {section} item is missing id")
+                continue
+            if item_id in seen:
+                errors.append(f"Knowledge pack {method_id} duplicates {section} id: {item_id}")
+            seen.add(item_id)

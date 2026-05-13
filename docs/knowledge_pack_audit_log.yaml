@@ -1,0 +1,62 @@
+version: "0.1.0"
+audit_date: "2026-05-13"
+stage: "ai_reviewed_pending_human"
+policy:
+  packaged_content: "paraphrased guidance, source metadata, page locators, and code recipe templates"
+  excluded_content:
+    - "full textbook PDFs"
+    - "long extracted textbook passages"
+    - "unreviewed verbatim textbook text"
+  human_final_review_required: true
+audit_inputs:
+  - "src/aesdk/knowledge/packs/*.yaml"
+  - "docs/deep_knowledge_audit_report.yaml"
+  - "src/aesdk/knowledge/source_map.yaml"
+  - "src/aesdk/knowledge/official_software_sources.yaml"
+reviewed_packs:
+  matching:
+    status: "pending_human_review"
+    source_review: "ai_source_audited_pending_human_review"
+    corrections:
+      - "World Bank anchor moved to stronger matching/propensity-score pages and trimmed to audit-report-supported pages."
+    human_review_focus:
+      - "Confirm final printed-page/chapter references."
+      - "Confirm matching recipe choices for target users."
+  synthetic_control:
+    status: "pending_human_review"
+    source_review: "ai_source_audited_pending_human_review"
+    corrections: []
+    human_review_focus:
+      - "Confirm Abadie references and preferred modern software examples."
+      - "Review guidance for augmented and synthetic DiD variants."
+  nonlinear_did:
+    status: "pending_human_review"
+    source_review: "ai_source_audited_pending_human_review"
+    corrections:
+      - "Removed weak broad-DiD note anchor from the nonlinear DiD pack."
+    human_review_focus:
+      - "Confirm outcome-scale guidance and nonlinear DiD software recipe."
+      - "Decide whether nonlinear DiD should be a separate pack or DiD sub-pack."
+  gmm:
+    status: "pending_human_review"
+    source_review: "ai_source_audited_pending_human_review"
+    corrections: []
+    human_review_focus:
+      - "Confirm moment-condition and weighting-matrix guidance."
+      - "Add dynamic-panel GMM rules only after separate review."
+  limited_dependent:
+    status: "pending_human_review"
+    source_review: "ai_source_audited_pending_human_review"
+    corrections: []
+    human_review_focus:
+      - "Confirm marginal-effect language across logit, probit, Tobit, and count models."
+      - "Decide whether panel nonlinear models need separate packs."
+  time_series:
+    status: "pending_human_review"
+    source_review: "ai_source_audited_pending_human_review"
+    corrections:
+      - "Stock-Watson anchor moved to stronger time-series and forecasting pages; unsupported page 160 removed."
+      - "ARIMA recipes changed from hard-coded order to registered order placeholders."
+    human_review_focus:
+      - "Confirm stationarity, cointegration, and forecasting guidance."
+      - "Split forecasting, VAR/VECM, and time-series causal regression in later packs if needed."

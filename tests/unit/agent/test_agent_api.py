@@ -15,6 +15,15 @@ def test_agent_context_markdown_contains_binding_instructions() -> None:
     assert "Source Locators" in text
 
 
+def test_agent_context_full_depth_includes_knowledge_pack() -> None:
+    ctx = ae.agent_context("did", depth="full")
+    text = ctx.to_markdown()
+
+    assert ctx.knowledge_pack is not None
+    assert ctx.to_dict()["knowledge_pack"]["method_id"] == "did"
+    assert "Estimator Decision Tree" in text
+
+
 def test_preflight_blocks_invalid_proposal(valid_pap_file) -> None:
     result = ae.preflight(
         method="did",
@@ -86,6 +95,23 @@ def test_run_analysis_executes_when_preflight_passes(valid_pap_file, tmp_path) -
     assert result.sandbox is not None
     assert result.sandbox.stdout.strip() == "ran"
     assert blob_path.exists()
+
+
+def test_run_analysis_infers_stata_from_do_file(valid_pap_file, tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AESDK_STATA", "definitely-not-stata")
+    proposal_path = tmp_path / "proposal.json"
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+    code_path = tmp_path / "analysis.do"
+    code_path.write_text("display 1", encoding="utf-8")
+
+    result = ae.run_analysis(method="did", pap_path=valid_pap_file, proposal=proposal_path, code_path=code_path)
+
+    assert result.status == "block"
+    assert result.sandbox is not None
+    assert result.sandbox.diagnostics[0].code == "MISSING_RUNTIME"
 
 
 def test_drafted_pap_can_be_serialized_and_validated(tmp_path) -> None:

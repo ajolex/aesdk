@@ -1,0 +1,118 @@
+version: "0.1.0"
+method_id: "synthetic_control"
+name: "Synthetic Control"
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "One or a few aggregate units receive treatment at a known time."
+    - "A donor pool can reproduce the treated unit's pre-treatment outcome path or predictors."
+  do_not_use_when:
+    - "There is no credible donor pool."
+    - "There is too little pre-treatment history to evaluate fit."
+estimand:
+  default: "Treated-unit post-treatment gap relative to a weighted donor-pool counterfactual."
+  agent_instruction: "Name the treated unit, intervention date, donor pool, predictors, and post-treatment window."
+decision_tree:
+  - id: "synth-design-001"
+    if: "There is one treated aggregate unit and many untreated donor units."
+    then: "Use classical synthetic control and report weights and pre-treatment fit."
+  - id: "synth-design-002"
+    if: "Pre-treatment fit is poor."
+    then: "Do not report a causal effect without redesigning the donor pool or method."
+  - id: "synth-design-003"
+    if: "There are multiple treated units or staggered timing."
+    then: "Consider generalized, augmented, or synthetic DiD variants with explicit aggregation."
+assumptions:
+  - id: "synth-assumption-001"
+    plain: "The donor pool can approximate the treated unit's untreated path."
+    formal: "A weighted combination of untreated units captures the treated unit's counterfactual trend."
+    evidence: "Pre-treatment outcome fit and predictor balance."
+  - id: "synth-assumption-002"
+    plain: "Donor units are not contaminated by treatment or spillovers."
+    formal: "No interference from the treated intervention to donor outcomes."
+    evidence: "Donor-pool eligibility rules and sensitivity exclusions."
+required_inputs:
+  - id: "synth-input-001"
+    name: "treated_unit"
+    reason: "Defines the case whose counterfactual is estimated."
+  - id: "synth-input-002"
+    name: "donor_pool"
+    reason: "Defines units eligible for counterfactual weighting."
+  - id: "synth-input-003"
+    name: "intervention_time"
+    reason: "Separates pre-treatment fit from post-treatment effects."
+  - id: "synth-input-004"
+    name: "predictors"
+    reason: "Defines matching variables and pre-treatment outcomes used for weights."
+diagnostics:
+  - id: "synth-diagnostic-001"
+    name: "pre_treatment_fit"
+    instruction: "Report pre-treatment outcome fit graphically and numerically."
+  - id: "synth-diagnostic-002"
+    name: "donor_weights"
+    instruction: "Report nonzero donor weights and check whether results rely on one donor."
+  - id: "synth-diagnostic-003"
+    name: "placebo_tests"
+    instruction: "Run placebo/permutation checks where donor count allows."
+  - id: "synth-diagnostic-004"
+    name: "donor_pool_sensitivity"
+    instruction: "Check sensitivity to excluding influential or potentially contaminated donors."
+failure_modes:
+  - id: "synth-failure-001"
+    risk: "Poor pre-treatment fit."
+    response: "Block strong causal claims or redesign the donor pool."
+  - id: "synth-failure-002"
+    risk: "Contaminated donor pool."
+    response: "Exclude affected donors and rerun diagnostics."
+  - id: "synth-failure-003"
+    risk: "No placebo or sensitivity analysis."
+    response: "Warn and require researcher acknowledgement."
+code_recipes:
+  - id: "synth-r-synth"
+    language: "r"
+    package: "Synth"
+    source: "synth"
+    template: |
+      library(Synth)
+
+      prepared <- dataprep(
+        foo = df,
+        predictors = c("predictor_1", "predictor_2"),
+        dependent = "outcome",
+        unit.variable = "unit_id",
+        time.variable = "time_id",
+        treatment.identifier = treated_unit,
+        controls.identifier = donor_units,
+        time.predictors.prior = pre_period,
+        time.optimize.ssr = pre_period,
+        time.plot = all_periods
+      )
+      fit <- synth(prepared)
+      synth.tab(prepared, fit)
+reporting_checklist:
+  - "State treated unit, treatment date, donor-pool eligibility, and predictors."
+  - "Report pre-treatment fit before discussing post-treatment gaps."
+  - "Report donor weights and influential-donor sensitivity."
+  - "Report placebo/permutation evidence when feasible."
+source_anchors:
+  - source_id: "abadie_gardeazabal_2003"
+    topics:
+      - "synthetic control comparative case study foundation"
+  - source_id: "abadie_diamond_hainmueller_2010"
+    topics:
+      - "synthetic control methods for comparative case studies"
+  - source_id: "world_bank_impact_eval"
+    topics:
+      - "synthetic control in impact evaluation"
+    local_pdf_pages: [167, 168, 169, 174, 178]
+audit:
+  stage: "ai_reviewed_pending_human"
+  audit_report: "docs/deep_knowledge_audit_report.yaml"
+  notes:
+    - "Local PDF anchors were checked against page-level keyword evidence."
+    - "Article anchors are registered as external source metadata and require final human bibliographic review."

@@ -149,3 +149,179 @@ methods:
       - "Warn when bandwidth sensitivity is missing."
     sources:
       - {id: "angrist_pischke_mhe", chapters: ["6"]}
+  matching:
+    name: "Matching / Propensity Score Preprocessing"
+    status: "starter"
+    data_structures: ["cross-section", "pooled"]
+    estimators: ["Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"]
+    purpose: "Improve treated-control comparability on pre-treatment covariates before estimating treatment effects."
+    assumptions:
+      - "The covariates used for matching are measured before treatment."
+      - "Selection into treatment is ignorable after the registered covariates, or the analysis is described as design support rather than causal proof."
+      - "Treated and comparison units have common support."
+      - "Post-matching outcome analysis respects the matched design and uncertainty."
+    required_pap_fields:
+      - "matching_block.method"
+      - "matching_block.pre_treatment_covariates"
+      - "matching_block.estimand"
+      - "matching_block.balance_diagnostics"
+      - "identification.outcome_variable"
+      - "identification.treatment_variable"
+    diagnostics:
+      - "Report balance before and after matching."
+      - "Inspect common support and discarded units."
+      - "Report effective sample size and whether matching changed the target population."
+    blocks_or_warnings:
+      - "Block matching on post-treatment variables."
+      - "Warn when balance remains poor after matching."
+      - "Warn when discarded units make the estimand unclear."
+    sources:
+      - {id: "rosenbaum_rubin_1983"}
+      - {id: "world_bank_impact_eval"}
+  synthetic_control:
+    name: "Synthetic Control"
+    status: "starter"
+    data_structures: ["panel"]
+    estimators: ["SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"]
+    purpose: "Estimate effects for one or a few treated aggregate units using weighted donor units that match pre-treatment outcomes or predictors."
+    assumptions:
+      - "A credible donor pool is defined before estimation."
+      - "The treated unit has enough pre-treatment history to assess fit."
+      - "Donor units are not affected by the treatment or spillovers."
+      - "The outcome path is comparable after weighting."
+    required_pap_fields:
+      - "synthetic_control_block.treated_unit"
+      - "synthetic_control_block.donor_pool"
+      - "synthetic_control_block.intervention_time"
+      - "synthetic_control_block.predictors"
+      - "synthetic_control_block.placebo_tests"
+      - "identification.outcome_variable"
+    diagnostics:
+      - "Report pre-treatment fit and predictor balance."
+      - "Report donor weights."
+      - "Run placebo or permutation checks where feasible."
+      - "Test sensitivity to donor-pool exclusions."
+    blocks_or_warnings:
+      - "Block when treated unit, intervention time, or donor pool is missing."
+      - "Warn when pre-treatment fit is poor."
+      - "Warn when the donor pool includes potentially treated or contaminated units."
+    sources:
+      - {id: "abadie_gardeazabal_2003"}
+      - {id: "abadie_diamond_hainmueller_2010"}
+      - {id: "world_bank_impact_eval"}
+  nonlinear_did:
+    name: "Nonlinear Difference-in-Differences"
+    status: "starter"
+    data_structures: ["panel", "pooled"]
+    estimators: ["NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"]
+    purpose: "Handle DiD designs where the outcome, link function, or target effect is nonlinear and a linear TWFE coefficient is not the desired estimand."
+    assumptions:
+      - "The target scale and estimand are stated before estimation."
+      - "Parallel trends or a design-specific substitute is stated on the relevant scale."
+      - "Treatment timing and comparison groups are registered."
+      - "Functional-form sensitivity is acknowledged and diagnosed."
+    required_pap_fields:
+      - "nonlinear_did_block.outcome_family"
+      - "nonlinear_did_block.target_scale"
+      - "did_block.control_group"
+      - "did_block.staggered_adoption"
+      - "identification.clustering"
+    diagnostics:
+      - "Report the estimand scale and marginal effect or ATT transformation."
+      - "Check functional-form sensitivity where feasible."
+      - "Use DiD diagnostics for timing, comparison groups, and clustering."
+    blocks_or_warnings:
+      - "Block silent interpretation of nonlinear coefficients as level effects."
+      - "Block missing comparison-group justification."
+      - "Warn when the target scale is unclear."
+    sources:
+      - {id: "wooldridge_nonlinear_did_2023"}
+      - {id: "callaway_santanna_2021"}
+  gmm:
+    name: "Generalized Method of Moments"
+    status: "starter"
+    data_structures: ["cross-section", "time-series", "panel"]
+    estimators: ["GMM", "IVGMM", "DynamicPanelGMM"]
+    purpose: "Estimate parameters from moment restrictions when the model is defined by orthogonality or equilibrium conditions."
+    assumptions:
+      - "Moment conditions are explicitly derived and registered."
+      - "Identification rank and parameter count are checked."
+      - "The weighting matrix and covariance estimator are documented."
+      - "Overidentification tests are interpreted as diagnostics, not proof of validity."
+    required_pap_fields:
+      - "gmm_block.moment_conditions"
+      - "gmm_block.parameters"
+      - "gmm_block.instruments"
+      - "gmm_block.weighting_matrix"
+      - "gmm_block.identification_rank"
+    diagnostics:
+      - "Check moment-condition dimensions and identification."
+      - "Report overidentification diagnostics when overidentified."
+      - "Report sensitivity to weighting matrix and instrument set."
+    blocks_or_warnings:
+      - "Block GMM without explicit moment conditions."
+      - "Block if there are fewer valid moments than parameters."
+      - "Warn when many instruments may weaken finite-sample performance."
+    sources:
+      - {id: "hansen_1982"}
+      - {id: "greene_econometric_analysis"}
+      - {id: "wooldridge_cross_section_panel"}
+  limited_dependent:
+    name: "Limited Dependent Variable Models"
+    status: "starter"
+    data_structures: ["cross-section", "pooled", "panel"]
+    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    purpose: "Model binary, censored, truncated, ordered, multinomial, or count outcomes with estimators and interpretations suited to the outcome support."
+    assumptions:
+      - "The outcome type and support are declared before choosing the estimator."
+      - "Coefficients are not reported as marginal effects unless transformed."
+      - "Functional form, link function, and distributional assumptions are documented."
+      - "Convergence and sparse-cell risks are checked."
+    required_pap_fields:
+      - "limited_dependent_block.outcome_type"
+      - "limited_dependent_block.link_or_family"
+      - "limited_dependent_block.target_effect"
+      - "limited_dependent_block.marginal_effect_plan"
+      - "identification.covariates"
+    diagnostics:
+      - "Report marginal effects or predicted probabilities when appropriate."
+      - "Check convergence and separation for binary models."
+      - "Check overdispersion for count models."
+    blocks_or_warnings:
+      - "Block interpreting logit/probit coefficients as probability effects."
+      - "Warn on convergence failure or separation."
+      - "Warn when a count model ignores overdispersion."
+    sources:
+      - {id: "greene_econometric_analysis"}
+      - {id: "wooldridge_cross_section_panel"}
+      - {id: "stock_watson_intro_econometrics"}
+  time_series:
+    name: "Time-Series Econometrics"
+    status: "starter"
+    data_structures: ["time-series"]
+    estimators: ["ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"]
+    purpose: "Model serial dependence, dynamics, forecasting, or time-series causal/regression designs with explicit attention to stationarity and temporal ordering."
+    assumptions:
+      - "The time index and frequency are declared."
+      - "Stationarity, trends, seasonality, and breaks are addressed before estimation."
+      - "Lag order and forecast horizon are registered."
+      - "Inference accounts for serial correlation when regression is used."
+    required_pap_fields:
+      - "time_series_block.time_index"
+      - "time_series_block.frequency"
+      - "time_series_block.stationarity_plan"
+      - "time_series_block.lag_order_plan"
+      - "time_series_block.forecast_or_causal_target"
+    diagnostics:
+      - "Inspect time plots, autocorrelation, and partial autocorrelation."
+      - "Run unit-root or stationarity checks where relevant."
+      - "Report lag-selection criteria and residual diagnostics."
+      - "Guard against look-ahead bias in forecasting."
+    blocks_or_warnings:
+      - "Block time-series regression with no time index."
+      - "Warn on likely spurious regression with trending nonstationary series."
+      - "Warn when forecast evaluation uses future information."
+    sources:
+      - {id: "stock_watson_intro_econometrics"}
+      - {id: "greene_econometric_analysis"}
+      - {id: "box_jenkins_reinsel_ljung_2015"}

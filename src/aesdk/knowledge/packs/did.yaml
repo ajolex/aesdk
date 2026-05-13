@@ -1,0 +1,155 @@
+version: "0.1.0"
+method_id: "did"
+name: "Differences-in-Differences"
+maturity:
+  status: "reviewed_guardrail"
+  source_review: "partial_multi_source"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "A treatment, policy, or exposure changes for one group but not for a credible comparison group."
+    - "Outcome data are observed before and after treatment."
+    - "The research question targets a treatment effect under a parallel-trends style design."
+  do_not_use_when:
+    - "There is no pre-treatment outcome information."
+    - "The comparison group is undefined or substantively incomparable."
+    - "Treatment timing is staggered and the agent plans plain TWFE without a modern estimator or decomposition."
+estimand:
+  default: "Average treatment effect on the treated for the registered comparison and timing design."
+  agent_instruction: "Name the treated group, comparison group, timing design, and whether effects are static, dynamic, or cohort-specific."
+decision_tree:
+  - id: "did-design-001"
+    if: "There are exactly two periods and a single treated cohort."
+    then: "Use a simple DiD contrast or an equivalent regression with treatment, post, and interaction terms."
+  - id: "did-design-002"
+    if: "There are many periods but all treated units adopt at the same time."
+    then: "Use TWFE or event-study regression, with clustered inference and registered pre-trend checks."
+  - id: "did-design-003"
+    if: "Treatment adoption is staggered across cohorts."
+    then: "Prefer group-time ATT, interaction-weighted event study, stacked DiD, or a documented decomposition strategy; block unqualified plain TWFE."
+  - id: "did-design-004"
+    if: "The outcome is nonlinear or binary and the target is not a linear mean effect."
+    then: "Escalate to nonlinear DiD guidance; do not silently use linear TWFE as the estimand."
+assumptions:
+  - id: "did-assumption-001"
+    plain: "The comparison group shows what would have happened to treated units without treatment."
+    formal: "Parallel trends or a design-specific conditional parallel trends assumption for the registered estimand."
+    evidence: "Pre-treatment outcome paths, event-study leads, placebo outcomes, institutional timing argument."
+  - id: "did-assumption-002"
+    plain: "Treatment timing is measured correctly and anticipation is handled."
+    formal: "Potential outcomes before treatment are not already affected by known future treatment unless anticipation periods are modeled."
+    evidence: "Known announcement dates, excluded anticipation window, or event-study lead pattern."
+  - id: "did-assumption-003"
+    plain: "Inference reflects repeated observations and grouped treatment assignment."
+    formal: "Standard errors allow within-cluster dependence at the assignment or unit level, with stronger methods for few clusters."
+    evidence: "Registered clustering level, cluster count, and small-cluster remedy when needed."
+required_inputs:
+  - id: "did-input-001"
+    name: "outcome_variable"
+    reason: "The outcome whose change is compared."
+  - id: "did-input-002"
+    name: "treatment_variable"
+    reason: "Binary or intensity treatment indicator aligned with timing."
+  - id: "did-input-003"
+    name: "unit_id"
+    reason: "Required for panel DiD and clustered inference."
+  - id: "did-input-004"
+    name: "time_id"
+    reason: "Required to identify pre/post periods, event time, and fixed effects."
+  - id: "did-input-005"
+    name: "control_group"
+    reason: "Never-treated, not-yet-treated, matched, or otherwise justified comparison group."
+  - id: "did-input-006"
+    name: "clustering_level"
+    reason: "Prevents invalid precision from serial correlation or grouped assignment."
+diagnostics:
+  - id: "did-diagnostic-001"
+    name: "pre_trend"
+    instruction: "Estimate and report pre-treatment leads or a registered substitute."
+  - id: "did-diagnostic-002"
+    name: "event_study"
+    instruction: "Show dynamic effects when multiple periods are available."
+  - id: "did-diagnostic-003"
+    name: "comparison_group_audit"
+    instruction: "Describe which units identify the counterfactual and why they are credible."
+  - id: "did-diagnostic-004"
+    name: "cluster_audit"
+    instruction: "Report clustering level and number of clusters."
+failure_modes:
+  - id: "did-failure-001"
+    risk: "No comparison-group justification."
+    response: "Block causal execution until the comparison group is declared and defended."
+  - id: "did-failure-002"
+    risk: "Plain TWFE under staggered adoption."
+    response: "Block unless the PAP registers a modern estimator, decomposition, or justified homogeneous-effects design."
+  - id: "did-failure-003"
+    risk: "Conventional standard errors in panel/grouped treatment."
+    response: "Block and require clustered or stronger inference."
+code_recipes:
+  - id: "did-python-pyfixest-event-study"
+    language: "python"
+    package: "pyfixest"
+    source: "pyfixest"
+    template: |
+      import pyfixest as pf
+
+      fit = pf.event_study(
+          data=df,
+          yname="outcome",
+          idname="unit_id",
+          tname="time_id",
+          gname="first_treated_period",
+          estimator="saturated",
+      )
+      print(fit.summary())
+  - id: "did-r-did-att-gt"
+    language: "r"
+    package: "did"
+    source: "did_r"
+    template: |
+      library(did)
+
+      att <- att_gt(
+        yname = "outcome",
+        tname = "time_id",
+        idname = "unit_id",
+        gname = "first_treated_period",
+        xformla = ~ covariate_1 + covariate_2,
+        data = df,
+        control_group = "notyettreated"
+      )
+      summary(aggte(att, type = "dynamic"))
+  - id: "did-stata-xtdidregress"
+    language: "stata"
+    package: "Stata"
+    source: "stata_didregress"
+    template: |
+      xtset unit_id time_id
+      xtdidregress (outcome covariate_1 covariate_2) (treated), group(unit_id) time(time_id)
+      estat ptrends
+reporting_checklist:
+  - "State the treated group, comparison group, treatment timing, and estimand."
+  - "Report the estimator and why it matches the timing design."
+  - "Show pre-trend or registered substitute diagnostics."
+  - "Report clustering level, number of clusters, and small-cluster adjustments if used."
+  - "Separate design evidence from statistical significance."
+source_anchors:
+  - source_id: "angrist_pischke_mhe"
+    topics:
+      - "fixed effects, differences-in-differences, and panel data"
+      - "clustering and serial correlation"
+    local_pdf_pages: [181, 185, 187, 189, 191, 193, 238, 247, 249, 251]
+  - source_id: "callaway_santanna_2021"
+    topics:
+      - "multiple-period DiD with staggered adoption"
+  - source_id: "stock_watson_intro_econometrics"
+    topics:
+      - "applied panel and DiD framing"
+  - source_id: "world_bank_impact_eval"
+    topics:
+      - "impact-evaluation DiD design selection"
+  - source_id: "wooldridge_nonlinear_did_2023"
+    topics:
+      - "nonlinear panel DiD extensions"

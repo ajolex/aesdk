@@ -80,3 +80,87 @@ method_sources:
           topic: "regression discontinuity designs"
       sdk_context:
         - "Future RDD protocol should require running variable, cutoff, bandwidth, continuity assumptions, and manipulation checks."
+  matching:
+    - source_id: "world_bank_impact_eval"
+      local_path: "tools/WorldBankImpactEval.pdf"
+      locators:
+        - pdf_pages: [173, 174, 175]
+          topic: "matching and propensity-score design"
+      sdk_context:
+        - "Matching workflows must register pre-treatment covariates, balance diagnostics, and common-support checks."
+    - source_id: "angrist_pischke_mhe"
+      local_path: "tools/MostlyHarmlessEconometrics.pdf"
+      locators:
+        - pdf_pages: [30, 32, 34, 38, 58]
+          topic: "selection, matching logic, and regression design comparisons"
+      sdk_context:
+        - "Matching is a design/preprocessing step; it does not solve unobserved confounding without a credible assumption."
+  synthetic_control:
+    - source_id: "world_bank_impact_eval"
+      local_path: "tools/WorldBankImpactEval.pdf"
+      locators:
+        - pdf_pages: [167, 168, 169, 174, 178]
+          topic: "synthetic control in impact evaluation"
+      sdk_context:
+        - "Synthetic-control workflows must define the treated unit, donor pool, intervention time, pre-treatment fit, and placebo strategy."
+    - source_id: "abadie_diamond_hainmueller_2010"
+      locators:
+        - topic: "synthetic control methods for comparative case studies"
+      sdk_context:
+        - "A weighted donor pool should reproduce treated-unit pre-treatment outcomes or predictors before post-treatment effects are interpreted."
+  nonlinear_did:
+    - source_id: "wooldridge_nonlinear_did_2023"
+      local_path: "tools/utad016.pdf"
+      locators:
+        - pdf_pages: [1, 2, 3, 12, 14, 17, 21, 22]
+          topic: "nonlinear DiD with panel data"
+      sdk_context:
+        - "Nonlinear DiD must declare the target scale and avoid treating nonlinear model coefficients as automatic treatment effects."
+    - source_id: "callaway_santanna_2021"
+      locators:
+        - topic: "staggered DiD estimands and group-time effects"
+      sdk_context:
+        - "Nonlinear extensions still need clear timing, comparison-group, and aggregation choices."
+  gmm:
+    - source_id: "greene_econometric_analysis"
+      local_path: "tools/econometric_analysis_by_greence.pdf"
+      locators:
+        - pdf_pages: [3, 9, 10, 11, 12, 14, 22, 31]
+          topic: "GMM and advanced econometric estimation"
+      sdk_context:
+        - "GMM workflows must register moment conditions, parameters, instruments, identification rank, and weighting matrix."
+    - source_id: "hansen_1982"
+      locators:
+        - topic: "large sample properties of GMM estimators"
+      sdk_context:
+        - "Overidentifying restrictions are diagnostics for the moment set, not proof that the substantive model is true."
+  limited_dependent:
+    - source_id: "greene_econometric_analysis"
+      local_path: "tools/econometric_analysis_by_greence.pdf"
+      locators:
+        - pdf_pages: [179, 211, 212, 214, 450]
+          topic: "limited dependent variable and nonlinear models"
+      sdk_context:
+        - "Limited dependent variable workflows must declare outcome support, link/family, target effect, and marginal-effect interpretation."
+    - source_id: "wooldridge_cross_section_panel"
+      local_path: "tools/Wooldridge.pdf"
+      locators:
+        - pdf_pages: [534, 535, 536, 537, 538, 539]
+          topic: "binary response and nonlinear panel/cross-section models"
+      sdk_context:
+        - "Nonlinear model coefficients usually need transformation before they are reported as substantive effects."
+  time_series:
+    - source_id: "stock_watson_intro_econometrics"
+      local_path: "tools/JamesHStock.pdf"
+      locators:
+        - pdf_pages: [17, 18, 19, 23, 24, 32, 38]
+          topic: "time-series regression and forecasting"
+      sdk_context:
+        - "Time-series workflows must declare time index, frequency, stationarity plan, lag order, and forecast or causal target."
+    - source_id: "greene_econometric_analysis"
+      local_path: "tools/econometric_analysis_by_greence.pdf"
+      locators:
+        - pdf_pages: [3, 9, 10, 14, 15, 23, 24, 30]
+          topic: "time-series econometrics"
+      sdk_context:
+        - "Serial dependence and nonstationarity are first-order design risks, not afterthought diagnostics."

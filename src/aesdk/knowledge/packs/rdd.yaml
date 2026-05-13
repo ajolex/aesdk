@@ -1,0 +1,102 @@
+version: "0.1.0"
+method_id: "rdd"
+name: "Regression Discontinuity Design"
+maturity:
+  status: "planned_guardrail"
+  source_review: "limited"
+  estimator_choice: "low"
+  diagnostics: "starter"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "Treatment assignment changes discontinuously at a known cutoff in a running variable."
+    - "Units near the cutoff are plausibly comparable."
+  do_not_use_when:
+    - "There is no running variable or cutoff."
+    - "Units can precisely manipulate assignment around the cutoff and the design does not address it."
+estimand:
+  default: "Local treatment effect at the cutoff."
+  agent_instruction: "State the running variable, cutoff, bandwidth rule, sharp/fuzzy design, and local estimand."
+decision_tree:
+  - id: "rdd-design-001"
+    if: "Treatment is deterministically assigned by crossing the cutoff."
+    then: "Use sharp RDD."
+  - id: "rdd-design-002"
+    if: "Crossing the cutoff changes treatment probability but not treatment deterministically."
+    then: "Use fuzzy RDD with the cutoff as an instrument for treatment."
+  - id: "rdd-design-003"
+    if: "Running variable or cutoff is missing."
+    then: "Block RDD execution."
+assumptions:
+  - id: "rdd-assumption-001"
+    plain: "Units just above and below the cutoff are comparable except for treatment assignment."
+    formal: "Continuity of potential outcomes at the cutoff."
+    evidence: "Institutional rule, covariate continuity, and local balance checks."
+  - id: "rdd-assumption-002"
+    plain: "Units do not precisely manipulate which side of the cutoff they fall on."
+    formal: "No precise sorting around the threshold."
+    evidence: "Density/manipulation test and design narrative."
+required_inputs:
+  - id: "rdd-input-001"
+    name: "running_variable"
+    reason: "Defines the assignment score."
+  - id: "rdd-input-002"
+    name: "cutoff"
+    reason: "Defines the discontinuity."
+  - id: "rdd-input-003"
+    name: "bandwidth_rule"
+    reason: "Defines the local comparison sample."
+  - id: "rdd-input-004"
+    name: "sharp_or_fuzzy"
+    reason: "Determines estimator and interpretation."
+diagnostics:
+  - id: "rdd-diagnostic-001"
+    name: "density"
+    instruction: "Check for bunching or manipulation around the cutoff."
+  - id: "rdd-diagnostic-002"
+    name: "covariate_continuity"
+    instruction: "Inspect whether predetermined covariates are smooth through the cutoff."
+  - id: "rdd-diagnostic-003"
+    name: "bandwidth_sensitivity"
+    instruction: "Report sensitivity to bandwidth and polynomial/order choices."
+failure_modes:
+  - id: "rdd-failure-001"
+    risk: "No running variable or cutoff."
+    response: "Block RDD execution."
+  - id: "rdd-failure-002"
+    risk: "No manipulation check."
+    response: "Warn and require researcher acknowledgement."
+  - id: "rdd-failure-003"
+    risk: "High-order global polynomial used as default."
+    response: "Warn and prefer local methods with bandwidth sensitivity."
+code_recipes:
+  - id: "rdd-r-rdrobust"
+    language: "r"
+    package: "rdrobust"
+    source: "rdrobust"
+    template: |
+      library(rdrobust)
+
+      fit <- rdrobust(y = df$outcome, x = df$running_variable, c = cutoff)
+      summary(fit)
+      rddensity(X = df$running_variable, c = cutoff)
+  - id: "rdd-stata-rdrobust"
+    language: "stata"
+    package: "rdrobust"
+    source: "rdrobust"
+    template: |
+      rdrobust outcome running_variable, c(cutoff)
+      rddensity running_variable, c(cutoff)
+reporting_checklist:
+  - "State running variable, cutoff, and whether the design is sharp or fuzzy."
+  - "Report bandwidth rule and sensitivity checks."
+  - "Report manipulation/density and covariate-continuity diagnostics."
+  - "Interpret the estimate as local to the cutoff."
+source_anchors:
+  - source_id: "angrist_pischke_mhe"
+    topics:
+      - "regression discontinuity designs"
+    local_pdf_pages: [205, 206]
+  - source_id: "world_bank_impact_eval"
+    topics:
+      - "impact-evaluation RDD design selection"

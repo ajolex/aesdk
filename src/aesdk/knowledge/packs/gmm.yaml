@@ -1,0 +1,128 @@
+version: "0.1.0"
+method_id: "gmm"
+name: "Generalized Method of Moments"
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "The model is defined by moment restrictions, orthogonality conditions, or instrumented equations."
+    - "A full likelihood is unavailable, undesirable, or less central than valid moments."
+  do_not_use_when:
+    - "Moment conditions are not stated."
+    - "There are fewer credible moments than parameters."
+estimand:
+  default: "Parameter vector solving registered population moment restrictions."
+  agent_instruction: "Write the moment conditions before writing estimation code."
+decision_tree:
+  - id: "gmm-design-001"
+    if: "The problem is linear IV with heteroskedasticity concerns."
+    then: "Use IV-GMM only after registering instruments and weighting/covariance choices."
+  - id: "gmm-design-002"
+    if: "The model is overidentified."
+    then: "Report overidentification diagnostics as stress tests."
+  - id: "gmm-design-003"
+    if: "There are many instruments relative to sample size."
+    then: "Reduce instruments or document finite-sample risks."
+assumptions:
+  - id: "gmm-assumption-001"
+    plain: "The registered moments are zero at the true parameters."
+    formal: "Population moment restrictions identify the parameter vector."
+    evidence: "Theory, design, and instrument validity argument."
+  - id: "gmm-assumption-002"
+    plain: "There is enough independent information in the moments to identify parameters."
+    formal: "Rank condition for the Jacobian or relevant identification matrix."
+    evidence: "Dimension and rank audit."
+  - id: "gmm-assumption-003"
+    plain: "The weighting matrix and covariance estimator match the sampling design."
+    formal: "Consistent weighting/covariance estimation under the dependence structure."
+    evidence: "Registered robust, HAC, clustered, or panel covariance choice."
+required_inputs:
+  - id: "gmm-input-001"
+    name: "moment_conditions"
+    reason: "GMM is not defined without moments."
+  - id: "gmm-input-002"
+    name: "parameters"
+    reason: "Moment count must be compared to parameter count."
+  - id: "gmm-input-003"
+    name: "instruments"
+    reason: "Many GMM designs depend on valid instruments."
+  - id: "gmm-input-004"
+    name: "weighting_matrix"
+    reason: "The weighting choice affects efficiency and diagnostics."
+diagnostics:
+  - id: "gmm-diagnostic-001"
+    name: "moment_condition_audit"
+    instruction: "List each moment and the assumption that makes it valid."
+  - id: "gmm-diagnostic-002"
+    name: "identification_rank"
+    instruction: "Check that moments identify the parameters."
+  - id: "gmm-diagnostic-003"
+    name: "overidentification"
+    instruction: "Report J-test or related diagnostics when overidentified."
+  - id: "gmm-diagnostic-004"
+    name: "weighting_sensitivity"
+    instruction: "Compare defensible weighting/covariance choices."
+failure_modes:
+  - id: "gmm-failure-001"
+    risk: "Moment conditions are not written down."
+    response: "Block estimation."
+  - id: "gmm-failure-002"
+    risk: "Underidentified parameter vector."
+    response: "Block until moments, instruments, or parameters are revised."
+  - id: "gmm-failure-003"
+    risk: "Many weak instruments."
+    response: "Warn or block depending on severity and conformance."
+code_recipes:
+  - id: "gmm-python-linearmodels-ivgmm"
+    language: "python"
+    package: "linearmodels"
+    source: "linearmodels_gmm"
+    template: |
+      from linearmodels.iv import IVGMM
+
+      fit = IVGMM.from_formula(
+          "outcome ~ 1 + covariate_1 + [endog ~ instrument_1 + instrument_2]",
+          data=df,
+      ).fit(cov_type="robust")
+      print(fit.summary)
+  - id: "gmm-r-gmm"
+    language: "r"
+    package: "gmm"
+    source: "r_gmm"
+    template: |
+      library(gmm)
+
+      moments <- function(theta, data) {
+        # Return matrix of moment conditions. Replace with registered moments.
+        residual <- data$y - theta[1] - theta[2] * data$x
+        cbind(residual, residual * data$z)
+      }
+      fit <- gmm(moments, x = df, t0 = c(0, 0))
+      summary(fit)
+reporting_checklist:
+  - "Write moment conditions and parameters before code."
+  - "Report instrument set, weighting matrix, and covariance estimator."
+  - "Report identification/rank audit."
+  - "Report overidentification diagnostics only as diagnostics."
+source_anchors:
+  - source_id: "hansen_1982"
+    topics:
+      - "large sample properties of GMM estimators"
+  - source_id: "greene_econometric_analysis"
+    topics:
+      - "GMM and advanced econometric estimation"
+    local_pdf_pages: [3, 9, 10, 11, 12, 14, 22, 31]
+  - source_id: "wooldridge_cross_section_panel"
+    topics:
+      - "GMM, IV, and moment-based estimation"
+    local_pdf_pages: [487, 489, 490, 496, 520, 521, 531]
+audit:
+  stage: "ai_reviewed_pending_human"
+  audit_report: "docs/deep_knowledge_audit_report.yaml"
+  notes:
+    - "Local Greene and Wooldridge anchors were checked against page-level GMM keyword evidence."
+    - "External Hansen reference requires final human bibliographic review."

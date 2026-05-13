@@ -42,9 +42,21 @@ def validation_payload(result: ValidationResult) -> dict[str, Any]:
     }
 
 
-def execute_payload(*, code: str, status: str, diagnostics: list[dict[str, Any]]) -> dict[str, Any]:
+def execute_payload(
+    *,
+    code: str,
+    status: str,
+    diagnostics: list[dict[str, Any]],
+    language: str = "python",
+) -> dict[str, Any]:
     code_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
-    return {"status": status, "diagnostics": diagnostics, "code": code, "code_sha256": code_hash}
+    return {
+        "status": status,
+        "diagnostics": diagnostics,
+        "language": language,
+        "code": code,
+        "code_sha256": code_hash,
+    }
 
 
 def override_payload(*, rule_ids: list[str], justification: str) -> dict[str, Any]:

@@ -1,0 +1,115 @@
+version: "0.1.0"
+method_id: "matching"
+name: "Matching / Propensity Score Preprocessing"
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "The design compares treated and untreated units after improving balance on pre-treatment covariates."
+    - "The research team can defend selection on observed covariates or uses matching as transparent preprocessing."
+  do_not_use_when:
+    - "Key confounders are unobserved and no design argument handles them."
+    - "The proposed match variables are post-treatment outcomes or mediators."
+estimand:
+  default: "ATT, ATC, or ATE for the population retained by the matching design."
+  agent_instruction: "Name the target estimand and report how matching changes the analysis sample."
+decision_tree:
+  - id: "matching-design-001"
+    if: "Treatment is binary and covariates are rich pre-treatment controls."
+    then: "Use propensity-score, Mahalanobis, exact/coarsened exact, or hybrid matching; report balance."
+  - id: "matching-design-002"
+    if: "Common support is weak."
+    then: "Trim or redefine the estimand before estimating effects."
+  - id: "matching-design-003"
+    if: "Balance remains poor after matching."
+    then: "Block causal interpretation or revise the matching specification."
+assumptions:
+  - id: "matching-assumption-001"
+    plain: "Matched controls approximate treated units on observed pre-treatment covariates."
+    formal: "Conditional ignorability or selection on observables for the registered covariate set."
+    evidence: "Design narrative and balance diagnostics."
+  - id: "matching-assumption-002"
+    plain: "Treated and untreated units overlap enough to support comparison."
+    formal: "Common support/positivity for treatment assignment."
+    evidence: "Propensity-score overlap, discarded-unit report, or support plots."
+required_inputs:
+  - id: "matching-input-001"
+    name: "treatment_variable"
+    reason: "Defines treated and comparison units."
+  - id: "matching-input-002"
+    name: "pre_treatment_covariates"
+    reason: "Matching must not use post-treatment variables."
+  - id: "matching-input-003"
+    name: "estimand"
+    reason: "ATT, ATC, or ATE changes matching and interpretation."
+  - id: "matching-input-004"
+    name: "matching_method"
+    reason: "Nearest-neighbor, caliper, exact, weighting, or other design choices must be predeclared."
+diagnostics:
+  - id: "matching-diagnostic-001"
+    name: "balance_before_after"
+    instruction: "Report standardized mean differences and balance summaries before and after matching."
+  - id: "matching-diagnostic-002"
+    name: "common_support"
+    instruction: "Inspect overlap and list discarded units."
+  - id: "matching-diagnostic-003"
+    name: "effective_sample_size"
+    instruction: "Report retained sample size, weights, and target-population changes."
+failure_modes:
+  - id: "matching-failure-001"
+    risk: "Matching uses post-treatment variables."
+    response: "Block; rebuild the covariate set with pre-treatment variables only."
+  - id: "matching-failure-002"
+    risk: "Poor balance remains after matching."
+    response: "Warn or block under strict conformance."
+  - id: "matching-failure-003"
+    risk: "Discarded units change the estimand silently."
+    response: "Require reporting of the retained population and estimand."
+code_recipes:
+  - id: "matching-r-matchit"
+    language: "r"
+    package: "MatchIt"
+    source: "matchit"
+    template: |
+      library(MatchIt)
+
+      m <- matchit(treated ~ covariate_1 + covariate_2, data = df, method = "nearest", estimand = "ATT")
+      summary(m, standardize = TRUE)
+      matched <- match.data(m)
+  - id: "matching-python-statsmodels-pscore"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels_discrete"
+    template: |
+      import statsmodels.formula.api as smf
+
+      ps = smf.logit("treated ~ covariate_1 + covariate_2", data=df).fit()
+      df["propensity_score"] = ps.predict(df)
+      # Match or weight only after checking support and balance.
+reporting_checklist:
+  - "State ATT, ATC, or ATE and the retained analysis population."
+  - "List all pre-treatment matching covariates."
+  - "Report balance and support before and after matching."
+  - "State whether matching is preprocessing or the main identifying design."
+source_anchors:
+  - source_id: "rosenbaum_rubin_1983"
+    topics:
+      - "propensity-score foundation"
+  - source_id: "world_bank_impact_eval"
+    topics:
+      - "matching and propensity-score design"
+    local_pdf_pages: [173, 174, 175]
+  - source_id: "angrist_pischke_mhe"
+    topics:
+      - "selection, matching logic, and regression design comparisons"
+    local_pdf_pages: [30, 32, 34, 38, 58]
+audit:
+  stage: "ai_reviewed_pending_human"
+  audit_report: "docs/deep_knowledge_audit_report.yaml"
+  notes:
+    - "Local PDF anchors were checked against page-level keyword evidence."
+    - "Public pack stores paraphrased guidance and page locators only."

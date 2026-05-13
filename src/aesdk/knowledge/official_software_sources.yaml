@@ -1,0 +1,105 @@
+version: "0.1.0"
+policy:
+  use: "Official package or vendor documentation for agent-facing code recipes."
+  refresh: "Verify URLs and package APIs before each public release."
+sources:
+  statsmodels:
+    language: "python"
+    url: "https://www.statsmodels.org/stable/generated/statsmodels.regression.linear_model.OLSResults.get_robustcov_results.html"
+    sdk_use:
+      - "OLS and robust covariance examples"
+      - "clustered covariance options"
+  linearmodels:
+    language: "python"
+    url: "https://bashtage.github.io/linearmodels/iv/iv/linearmodels.iv.model.IV2SLS.from_formula.html"
+    sdk_use:
+      - "IV2SLS examples"
+      - "panel fixed-effects examples"
+  pyfixest:
+    language: "python"
+    url: "https://pyfixest.org/quickstart.html"
+    sdk_use:
+      - "high-dimensional fixed effects"
+      - "DiD and event-study examples"
+  fixest:
+    language: "r"
+    url: "https://lrberge.github.io/fixest/reference/feols.html"
+    sdk_use:
+      - "fixed-effects OLS"
+      - "clustered standard errors"
+      - "event-study style workflows"
+  did_r:
+    language: "r"
+    url: "https://bcallaway11.github.io/did/"
+    sdk_use:
+      - "Callaway-Sant'Anna group-time DiD"
+      - "staggered-adoption treatment effects"
+  rdrobust:
+    language: "r/python/stata"
+    url: "https://rdpackages.github.io/rdrobust/"
+    sdk_use:
+      - "regression discontinuity estimation"
+      - "bandwidth and robust inference workflows"
+  stata_didregress:
+    language: "stata"
+    url: "https://www.stata.com/manuals/tedidregress.pdf"
+    sdk_use:
+      - "didregress and xtdidregress templates"
+      - "parallel-trends diagnostics"
+      - "wild-bootstrap and small-sample inference options"
+  stata_ivregress:
+    language: "stata"
+    url: "https://www.stata.com/capabilities/overview/endogvars.html"
+    sdk_use:
+      - "ivregress 2sls templates"
+  matchit:
+    language: "r"
+    url: "https://search.r-project.org/CRAN/refmans/MatchIt/html/matchit.html"
+    sdk_use:
+      - "matching and propensity-score preprocessing"
+      - "balance summaries before and after matching"
+  synth:
+    language: "r"
+    url: "https://search.r-project.org/CRAN/refmans/Synth/html/synth.html"
+    sdk_use:
+      - "synthetic control estimation"
+      - "treated-unit and donor-pool comparative case studies"
+  statsmodels_discrete:
+    language: "python"
+    url: "https://www.statsmodels.org/stable/discretemod.html"
+    sdk_use:
+      - "logit, probit, multinomial, Poisson, and negative binomial models"
+      - "limited dependent variable starter recipes"
+  statsmodels_tsa:
+    language: "python"
+    url: "https://www.statsmodels.org/stable/tsa.html"
+    sdk_use:
+      - "ARIMA, SARIMAX, VAR, and time-series diagnostics"
+  r_gmm:
+    language: "r"
+    url: "https://search.r-project.org/CRAN/refmans/gmm/html/00Index.html"
+    sdk_use:
+      - "generalized method of moments"
+      - "generalized empirical likelihood"
+  linearmodels_gmm:
+    language: "python"
+    url: "https://bashtage.github.io/linearmodels/"
+    sdk_use:
+      - "IV-GMM and panel estimators"
+  nonlinear_did:
+    language: "r"
+    url: "https://cran.r-universe.dev/NonlinearDiD"
+    sdk_use:
+      - "staggered DiD with nonlinear outcomes"
+      - "functional-form sensitivity in nonlinear DiD"
+  drdid:
+    language: "r"
+    url: "https://search.r-project.org/CRAN/refmans/DRDID/html/00Index.html"
+    sdk_use:
+      - "doubly robust DiD estimators"
+      - "panel and repeated-cross-section ATT workflows"
+  stata_time_series:
+    language: "stata"
+    url: "https://www.stata.com/features/time-series/"
+    sdk_use:
+      - "ARIMA, VAR, unit-root, cointegration, and HAC workflows"
