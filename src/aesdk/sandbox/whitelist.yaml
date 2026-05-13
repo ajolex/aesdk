@@ -8,3 +8,15 @@
   - pandas
   - statsmodels
   - linearmodels
+allowed_r_packages:
+  - base
+  - stats
+  - fixest
+  - did
+  - rdrobust
+  - MatchIt
+  - Synth
+  - gmm
+  - DRDID
+  - NonlinearDiD
+  - scpi

@@ -103,6 +103,14 @@ code_recipes:
       }
       fit <- gmm(moments, x = df, t0 = c(0, 0))
       summary(fit)
+  - id: "gmm-stata-gmm"
+    language: "stata"
+    package: "Stata"
+    source: "stata_gmm"
+    template: |
+      gmm (outcome - {b0} - {b1}*treatment - {b2}*covariate_1), ///
+          instruments(instrument_1 instrument_2 covariate_1) vce(robust)
+      estat overid
 reporting_checklist:
   - "Write moment conditions and parameters before code."
   - "Report instrument set, weighting matrix, and covariance estimator."

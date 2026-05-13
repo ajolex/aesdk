@@ -11,10 +11,16 @@ import pandas as pd
 
 _METHOD_TO_STRATEGY = {
     "did": "DiD",
+    "gmm": "GMM",
     "iv_2sls": "IV",
+    "limited_dependent": "Logit",
+    "matching": "Matching",
+    "nonlinear_did": "NonlinearDiD",
     "ols_cef": "OLS",
     "panel_fe": "TWFE",
     "rdd": "RDD",
+    "synthetic_control": "SyntheticControl",
+    "time_series": "ARIMA",
 }
 
 

@@ -70,6 +70,17 @@ failure_modes:
     risk: "High-order global polynomial used as default."
     response: "Warn and prefer local methods with bandwidth sensitivity."
 code_recipes:
+  - id: "rdd-python-rdrobust"
+    language: "python"
+    package: "rdrobust"
+    source: "rdrobust"
+    template: |
+      from rdrobust import rdrobust, rddensity
+
+      fit = rdrobust(y=df["outcome"], x=df["running_variable"], c=cutoff)
+      print(fit)
+      density = rddensity(X=df["running_variable"], c=cutoff)
+      print(density)
   - id: "rdd-r-rdrobust"
     language: "r"
     package: "rdrobust"

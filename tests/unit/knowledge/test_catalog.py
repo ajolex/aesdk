@@ -101,6 +101,10 @@ def test_official_software_sources_are_registered() -> None:
     assert "matchit" in software
     assert "synth" in software
     assert "statsmodels_tsa" in software
+    assert "r_stats_glm" in software
+    assert "scpi" in software
+    assert "stata_teffects" in software
+    assert "stata_xtreg" in software
     assert software["rdrobust"]["url"].startswith("https://")
 
 
@@ -110,6 +114,28 @@ def test_pack_item_ids_are_unique() -> None:
         for section in ["decision_tree", "assumptions", "required_inputs", "diagnostics", "failure_modes", "code_recipes"]:
             ids = [item["id"] for item in pack[section]]
             assert len(ids) == len(set(ids)), f"{method_id} duplicates ids in {section}"
+
+
+def test_pack_code_recipe_sources_are_registered() -> None:
+    software_sources = load_official_software_sources()["sources"]
+    for method_id in list_knowledge_pack_ids():
+        pack = get_knowledge_pack(method_id)
+        for recipe in pack["code_recipes"]:
+            assert recipe["source"] in software_sources, f"{method_id} recipe source is not registered"
+
+
+def test_public_packs_have_language_recipe_parity_or_documented_exception() -> None:
+    required = {"python", "r", "stata"}
+    for method_id in list_knowledge_pack_ids():
+        pack = get_knowledge_pack(method_id)
+        languages = {recipe["language"] for recipe in get_knowledge_pack(method_id)["code_recipes"]}
+        missing = required - languages
+        if not missing:
+            continue
+        coverage = pack.get("language_coverage", {})
+        intentionally_missing = coverage.get("intentionally_missing", {})
+        assert missing.issubset(intentionally_missing), f"{method_id} lacks Python/R/Stata recipe parity"
+        assert set(coverage.get("supported_recipes", [])) == languages
 
 
 def test_new_brain_packs_are_pending_human_signoff() -> None:

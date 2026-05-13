@@ -10,7 +10,30 @@ from typing import Any
 from aesdk.agent.context import AgentContext, agent_context
 from aesdk.governance.pap import validate_pap_file
 from aesdk.governance.policy import ConformanceLevel
-from aesdk.protocol.validator import RuleViolation, ValidationResult, Validator
+from aesdk.protocol.validator import RuleViolation, Severity, ValidationResult, Validator
+
+
+_METHOD_STRATEGY_ALIASES = {
+    "ols_cef": {"OLS"},
+    "iv_2sls": {"IV", "2SLS"},
+    "panel_fe": {"FE", "TWFE", "POLS", "RE"},
+    "did": {"DiD", "TWFE", "EventStudy"},
+    "rdd": {"RDD"},
+    "matching": {"Matching", "PropensityScore", "Mahalanobis", "EntropyBalance"},
+    "synthetic_control": {"SynthControl", "SyntheticControl", "AugmentedSyntheticControl", "SyntheticDiD"},
+    "nonlinear_did": {"NonlinearDiD", "PoissonDiD", "LogitDiD", "DRDID"},
+    "gmm": {"GMM", "IVGMM", "DynamicPanelGMM"},
+    "limited_dependent": {
+        "Logit",
+        "Probit",
+        "Tobit",
+        "Poisson",
+        "NegativeBinomial",
+        "OrderedLogit",
+        "MultinomialLogit",
+    },
+    "time_series": {"ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"},
+}
 
 
 @dataclass(frozen=True)
@@ -86,6 +109,41 @@ def _load_proposal(proposal: dict[str, Any] | str | Path | None) -> dict[str, An
         return json.load(handle)
 
 
+def _method_strategy_violation(method: str, pap: dict[str, Any], proposal: dict[str, Any]) -> RuleViolation | None:
+    strategy = pap.get("identification", {}).get("strategy")
+    allowed = _METHOD_STRATEGY_ALIASES.get(method)
+    if not allowed:
+        return None
+    if strategy and strategy not in allowed:
+        return RuleViolation(
+            rule_id="AGENT-METHOD-001",
+            rule_name="Requested Method Must Match PAP Strategy",
+            severity=Severity.ERROR,
+            message=(
+                f"Agent requested method '{method}', but the PAP identification strategy is '{strategy}'. "
+                "Load the matching method context or update the PAP with a documented researcher-approved change."
+            ),
+            guidance="Do not proceed with analysis code until the requested method and registered PAP strategy agree.",
+            citation="AESDK agent preflight protocol",
+            source_file="aesdk.agent.preflight",
+        )
+    estimator = proposal.get("estimator")
+    if not estimator or estimator in allowed:
+        return None
+    return RuleViolation(
+        rule_id="AGENT-METHOD-001",
+        rule_name="Requested Method Must Match Proposed Estimator",
+        severity=Severity.ERROR,
+        message=(
+            f"Agent requested method '{method}', but the proposal estimator is '{estimator}'. "
+            "Load the matching method context or update the PAP with a documented researcher-approved change."
+        ),
+        guidance="Do not proceed with analysis code until the requested method and proposed estimator agree.",
+        citation="AESDK agent preflight protocol",
+        source_file="aesdk.agent.preflight",
+    )
+
+
 def preflight(
     *,
     method: str,
@@ -105,6 +163,9 @@ def preflight(
         proposal=loaded_proposal,
         conformance=ConformanceLevel(conformance.lower()),
     )
+    method_violation = _method_strategy_violation(method, pap, loaded_proposal)
+    if method_violation:
+        validation = ValidationResult(status="block", violations=[method_violation, *validation.violations])
     return PreflightResult(
         method_id=method,
         context=ctx,

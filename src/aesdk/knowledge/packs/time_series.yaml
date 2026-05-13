@@ -97,6 +97,15 @@ code_recipes:
       tsset time_id
       arima outcome, arima(<registered_p>,<registered_d>,<registered_q>)
       estat acplot
+  - id: "ts-r-stats-arima"
+    language: "r"
+    package: "stats"
+    source: "r_stats_arima"
+    template: |
+      y <- ts(df$outcome, frequency = registered_frequency)
+      train <- window(y, end = train_end)
+      fit <- arima(train, order = c(registered_p, registered_d, registered_q))
+      print(fit)
 reporting_checklist:
   - "State time index, frequency, sample period, and forecast/causal target."
   - "Report stationarity, trend, seasonality, and lag-order choices."

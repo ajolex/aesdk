@@ -37,6 +37,34 @@ def test_preflight_blocks_invalid_proposal(valid_pap_file) -> None:
     assert "hard stop" not in result.explain().lower()
 
 
+def test_preflight_blocks_method_pap_mismatch(valid_pap_file) -> None:
+    result = ae.preflight(
+        method="rdd",
+        pap_path=valid_pap_file,
+        proposal={"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"},
+        conformance="strict",
+    )
+
+    assert result.blocked
+    assert result.status == "block"
+    assert "AGENT-METHOD-001" in {item.rule_id for item in result.violations}
+    assert "PAP identification strategy is 'DiD'" in result.explain()
+
+
+def test_preflight_blocks_method_proposal_mismatch(valid_pap_file) -> None:
+    result = ae.preflight(
+        method="did",
+        pap_path=valid_pap_file,
+        proposal={"estimator": "OLS", "standard_errors": "cluster", "clustering": "state"},
+        conformance="strict",
+    )
+
+    assert result.blocked
+    assert result.status == "block"
+    assert "AGENT-METHOD-001" in {item.rule_id for item in result.violations}
+    assert "proposal estimator is 'OLS'" in result.explain()
+
+
 def test_draft_pap_infers_panel_shape(tmp_path) -> None:
     data_path = tmp_path / "panel.csv"
     pd.DataFrame(
@@ -97,6 +125,44 @@ def test_run_analysis_executes_when_preflight_passes(valid_pap_file, tmp_path) -
     assert blob_path.exists()
 
 
+def test_run_analysis_requires_acknowledgement_for_warnings(valid_pap_dict, tmp_path) -> None:
+    valid_pap_dict["did_block"]["parallel_trends_test"] = False
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+    proposal_path = tmp_path / "proposal.json"
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+    code_path = tmp_path / "analysis.py"
+    code_path.write_text("print('ran')", encoding="utf-8")
+
+    result = ae.run_analysis(
+        method="did",
+        pap_path=pap_path,
+        proposal=proposal_path,
+        code_path=code_path,
+        conformance="basic",
+    )
+
+    assert result.status == "warn"
+    assert result.blocked
+    assert result.warning_acknowledgement_required
+    assert result.sandbox is None
+
+    acknowledged = ae.run_analysis(
+        method="did",
+        pap_path=pap_path,
+        proposal=proposal_path,
+        code_path=code_path,
+        conformance="basic",
+        acknowledge_warnings=True,
+    )
+    assert acknowledged.status == "pass"
+    assert acknowledged.sandbox is not None
+    assert acknowledged.sandbox.stdout.strip() == "ran"
+
+
 def test_run_analysis_infers_stata_from_do_file(valid_pap_file, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AESDK_STATA", "definitely-not-stata")
     proposal_path = tmp_path / "proposal.json"
@@ -110,6 +176,25 @@ def test_run_analysis_infers_stata_from_do_file(valid_pap_file, tmp_path, monkey
     result = ae.run_analysis(method="did", pap_path=valid_pap_file, proposal=proposal_path, code_path=code_path)
 
     assert result.status == "block"
+    assert result.blocked
+    assert result.sandbox is not None
+    assert result.sandbox.diagnostics[0].code == "MISSING_RUNTIME"
+
+
+def test_run_analysis_infers_r_from_r_file(valid_pap_file, tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AESDK_R", "definitely-not-rscript")
+    proposal_path = tmp_path / "proposal.json"
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+    code_path = tmp_path / "analysis.R"
+    code_path.write_text("print(1)", encoding="utf-8")
+
+    result = ae.run_analysis(method="did", pap_path=valid_pap_file, proposal=proposal_path, code_path=code_path)
+
+    assert result.status == "block"
+    assert result.blocked
     assert result.sandbox is not None
     assert result.sandbox.diagnostics[0].code == "MISSING_RUNTIME"
 

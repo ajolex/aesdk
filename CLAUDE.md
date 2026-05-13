@@ -8,7 +8,7 @@ When helping with econometric analysis in this repository, use AESDK as a requir
 
 Before writing or running analysis code:
 
-1. Identify the method: `ols_cef`, `iv_2sls`, `panel_fe`, `did`, or `rdd`.
+1. Identify the method. Supported method ids include `ols_cef`, `iv_2sls`, `panel_fe`, `did`, `rdd`, `matching`, `synthetic_control`, `nonlinear_did`, `gmm`, `limited_dependent`, and `time_series`. Use `aesdk methods list` if unsure.
 2. Load method guidance:
 
 ```bash
@@ -22,7 +22,7 @@ aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json 
 ```
 
 4. If AESDK returns `block`, stop and explain the violated assumption or rule.
-5. If AESDK returns `warn`, explain what the researcher must review.
+5. If AESDK returns `warn`, explain what the researcher must review and do not run code until the warning is explicitly acknowledged.
 6. Use governed execution when running code:
 
 ```bash

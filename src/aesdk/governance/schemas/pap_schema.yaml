@@ -51,7 +51,47 @@ properties:
     properties:
       strategy:
         type: string
-        enum: [OLS, IV, DiD, TWFE, RDD, Matching, SynthControl, EventStudy, DML, other]
+        enum:
+          - OLS
+          - IV
+          - 2SLS
+          - FE
+          - TWFE
+          - POLS
+          - RE
+          - DiD
+          - EventStudy
+          - RDD
+          - Matching
+          - PropensityScore
+          - Mahalanobis
+          - EntropyBalance
+          - SynthControl
+          - SyntheticControl
+          - AugmentedSyntheticControl
+          - SyntheticDiD
+          - NonlinearDiD
+          - PoissonDiD
+          - LogitDiD
+          - DRDID
+          - GMM
+          - IVGMM
+          - DynamicPanelGMM
+          - Logit
+          - Probit
+          - Tobit
+          - Poisson
+          - NegativeBinomial
+          - OrderedLogit
+          - MultinomialLogit
+          - ARIMA
+          - ARMAX
+          - VAR
+          - VECM
+          - ARDL
+          - HACRegression
+          - DML
+          - other
       treatment_variable: {type: string}
       outcome_variable: {type: string}
       covariates:

@@ -16,13 +16,17 @@ class AnalysisRunResult:
     preflight: PreflightResult
     sandbox: SandboxResult | None
     blob_path: str | None
+    warning_acknowledgement_required: bool = False
 
     @property
     def blocked(self) -> bool:
-        return self.preflight.blocked
+        sandbox_blocked = bool(self.sandbox and self.sandbox.status == "block")
+        return self.preflight.blocked or self.warning_acknowledgement_required or sandbox_blocked
 
     @property
     def status(self) -> str:
+        if self.warning_acknowledgement_required:
+            return "warn"
         if self.blocked:
             return "block"
         return self.sandbox.status if self.sandbox else self.preflight.status
@@ -40,12 +44,20 @@ def run_analysis(
     context: str = "production",
     conformance: str = "strict",
     policy_version: str = "1.0.0",
+    acknowledge_warnings: bool = False,
 ) -> AnalysisRunResult:
     """Run preflight, then execute analysis code only if governance passes."""
 
     gate = preflight(method=method, pap_path=pap_path, proposal=proposal, conformance=conformance)
     if gate.blocked:
         return AnalysisRunResult(preflight=gate, sandbox=None, blob_path=str(blob_path) if blob_path else None)
+    if gate.status == "warn" and not acknowledge_warnings:
+        return AnalysisRunResult(
+            preflight=gate,
+            sandbox=None,
+            blob_path=str(blob_path) if blob_path else None,
+            warning_acknowledgement_required=True,
+        )
     active_code = code
     if active_code is None and code_path is not None:
         active_code = Path(code_path).read_text(encoding="utf-8-sig")

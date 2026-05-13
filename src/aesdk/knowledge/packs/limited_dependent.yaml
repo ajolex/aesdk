@@ -92,6 +92,36 @@ code_recipes:
 
       fit = smf.poisson("count_outcome ~ treatment + covariate_1 + covariate_2", data=df).fit(cov_type="HC1")
       print(fit.summary())
+  - id: "limited-r-stats-glm-logit"
+    language: "r"
+    package: "stats"
+    source: "r_stats_glm"
+    template: |
+      fit <- glm(binary_outcome ~ treatment + covariate_1 + covariate_2, data = df, family = binomial())
+      summary(fit)
+      # Report marginal effects or predicted contrasts on the registered scale.
+  - id: "limited-r-stats-glm-poisson"
+    language: "r"
+    package: "stats"
+    source: "r_stats_glm"
+    template: |
+      fit <- glm(count_outcome ~ treatment + covariate_1 + covariate_2, data = df, family = poisson())
+      summary(fit)
+      # Check overdispersion and use robust or alternative count models when registered.
+  - id: "limited-stata-logit"
+    language: "stata"
+    package: "Stata"
+    source: "stata_glm"
+    template: |
+      logit binary_outcome treatment covariate_1 covariate_2, vce(robust)
+      margins, dydx(treatment)
+  - id: "limited-stata-poisson"
+    language: "stata"
+    package: "Stata"
+    source: "stata_glm"
+    template: |
+      poisson count_outcome treatment covariate_1 covariate_2, vce(robust)
+      estat gof
 reporting_checklist:
   - "State outcome type, link/family, and target effect scale."
   - "Report marginal effects or predicted contrasts when needed."

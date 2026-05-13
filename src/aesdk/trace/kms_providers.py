@@ -112,12 +112,17 @@ class GCPKMSProvider:
             raise BlobSignatureError("Install aesdk[cloud-kms] or google-cloud-kms for GCP KMS signing") from exc
         return kms_v1.KeyManagementServiceClient()
 
-    def sign(self, *, key_id: str, blob_sha256: str) -> str:
+    def _digest(self, blob_sha256: str):
         try:
             from google.cloud.kms_v1.types import Digest
         except ImportError as exc:
+            if self.client is not None:
+                return {"sha256": bytes.fromhex(blob_sha256)}
             raise BlobSignatureError("Install google-cloud-kms for GCP KMS signing") from exc
-        response = self._client().asymmetric_sign(request={"name": key_id, "digest": Digest(sha256=bytes.fromhex(blob_sha256))})
+        return Digest(sha256=bytes.fromhex(blob_sha256))
+
+    def sign(self, *, key_id: str, blob_sha256: str) -> str:
+        response = self._client().asymmetric_sign(request={"name": key_id, "digest": self._digest(blob_sha256)})
         return base64.b64encode(response.signature).decode("ascii")
 
     def verify(self, *, key_id: str, blob_sha256: str, signature: str) -> bool:
@@ -158,17 +163,22 @@ class AzureKeyVaultProvider:
         credential = self.credential or DefaultAzureCredential()
         return CryptographyClient(key_id, credential)
 
-    def sign(self, *, key_id: str, blob_sha256: str) -> str:
-        from azure.keyvault.keys.crypto import SignatureAlgorithm
+    def _signature_algorithm(self):
+        try:
+            from azure.keyvault.keys.crypto import SignatureAlgorithm
+        except ImportError as exc:
+            if self.client is not None:
+                return "RS256"
+            raise BlobSignatureError("Install aesdk[cloud-kms] or Azure Key Vault packages for Azure signing") from exc
+        return SignatureAlgorithm.rs256
 
-        result = self._client(key_id).sign(SignatureAlgorithm.rs256, bytes.fromhex(blob_sha256))
+    def sign(self, *, key_id: str, blob_sha256: str) -> str:
+        result = self._client(key_id).sign(self._signature_algorithm(), bytes.fromhex(blob_sha256))
         return base64.b64encode(result.signature).decode("ascii")
 
     def verify(self, *, key_id: str, blob_sha256: str, signature: str) -> bool:
-        from azure.keyvault.keys.crypto import SignatureAlgorithm
-
         result = self._client(key_id).verify(
-            SignatureAlgorithm.rs256,
+            self._signature_algorithm(),
             bytes.fromhex(blob_sha256),
             base64.b64decode(signature),
         )

@@ -7,6 +7,11 @@ maturity:
   estimator_choice: "medium"
   diagnostics: "medium"
   code_recipes: "starter"
+language_coverage:
+  supported_recipes: ["r"]
+  intentionally_missing:
+    python: "No mature official Python recipe is registered for this nonlinear DiD pack yet."
+    stata: "No mature official Stata recipe is registered for this nonlinear DiD pack yet."
 scope:
   use_when:
     - "A DiD design has binary, count, fractional, or otherwise nonlinear outcomes."

@@ -22,6 +22,7 @@ DEFAULT_WHITELIST_PATH = Path(__file__).resolve().parent / "whitelist.yaml"
 _FORBIDDEN_CALLS = {"open", "exec", "eval", "compile", "__import__", "input", "breakpoint"}
 _FORBIDDEN_ATTR_CALLS = {"system", "popen", "remove", "unlink", "rmdir", "rmtree", "rename", "replace"}
 _STATA_EXECUTABLE_ENV = "AESDK_STATA"
+_R_EXECUTABLE_ENV = "AESDK_R"
 _STATA_EXECUTABLE_CANDIDATES = (
     "stata-mp",
     "stata-se",
@@ -34,6 +35,10 @@ _STATA_EXECUTABLE_CANDIDATES = (
     "StataMP.exe",
     "StataSE.exe",
     "StataBE.exe",
+)
+_R_EXECUTABLE_CANDIDATES = (
+    "Rscript",
+    "Rscript.exe",
 )
 _FORBIDDEN_STATA_COMMANDS = {
     "!",
@@ -50,6 +55,27 @@ _FORBIDDEN_STATA_PREFIXES = (
     "ssc install",
     "github install",
 )
+_FORBIDDEN_R_PATTERNS = {
+    r"\bassignInNamespace\s*\(": "assignInNamespace",
+    r"\bsetwd\s*\(": "setwd",
+    r"\bsystem\s*\(": "system",
+    r"\bsystem2\s*\(": "system2",
+    r"\bshell\s*\(": "shell",
+    r"\bfile\.create\s*\(": "file.create",
+    r"\bfile\.remove\s*\(": "file.remove",
+    r"\bfile\.rename\s*\(": "file.rename",
+    r"\bfile\.copy\s*\(": "file.copy",
+    r"\bwriteLines\s*\(": "writeLines",
+    r"\bunlink\s*\(": "unlink",
+    r"\binstall\.packages\s*\(": "install.packages",
+    r"\bupdate\.packages\s*\(": "update.packages",
+    r"\bremotes::install_[a-z_]+\s*\(": "remotes::install_*",
+    r"\bdevtools::install_[a-z_]+\s*\(": "devtools::install_*",
+    r"\bpak::pkg_install\s*\(": "pak::pkg_install",
+    r"\bdownload\.file\s*\(": "download.file",
+    r"\bsource\s*\(\s*['\"]https?://": "source(http)",
+    r"\burl\s*\(\s*['\"]https?://": "url(http)",
+}
 
 try:
     import resource
@@ -83,17 +109,21 @@ class SandboxRunner:
         mem_limit_mb: int = 512,
         cpu_limit_sec: int = 30,
         stata_executable: str | Path | None = None,
+        r_executable: str | Path | None = None,
     ):
         self.whitelist_path = Path(whitelist_path or DEFAULT_WHITELIST_PATH)
-        self.allowed_imports = self._load_whitelist(self.whitelist_path)
+        whitelist = self._load_whitelist(self.whitelist_path)
+        self.allowed_imports = set(whitelist.get("allowed_imports", []))
+        self.allowed_r_packages = set(whitelist.get("allowed_r_packages", []))
         self.mem_limit_mb = mem_limit_mb
         self.cpu_limit_sec = cpu_limit_sec
         self.stata_executable = str(stata_executable) if stata_executable else None
+        self.r_executable = str(r_executable) if r_executable else None
 
-    def _load_whitelist(self, path: Path) -> set[str]:
+    def _load_whitelist(self, path: Path) -> dict[str, list[str]]:
         with path.open("r", encoding="utf-8") as handle:
             data = yaml.safe_load(handle) or {}
-        return set(data.get("allowed_imports", []))
+        return data
 
     def run(self, code: str, *, language: str = "python", timeout_seconds: int | None = None) -> SandboxResult:
         """Run analysis code in the requested language."""
@@ -103,12 +133,14 @@ class SandboxRunner:
             return self.run_python(code, timeout_seconds=timeout_seconds)
         if normalized == "stata":
             return self.run_stata(code, timeout_seconds=timeout_seconds)
+        if normalized == "r":
+            return self.run_r(code, timeout_seconds=timeout_seconds)
         return SandboxResult(
             status="block",
             diagnostics=[
                 SandboxDiagnostic(
                     "UNSUPPORTED_LANGUAGE",
-                    f"Unsupported analysis language: {language}. Supported languages: python, stata.",
+                    f"Unsupported analysis language: {language}. Supported languages: python, stata, r.",
                     "error",
                 )
             ],
@@ -195,7 +227,6 @@ class SandboxRunner:
             try:
                 proc = subprocess.run(
                     command,
-                    cwd=tmpdir,
                     capture_output=True,
                     text=True,
                     timeout=active_timeout,
@@ -217,6 +248,64 @@ class SandboxRunner:
 
         diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
         return SandboxResult(status="pass", diagnostics=diagnostics, stdout=stdout, stderr=proc.stderr)
+
+    def run_r(self, code: str, timeout_seconds: int | None = None) -> SandboxResult:
+        diagnostics: list[SandboxDiagnostic] = []
+        active_timeout = timeout_seconds or self.cpu_limit_sec
+
+        forbidden = self._find_forbidden_r_patterns(code)
+        if forbidden:
+            message = f"Forbidden R operations: {', '.join(sorted(forbidden))}"
+            diagnostics.append(SandboxDiagnostic("FORBIDDEN_R_COMMAND", message, "error"))
+            raise ForbiddenCodePatternError(message)
+
+        packages = self._extract_r_packages(code)
+        forbidden_packages = sorted(package for package in packages if package not in self.allowed_r_packages)
+        if forbidden_packages:
+            message = f"Forbidden R packages: {', '.join(forbidden_packages)}"
+            diagnostics.append(SandboxDiagnostic("R_PACKAGE_WHITELIST", message, "error"))
+            raise ImportWhitelistError(message)
+
+        executable = self._resolve_r_executable()
+        if executable is None:
+            diagnostics.append(
+                SandboxDiagnostic(
+                    "MISSING_RUNTIME",
+                    "Rscript executable was not found. Set AESDK_R to the Rscript executable path.",
+                    "error",
+                )
+            )
+            return SandboxResult(status="block", diagnostics=diagnostics)
+
+        missing = self._find_missing_r_packages(executable, packages, active_timeout)
+        if missing:
+            diagnostics.append(
+                SandboxDiagnostic("MISSING_DEP", f"Missing R packages: {', '.join(sorted(missing))}", "error")
+            )
+            return SandboxResult(status="block", diagnostics=diagnostics)
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            script_path = Path(tmpdir) / "sandbox_entry.R"
+            script_path.write_text(code, encoding="utf-8")
+            try:
+                proc = subprocess.run(
+                    [executable, "--vanilla", str(script_path)],
+                    capture_output=True,
+                    text=True,
+                    timeout=active_timeout,
+                    check=False,
+                    preexec_fn=self._preexec_resource_limits(),
+                )
+            except subprocess.TimeoutExpired as exc:
+                diagnostics.append(SandboxDiagnostic("TIMEOUT", str(exc), "error"))
+                return SandboxResult(status="block", diagnostics=diagnostics)
+
+        if proc.returncode != 0:
+            diagnostics.append(SandboxDiagnostic("RUNTIME", proc.stderr.strip() or "R execution failed", "error"))
+            return SandboxResult(status="block", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
+
+        diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
+        return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr)
 
     def _preexec_resource_limits(self):
         if os.name == "nt" or resource is None:
@@ -272,6 +361,21 @@ class SandboxRunner:
                 return discovered
         return None
 
+    def _resolve_r_executable(self) -> str | None:
+        configured = self.r_executable or os.getenv(_R_EXECUTABLE_ENV)
+        if configured:
+            configured_path = Path(configured)
+            if configured_path.exists():
+                return str(configured_path)
+            discovered = shutil.which(configured)
+            return discovered
+
+        for candidate in _R_EXECUTABLE_CANDIDATES:
+            discovered = shutil.which(candidate)
+            if discovered:
+                return discovered
+        return None
+
     @staticmethod
     def _stata_command(executable: str, script_path: Path) -> list[str]:
         batch_flag = "/e" if os.name == "nt" or executable.lower().endswith(".exe") else "-b"
@@ -302,6 +406,45 @@ class SandboxRunner:
                     found.add(prefix)
         return found
 
+    @staticmethod
+    def _find_forbidden_r_patterns(code: str) -> set[str]:
+        found: set[str] = set()
+        for line in _iter_r_code_lines(code):
+            for pattern, label in _FORBIDDEN_R_PATTERNS.items():
+                if re.search(pattern, line, flags=re.IGNORECASE):
+                    found.add(label)
+        return found
+
+    @staticmethod
+    def _extract_r_packages(code: str) -> set[str]:
+        packages: set[str] = set()
+        pattern = re.compile(r"\b(?:library|require)\s*\(\s*['\"]?([A-Za-z][A-Za-z0-9._]*)['\"]?", re.IGNORECASE)
+        for line in _iter_r_code_lines(code):
+            match = pattern.search(line)
+            if match:
+                packages.add(match.group(1))
+        return packages
+
+    @staticmethod
+    def _find_missing_r_packages(executable: str, packages: set[str], timeout_seconds: int) -> list[str]:
+        missing: list[str] = []
+        for package in sorted(packages):
+            check = f"if (!requireNamespace('{package}', quietly = TRUE)) quit(status = 1)"
+            try:
+                proc = subprocess.run(
+                    [executable, "--vanilla", "-e", check],
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout_seconds,
+                    check=False,
+                )
+            except subprocess.TimeoutExpired:
+                missing.append(package)
+                continue
+            if proc.returncode != 0:
+                missing.append(package)
+        return missing
+
 
 def normalize_language(language: str | None) -> str:
     if not language:
@@ -313,6 +456,7 @@ def normalize_language(language: str | None) -> str:
         "do": "stata",
         "do-file": "stata",
         "dofile": "stata",
+        "rscript": "r",
     }
     return aliases.get(normalized, normalized)
 
@@ -325,6 +469,8 @@ def infer_language_from_path(path: str | Path | None, default: str = "python") -
         return "python"
     if suffix == ".do":
         return "stata"
+    if suffix == ".r":
+        return "r"
     return normalize_language(default)
 
 
@@ -351,5 +497,15 @@ def _iter_stata_code_lines(code: str) -> Iterator[str]:
         if not line or line.startswith("*"):
             continue
         line = re.sub(r"(^|\s)//.*$", "", line).strip()
+        if line:
+            yield line
+
+
+def _iter_r_code_lines(code: str) -> Iterator[str]:
+    for raw_line in code.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        line = re.sub(r"(^|\s)#.*$", "", line).strip()
         if line:
             yield line

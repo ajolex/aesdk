@@ -30,6 +30,8 @@ The first layer is compact method protocols for common empirical workflows:
 
 The protocols summarize assumptions, diagnostics, standard-error expectations, and source references. They are designed for AI agents to read before writing code.
 
+The mature rule-enforced coverage is currently strongest for DiD, panel fixed effects, IV, and citation integrity. The expanded starter methods are available as source-anchored context and PAP strategy support, but their method-specific rule packs are still a hardening target.
+
 The second layer is the Real Knowledge Pack system. A knowledge pack is a self-contained, source-anchored method guide with:
 
 - when to use or avoid the method
@@ -93,15 +95,17 @@ The draft still needs researcher review.
 
 ### Governed Execution
 
-AESDK can run Python or Stata code only after the analysis passes preflight:
+AESDK can run Python, Stata, or R code only after the analysis passes preflight:
 
 ```bash
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
+aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.R --language r
 ```
 
 If the proposal is blocked, the code does not run.
-Stata runs require a licensed local Stata executable on `PATH` or in `AESDK_STATA`.
+Stata runs require a licensed local Stata executable on `PATH` or in `AESDK_STATA`. R runs require `Rscript` on `PATH` or in `AESDK_R`.
+R package imports are checked against the sandbox allowlist before execution, mirroring Python's import-whitelist posture.
 
 ### Reproducibility Record
 
@@ -133,7 +137,7 @@ AESDK also includes:
 - replay checks
 - HMAC and KMS signing options
 - sandboxed execution controls
-- Python and Stata execution dispatch, with R planned next
+- Python, Stata, and R execution dispatch
 - CSV and HTML trace export
 - optional LLM adapters
 
@@ -160,7 +164,7 @@ AESDK helps enforce a disciplined workflow:
 ## Remaining Hardening Opportunities
 
 - deeper human-audited maturity upgrades from `starter_guardrail` to `reviewed_guardrail` and eventually `audited`
-- an R execution bridge with the same preflight and replay semantics as Python and Stata
+- deeper Stata/R recipe parity for specialized methods where official package support is mature
 - conversion from PDF-page locators to cleaner printed-page/chapter anchors where possible
 - container isolation for high-stakes regulated execution
 - signed replay reports for external auditors

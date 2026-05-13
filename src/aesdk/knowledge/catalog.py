@@ -135,6 +135,7 @@ def validate_knowledge_base() -> list[str]:
 
     errors: list[str] = []
     sources = load_sources().get("sources", {})
+    software_sources = load_official_software_sources().get("sources", {})
     protocols = load_method_protocols().get("methods", {})
     source_map = load_source_map().get("method_sources", {})
     pack_ids = list_knowledge_pack_ids()
@@ -172,6 +173,10 @@ def validate_knowledge_base() -> list[str]:
             if not pack.get(required):
                 errors.append(f"Knowledge pack missing {required}: {method_id}")
         _validate_unique_pack_items(pack, method_id, errors)
+        for recipe in pack.get("code_recipes", []):
+            source_id = recipe.get("source") if isinstance(recipe, dict) else None
+            if source_id not in software_sources:
+                errors.append(f"Knowledge pack {method_id} recipe references unknown software source: {source_id}")
         for anchor in pack.get("source_anchors", []):
             source_id = anchor.get("source_id") if isinstance(anchor, dict) else None
             if source_id not in sources:

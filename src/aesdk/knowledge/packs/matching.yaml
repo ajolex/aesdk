@@ -90,6 +90,13 @@ code_recipes:
       ps = smf.logit("treated ~ covariate_1 + covariate_2", data=df).fit()
       df["propensity_score"] = ps.predict(df)
       # Match or weight only after checking support and balance.
+  - id: "matching-stata-teffects-psmatch"
+    language: "stata"
+    package: "Stata"
+    source: "stata_teffects"
+    template: |
+      teffects psmatch (outcome) (treated covariate_1 covariate_2), atet
+      tebalance summarize
 reporting_checklist:
   - "State ATT, ATC, or ATE and the retained analysis population."
   - "List all pre-treatment matching covariates."

@@ -6,7 +6,7 @@ import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 
-from aesdk.sandbox.runner import SandboxRunner
+from aesdk.sandbox.runner import SandboxRunner, normalize_language
 from aesdk.trace.blob import ReplicationBlob
 
 
@@ -31,7 +31,7 @@ def replay_execute_events(
         if event.event_type != "execute":
             continue
         code = str(event.payload.get("code", ""))
-        language = str(event.payload.get("language", "python"))
+        language = normalize_language(str(event.payload.get("language", "python")))
         recorded_status = str(event.payload.get("status", "unknown"))
         recorded_hash = event.payload.get("code_sha256")
         replay_hash = hashlib.sha256(code.encode("utf-8")).hexdigest() if code else None

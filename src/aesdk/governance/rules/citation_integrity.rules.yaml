@@ -63,9 +63,9 @@ rules:
       exist in the registered bibliography. This prevents the rule
       registry itself from containing hallucinated authority.
     guidance: >
-      Add the reference to `aesdk/governance/bibliography.yaml` before
-      shipping a rule file. The CI pipeline checks all rule references
-      against the bibliography on every PR.
+      Register the reference in `src/aesdk/knowledge/sources.yaml` or keep
+      it as explicit internal guidance before shipping a rule file. Run
+      `aesdk methods validate` to check bundled source references.
     reference:
       note: "Internal AESDK quality standard"
     test_cases:

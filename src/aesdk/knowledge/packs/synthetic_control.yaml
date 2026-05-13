@@ -73,6 +73,13 @@ failure_modes:
     risk: "No placebo or sensitivity analysis."
     response: "Warn and require researcher acknowledgement."
 code_recipes:
+  - id: "synth-python-scpi"
+    language: "python"
+    package: "scpi"
+    source: "scpi"
+    template: |
+      # Use scpi after declaring treated unit, donor pool, predictors, and periods.
+      # Follow package-specific data preparation, then report pre-treatment fit and inference.
   - id: "synth-r-synth"
     language: "r"
     package: "Synth"
@@ -94,6 +101,14 @@ code_recipes:
       )
       fit <- synth(prepared)
       synth.tab(prepared, fit)
+  - id: "synth-stata-scpi"
+    language: "stata"
+    package: "scpi"
+    source: "scpi"
+    template: |
+      xtset unit_id time_id
+      * Use scpi after declaring treated unit, donor pool, predictors, and periods.
+      * Report pre-treatment fit, weights, placebo/sensitivity checks, and inference.
 reporting_checklist:
   - "State treated unit, treatment date, donor-pool eligibility, and predictors."
   - "Report pre-treatment fit before discussing post-treatment gaps."

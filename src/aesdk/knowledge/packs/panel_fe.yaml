@@ -97,6 +97,13 @@ code_recipes:
 
       fit <- feols(outcome ~ treatment + covariate_1 | unit_id + time_id, data = df, vcov = ~unit_id)
       summary(fit)
+  - id: "panel-stata-xtreg"
+    language: "stata"
+    package: "Stata"
+    source: "stata_xtreg"
+    template: |
+      xtset unit_id time_id
+      xtreg outcome treatment covariate_1 i.time_id, fe vce(cluster unit_id)
 reporting_checklist:
   - "Declare unit and time dimensions."
   - "List all fixed effects and explain what variation remains."

@@ -28,6 +28,23 @@ sources:
       - "fixed-effects OLS"
       - "clustered standard errors"
       - "event-study style workflows"
+  r_stats_lm:
+    language: "r"
+    url: "https://search.r-project.org/R/refmans/stats/html/lm.html"
+    sdk_use:
+      - "base R OLS examples"
+  r_stats_glm:
+    language: "r"
+    url: "https://search.r-project.org/R/refmans/stats/html/glm.html"
+    sdk_use:
+      - "base R generalized linear model examples"
+      - "binary and count starter recipes"
+  r_stats_arima:
+    language: "r"
+    url: "https://search.r-project.org/R/refmans/stats/html/arima.html"
+    sdk_use:
+      - "base R ARIMA examples"
+      - "time-series starter recipes"
   did_r:
     language: "r"
     url: "https://bcallaway11.github.io/did/"
@@ -40,6 +57,12 @@ sources:
     sdk_use:
       - "regression discontinuity estimation"
       - "bandwidth and robust inference workflows"
+  scpi:
+    language: "python/r/stata"
+    url: "https://scpi-pkg.readthedocs.io/en/latest/"
+    sdk_use:
+      - "synthetic control estimation and inference"
+      - "cross-language synthetic control recipes"
   stata_didregress:
     language: "stata"
     url: "https://www.stata.com/manuals/tedidregress.pdf"
@@ -52,6 +75,34 @@ sources:
     url: "https://www.stata.com/capabilities/overview/endogvars.html"
     sdk_use:
       - "ivregress 2sls templates"
+  stata_regress:
+    language: "stata"
+    url: "https://www.stata.com/manuals/rregress.pdf"
+    sdk_use:
+      - "OLS and robust covariance examples"
+  stata_xtreg:
+    language: "stata"
+    url: "https://www.stata.com/manuals/xtxtreg.pdf"
+    sdk_use:
+      - "panel fixed-effects examples"
+      - "clustered panel inference examples"
+  stata_glm:
+    language: "stata"
+    url: "https://www.stata.com/manuals/rglm.pdf"
+    sdk_use:
+      - "generalized linear model examples"
+      - "binary and count starter recipes"
+  stata_gmm:
+    language: "stata"
+    url: "https://www.stata.com/manuals/rgmm.pdf"
+    sdk_use:
+      - "generalized method of moments examples"
+  stata_teffects:
+    language: "stata"
+    url: "https://www.stata.com/manuals/causalteffectspsmatch.pdf"
+    sdk_use:
+      - "propensity-score matching"
+      - "treatment-effects matching examples"
   matchit:
     language: "r"
     url: "https://search.r-project.org/CRAN/refmans/MatchIt/html/matchit.html"

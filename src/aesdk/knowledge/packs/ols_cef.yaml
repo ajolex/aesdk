@@ -88,6 +88,13 @@ code_recipes:
 
       fit <- feols(outcome ~ treatment + covariate_1 + covariate_2, data = df, vcov = "hetero")
       summary(fit)
+  - id: "ols-stata-regress"
+    language: "stata"
+    package: "Stata"
+    source: "stata_regress"
+    template: |
+      regress outcome treatment covariate_1 covariate_2, vce(robust)
+      estimates table, b se p
 reporting_checklist:
   - "State whether the estimate is descriptive or causal."
   - "List all registered covariates."

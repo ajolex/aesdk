@@ -35,7 +35,7 @@ AESDK currently provides:
 - proposal validation with `pass`, `warn`, or `block`
 - AI-agent context packets that explain the relevant assumptions and diagnostics
 - governed execution that refuses to run blocked analysis code
-- governed execution for Python scripts and Stata `.do` files
+- governed execution for Python scripts, Stata `.do` files, and R scripts
 - reproducibility records through an `.aesdk.json` audit file
 - replay checks for recorded execution
 - citation/source integrity checks for agent-generated research text
@@ -104,6 +104,7 @@ aesdk agent preflight --method did --pap pap.yaml --proposal proposal.json --con
 aesdk agent draft-pap --method did --goal "Estimate policy effects" --data panel.csv --outcome y --treatment treated --unit state --time year --output pap.yaml
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
+aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.R --language r
 ```
 
 You can also print ready-to-use agent instructions:
@@ -145,21 +146,23 @@ aesdk agent preflight --method did --pap docs/examples/simulated_did_training_po
 
 AESDK blocks it because the proposal uses an invalid inference choice for panel DiD.
 
-## Stata Support
+## Stata And R Support
 
-AESDK can gate and run Stata `.do` files after preflight passes:
+AESDK can gate and run Stata `.do` files and R scripts after preflight passes:
 
 ```bash
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do
+aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.R
 ```
 
-The language is inferred from `.do`, or can be set with `--language stata`. AESDK runs Stata in batch mode through a local licensed Stata installation. If Stata is not on `PATH`, set:
+The language is inferred from `.do`, `.R`, or `.r`, or can be set with `--language stata` or `--language r`. AESDK runs Stata in batch mode through a local licensed Stata installation and runs R through `Rscript`. If the runtimes are not on `PATH`, set:
 
 ```bash
 AESDK_STATA="C:\Program Files\Stata18\StataMP-64.exe"
+AESDK_R="C:\Program Files\R\R-4.5.0\bin\Rscript.exe"
 ```
 
-Stata execution records `language=stata` in the `.aesdk.json` audit file. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. R support is the next planned language bridge and is not enabled yet.
+Stata and R execution record `language=stata` or `language=r` in the `.aesdk.json` audit file. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. The R guard blocks shell calls, file deletion helpers, package installs, network `source`/`url` helpers, and `library()`/`require()` calls outside the AESDK R package allowlist.
 
 ## Method Protocols
 
@@ -179,6 +182,8 @@ AESDK now has two knowledge layers:
 
 - **method protocols**, which are compact guardrails used by preflight checks
 - **Real Knowledge Packs**, which add estimator decision trees, assumptions, required inputs, diagnostics, failure modes, code recipes, reporting checklists, source anchors, and maturity labels
+
+Rule enforcement is strongest for the mature governance rules currently bundled for DiD, panel fixed effects, IV, and citation integrity. The newer packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series provide source-anchored context and conservative workflow guidance, but they should be treated as guidance-first until method-specific rule packs are added and reviewed.
 
 The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Heiss, World Bank impact evaluation material, recent Wooldridge DiD sources, and package documentation. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
 

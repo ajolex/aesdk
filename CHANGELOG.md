@@ -15,7 +15,7 @@
   - `aesdk agent draft-pap`
   - `aesdk agent run`
   - `aesdk agent template`
-- Stata `.do` file execution support behind the same preflight gate and replay audit trail.
+- Stata `.do` file and R script execution support behind the same preflight gate and replay audit trail.
 - Bundled `AGENTS.md` and `CLAUDE.md` templates.
 - Textbook-backed knowledge registry and method protocols.
 - Source locators for local textbook-derived SDK context.

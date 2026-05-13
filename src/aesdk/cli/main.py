@@ -132,12 +132,17 @@ def agent_run_cmd(
     language: str | None = typer.Option(
         None,
         "--language",
-        help="Analysis code language: python|stata. Defaults from code-file extension.",
+        help="Analysis code language: python|stata|r. Defaults from code-file extension.",
     ),
     blob: Path | None = typer.Option(None),
     context: str = typer.Option("production"),
     conformance: str = typer.Option("strict"),
     policy_version: str = typer.Option("1.0.0"),
+    acknowledge_warnings: bool = typer.Option(
+        False,
+        "--acknowledge-warnings",
+        help="Proceed when preflight returns warn after researcher acknowledgement.",
+    ),
 ) -> None:
     result = run_analysis(
         method=method,
@@ -149,10 +154,13 @@ def agent_run_cmd(
         context=context,
         conformance=conformance,
         policy_version=policy_version,
+        acknowledge_warnings=acknowledge_warnings,
     )
     typer.echo(f"status={result.status} blocked={result.blocked} blob={result.blob_path}")
-    if result.blocked:
+    if result.preflight.blocked or result.warning_acknowledgement_required:
         typer.echo(result.preflight.explain())
+        if result.warning_acknowledgement_required:
+            typer.echo("warning_acknowledgement_required=True")
         raise typer.Exit(code=1)
     if result.status == "block":
         if result.sandbox is not None:
@@ -347,7 +355,7 @@ def execute_cmd(
     language: str | None = typer.Option(
         None,
         "--language",
-        help="Analysis code language: python|stata. Defaults from code-file extension.",
+        help="Analysis code language: python|stata|r. Defaults from code-file extension.",
     ),
     blob: Path | None = typer.Option(None),
     context: str = typer.Option("research"),

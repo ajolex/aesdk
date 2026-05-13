@@ -10,7 +10,7 @@ Your job is to help the research workflow stay disciplined.
 
 Before writing econometric code, do this:
 
-1. Identify the method: `ols_cef`, `iv_2sls`, `panel_fe`, `did`, or `rdd`.
+1. Identify the method. Supported method ids include `ols_cef`, `iv_2sls`, `panel_fe`, `did`, `rdd`, `matching`, `synthetic_control`, `nonlinear_did`, `gmm`, `limited_dependent`, and `time_series`. Use `aesdk methods list` if unsure.
 2. Load AESDK context:
 
 ```bash
@@ -25,7 +25,7 @@ aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json 
 
 4. If AESDK returns `block`, stop. Explain the issue in plain research language.
 5. If AESDK returns `warn`, explain what needs researcher acknowledgement.
-6. Only write or run analysis code after AESDK passes or the researcher explicitly documents an override.
+6. Only write or run analysis code after AESDK passes, or after the researcher explicitly documents an override or warning acknowledgement.
 
 ## Python API
 
@@ -62,3 +62,19 @@ aesdk methods validate
 aesdk agent context --method did
 aesdk agent preflight --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json
 ```
+- ## Context Reset & Memory Protocol
+To prevent token bloat, `AI_MEMORY.md` holds long-term context.
+- **Trigger:** When user says "Save memory and close" or `/memorize`.
+- **Action 1 (Append):** Summarize the fix/feature using the exact format below. Append to the bottom of `AI_MEMORY.md`.
+  ### [Date] - [Feature | Bug] - [Short Title]
+  - **Issue:** [1-sentence description]
+  - **Resolution:** [How it was built or fixed]
+  - **Implications:** [Files changed / logic altered]
+  - **Difficulty:** [Easy/Medium/Hard] - [Why]
+  - **Lessons:** [Explicit guardrail for future agents]
+- **Action 2 (Auto-Prune):** If `AI_MEMORY.md` exceeds ~150 lines after appending, you MUST prune it:
+  1. Read entries older than 2 weeks.
+  2. Extract their "Lessons" and merge them into a permanent `## Core Architecture Directives` bulleted list at the very top of the file.
+  3. Delete the granular log entries for those older items.
+  4. Keep the 5 most recent granular logs intact.
+- **Commit:** Save and commit the memory update.

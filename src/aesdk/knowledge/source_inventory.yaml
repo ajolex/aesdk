@@ -12,21 +12,21 @@ sources:
     local_path: "tools/Wooldridge.pdf"
     pages: 819
     role: "core theory and graduate-level guardrails"
-    current_pack_use: ["ols_cef", "iv_2sls", "panel_fe"]
+    current_pack_use: ["ols_cef", "iv_2sls", "panel_fe", "gmm", "limited_dependent"]
     extraction_status: "located"
   - source_id: "angrist_pischke_mhe"
     file_name: "MostlyHarmlessEconometrics.pdf"
     local_path: "tools/MostlyHarmlessEconometrics.pdf"
     pages: 290
     role: "research-design framing and applied causal inference"
-    current_pack_use: ["ols_cef", "iv_2sls", "panel_fe", "did", "rdd"]
+    current_pack_use: ["ols_cef", "iv_2sls", "panel_fe", "did", "rdd", "matching"]
     extraction_status: "located"
   - source_id: "greene_econometric_analysis"
     file_name: "econometric_analysis_by_greence.pdf"
     local_path: "tools/econometric_analysis_by_greence.pdf"
     pages: 827
     role: "advanced econometric theory, ML, GMM, limited dependent variables"
-    current_pack_use: ["ols_cef", "iv_2sls", "panel_fe"]
+    current_pack_use: ["iv_2sls", "gmm", "limited_dependent", "time_series"]
     extraction_status: "inventory_only"
   - source_id: "heiss_using_r_intro_econometrics"
     file_name: "FlorianHeiss.pdf"
@@ -40,21 +40,21 @@ sources:
     local_path: "tools/JamesHStock.pdf"
     pages: 801
     role: "applied undergraduate/masters econometrics"
-    current_pack_use: ["ols_cef", "iv_2sls", "panel_fe", "did"]
+    current_pack_use: ["ols_cef", "iv_2sls", "panel_fe", "did", "limited_dependent", "time_series"]
     extraction_status: "inventory_only"
   - source_id: "world_bank_impact_eval"
     file_name: "WorldBankImpactEval.pdf"
     local_path: "tools/WorldBankImpactEval.pdf"
     pages: 367
     role: "impact-evaluation design selection for practitioner workflows"
-    current_pack_use: ["did", "rdd"]
+    current_pack_use: ["did", "rdd", "matching", "synthetic_control"]
     extraction_status: "inventory_only"
   - source_id: "wooldridge_recent_did_notes"
     file_name: "US25_Wooldridge.pdf"
     local_path: "tools/US25_Wooldridge.pdf"
     pages: 52
     role: "recent DiD notes to be source-verified before public citation"
-    current_pack_use: ["did"]
+    current_pack_use: ["did", "nonlinear_did"]
     extraction_status: "inventory_only"
   - source_id: "wooldridge_nonlinear_did_2023"
     file_name: "utad016.pdf"
