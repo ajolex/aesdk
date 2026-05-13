@@ -5,6 +5,11 @@ on:
     tags:
       - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      publish:
+        description: "Actually publish to PyPI. Leave false to only build and verify configuration."
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,36 +34,44 @@ jobs:
           name: dist
           path: dist/*
 
-  publish-testpypi:
-    name: publish to TestPyPI
+  verify-pypi-config:
+    name: verify PyPI configuration
     needs: build
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish == false }}
     runs-on: ubuntu-latest
-    environment: testpypi
-    permissions:
-      contents: read
-      id-token: write
     steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
+      - name: Check configured publisher path
+        env:
+          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          if [ -n "$PYPI_API_TOKEN" ]; then
+            echo "PYPI_API_TOKEN secret is configured."
+          else
+            echo "PYPI_API_TOKEN is not set; PyPI Trusted Publishing must be configured for this workflow."
+          fi
+          echo "Build artifact check passed. No package was published."
 
   publish-pypi:
     name: publish to PyPI
-    needs: publish-testpypi
+    needs: build
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.publish == true) }}
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
       contents: read
       id-token: write
+    env:
+      PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
     steps:
       - uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist
-      - name: Publish to PyPI
+      - name: Publish to PyPI with API token
+        if: ${{ env.PYPI_API_TOKEN != '' }}
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Publish to PyPI with Trusted Publishing
+        if: ${{ env.PYPI_API_TOKEN == '' }}
         uses: pypa/gh-action-pypi-publish@release/v1

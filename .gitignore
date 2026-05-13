@@ -39,4 +39,5 @@ venv/
 Thumbs.db
 
 *.aesdk.json.sig.json
+.env
 
