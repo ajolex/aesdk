@@ -237,6 +237,17 @@ properties:
       seed: {}
       prompts_archived: {type: boolean}
       raw_outputs_archived: {type: boolean}
+      human_in_loop: {type: boolean}
+      human_interaction_files:
+        type: array
+        items: {type: string}
+      human_modified_code: {type: boolean}
+      ai_code_draft_files:
+        type: array
+        items: {type: string}
+      human_intervention_files:
+        type: array
+        items: {type: string}
       human_reviewed: {type: boolean}
       review_status:
         type: string

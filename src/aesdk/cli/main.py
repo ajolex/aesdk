@@ -12,6 +12,7 @@ import yaml
 
 from aesdk.agent import (
     agent_context,
+    append_interaction_log,
     draft_pap,
     intake_task,
     preflight,
@@ -20,6 +21,7 @@ from aesdk.agent import (
     write_claude_runtime_metadata,
     write_codex_runtime_metadata,
     write_copilot_runtime_metadata,
+    write_review_diff,
     write_workflow_report,
 )
 from aesdk.config import config
@@ -206,6 +208,45 @@ def agent_ai_passport_cmd(
         for finding in result.passport.get("findings", []):
             typer.echo(f"- {finding.get('code')} severity={finding.get('severity')} message={finding.get('message')}")
         raise typer.Exit(code=1)
+
+
+@agent_app.command("review-diff")
+def agent_review_diff_cmd(
+    ai_code: Path = typer.Option(..., exists=True, help="AI-generated code draft path."),
+    final_code: Path = typer.Option(..., exists=True, help="Final code path after human edits/review."),
+    output: Path = typer.Option(..., help="Output unified diff or patch path."),
+    label_ai: str = typer.Option("ai_generated", help="Label for the AI draft side of the diff."),
+    label_final: str = typer.Option("final_reviewed", help="Label for the final code side of the diff."),
+) -> None:
+    result = write_review_diff(
+        ai_code_path=ai_code,
+        final_code_path=final_code,
+        output_path=output,
+        label_ai=label_ai,
+        label_final=label_final,
+    )
+    typer.echo(f"review_diff_written={result.path}")
+    typer.echo(f"changed={str(result.changed).lower()} line_count={result.line_count}")
+
+
+@agent_app.command("interaction-log")
+def agent_interaction_log_cmd(
+    output: Path = typer.Option(Path("review/followup_transcript.md"), help="Human-in-loop interaction log path."),
+    speaker: str = typer.Option(..., help="Entry speaker: human|agent|system|other."),
+    message: str = typer.Option(..., help="Interaction text to append."),
+    source: str | None = typer.Option(None, help="Optional source, such as chat, code review, email, or meeting."),
+) -> None:
+    normalized = speaker.strip().lower()
+    if normalized not in {"human", "agent", "system", "other"}:
+        raise typer.BadParameter("speaker must be human, agent, system, or other")
+    result = append_interaction_log(
+        output_path=output,
+        speaker=normalized,  # type: ignore[arg-type]
+        message=message,
+        source=source,
+    )
+    typer.echo(f"interaction_log_written={result.path}")
+    typer.echo(f"entries={result.entry_count} sha256={result.sha256}")
 
 
 @agent_app.command("codex-runtime")
@@ -545,7 +586,11 @@ def validate_cmd(
         pap_dict = validate_pap_file(pap)
     proposal_dict = _load_json(proposal)
     registry = RuleRegistry(rules_dir=rules_dir) if rules_dir else RuleRegistry()
-    result = Validator(registry=registry).validate(
+    result = Validator(
+        registry=registry,
+        artifact_base_dirs=[Path.cwd(), pap.resolve().parent, proposal.resolve().parent],
+        artifact_base_dirs_by_source={"pap": pap.resolve().parent, "proposal": proposal.resolve().parent},
+    ).validate(
         pap=pap_dict,
         proposal=proposal_dict,
         conformance=ConformanceLevel(conformance.lower()),

@@ -511,6 +511,213 @@ def test_write_ai_passport_hashes_runtime_metadata(valid_pap_dict, tmp_path) -> 
     assert len(result.passport["artifact_hashes"]["runtime_metadata_files"][0]["sha256"]) == 64
 
 
+def test_write_ai_passport_hashes_human_in_loop_and_intervention_evidence(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    ai_draft = tmp_path / "analysis_ai.do"
+    final_code = tmp_path / "analysis.do"
+    interaction = tmp_path / "followup_transcript.md"
+    intervention = tmp_path / "human_code_diff.patch"
+    prompt.write_text("Write Stata code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    ai_draft.write_text("display 1\n", encoding="utf-8")
+    final_code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    interaction.write_text("Human asked the agent to add a reproducibility seed.", encoding="utf-8")
+    diff = ae.write_review_diff(ai_code_path=ai_draft, final_code_path=final_code, output_path=intervention)
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_in_loop": True,
+            "human_interaction_files": [interaction.name],
+            "human_modified_code": True,
+            "ai_code_draft_files": [ai_draft.name],
+            "human_intervention_files": [intervention.name],
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [final_code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert diff.changed is True
+    assert result.status == "pass"
+    assert len(result.passport["artifact_hashes"]["human_interaction_files"][0]["sha256"]) == 64
+    assert len(result.passport["artifact_hashes"]["human_intervention_files"][0]["sha256"]) == 64
+    assert len(result.passport["artifact_hashes"]["ai_code_draft_files"][0]["sha256"]) == 64
+    assert result.passport["ai_use"]["human_reviewed"] is False
+
+
+def test_write_ai_passport_hashes_r_human_intervention_evidence(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    ai_draft = tmp_path / "analysis_ai.R"
+    final_code = tmp_path / "analysis.R"
+    interaction = tmp_path / "followup_transcript.md"
+    intervention = tmp_path / "human_code_diff.patch"
+    prompt.write_text("Write R code.", encoding="utf-8")
+    output.write_text("Generated R code.", encoding="utf-8")
+    ai_draft.write_text("print(1)\n", encoding="utf-8")
+    final_code.write_text("set.seed(20260514)\nprint(1)\n", encoding="utf-8")
+    interaction_result = ae.append_interaction_log(
+        output_path=interaction,
+        speaker="human",
+        message="Please add the reproducibility seed before the R analysis runs.",
+        source="chat",
+    )
+    diff = ae.write_review_diff(ai_code_path=ai_draft, final_code_path=final_code, output_path=intervention)
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["r"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_in_loop": True,
+            "human_interaction_files": [interaction.name],
+            "human_modified_code": True,
+            "ai_code_draft_files": [ai_draft.name],
+            "human_intervention_files": [intervention.name],
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [final_code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert interaction_result.entry_count == 1
+    assert diff.changed is True
+    assert result.status == "pass"
+    assert result.passport["ai_use"]["languages"] == ["r"]
+    assert result.passport["artifact_hashes"]["code_files"][0]["original_path"] == "analysis.R"
+    assert len(result.passport["artifact_hashes"]["human_interaction_files"][0]["sha256"]) == 64
+    assert len(result.passport["artifact_hashes"]["human_intervention_files"][0]["sha256"]) == 64
+    assert len(result.passport["artifact_hashes"]["ai_code_draft_files"][0]["sha256"]) == 64
+
+
+def test_write_ai_passport_blocks_no_change_human_intervention(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    ai_draft = tmp_path / "analysis_ai.do"
+    final_code = tmp_path / "analysis.do"
+    intervention = tmp_path / "human_code_diff.patch"
+    prompt.write_text("Write Stata code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    ai_draft.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    final_code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    ae.write_review_diff(ai_code_path=ai_draft, final_code_path=final_code, output_path=intervention)
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_modified_code": True,
+            "ai_code_draft_files": [ai_draft.name],
+            "human_intervention_files": [intervention.name],
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [final_code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert result.status == "block"
+    codes = {item["code"] for item in result.passport["findings"]}
+    assert "HUMAN_INTERVENTION_NO_CODE_CHANGE" in codes
+
+
+def test_append_interaction_log_writes_hashable_transcript(tmp_path) -> None:
+    log = tmp_path / "review" / "followup_transcript.md"
+
+    first = ae.append_interaction_log(output_path=log, speaker="human", message="Please justify the clustering level.", source="chat")
+    second = ae.append_interaction_log(output_path=log, speaker="agent", message="I checked AESDK and updated the proposal.", source="chat")
+
+    text = log.read_text(encoding="utf-8")
+    assert first.entry_count == 1
+    assert second.entry_count == 2
+    assert "Please justify the clustering level." in text
+    assert len(second.sha256) == 64
+
+
+def test_preflight_uses_proposal_directory_for_proposal_ai_evidence(valid_pap_file, tmp_path) -> None:
+    pap_dir = tmp_path / "pap"
+    proposal_dir = tmp_path / "proposal"
+    pap_dir.mkdir()
+    proposal_dir.mkdir()
+    pap_path = pap_dir / "pap.yaml"
+    pap_path.write_text(valid_pap_file.read_text(encoding="utf-8"), encoding="utf-8")
+    (pap_dir / "followup_transcript.md").write_text("This file is in the wrong directory.", encoding="utf-8")
+    (proposal_dir / "prompt.md").write_text("Write Stata code.", encoding="utf-8")
+    (proposal_dir / "output.md").write_text("Generated code.", encoding="utf-8")
+    (proposal_dir / "analysis.do").write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    proposal_path = proposal_dir / "proposal.json"
+    proposal_path.write_text(
+        json.dumps(
+            {
+                "estimator": "DiD",
+                "standard_errors": "cluster",
+                "clustering": "state",
+                "ai_use": {
+                    "used": True,
+                    "role": "code_generation",
+                    "languages": ["stata"],
+                    "model": "gpt-example",
+                    "model_metadata_source": "api_response",
+                    "prompts_archived": True,
+                    "raw_outputs_archived": True,
+                    "human_in_loop": True,
+                    "human_interaction_files": ["followup_transcript.md"],
+                    "human_reviewed": False,
+                    "reproducible_without_ai": True,
+                    "live_model_required": False,
+                    "prompt_files": ["prompt.md"],
+                    "output_files": ["output.md"],
+                    "code_files": ["analysis.do"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = ae.preflight(method="did", pap_path=pap_path, proposal=proposal_path)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-022" in ids
+    assert result.blocked
+
+
 def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_path) -> None:
     pap = {
         **valid_pap_dict,

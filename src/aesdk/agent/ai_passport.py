@@ -82,7 +82,16 @@ def build_ai_passport(
     prompt_files = _file_records(_base_for("prompt_files", provenance, base_dirs), merged.get("prompt_files", []))
     output_files = _file_records(_base_for("output_files", provenance, base_dirs), merged.get("output_files", []))
     input_files = _file_records(_base_for("input_files", provenance, base_dirs), merged.get("input_files", []))
+    ai_code_draft_files = _file_records(_base_for("ai_code_draft_files", provenance, base_dirs), merged.get("ai_code_draft_files", []))
     code_files = _file_records(_base_for("code_files", provenance, base_dirs), merged.get("code_files", []))
+    human_interaction_files = _file_records(
+        _base_for("human_interaction_files", provenance, base_dirs),
+        merged.get("human_interaction_files", []),
+    )
+    human_intervention_files = _file_records(
+        _base_for("human_intervention_files", provenance, base_dirs),
+        merged.get("human_intervention_files", []),
+    )
     review_files = _file_records(_base_for("review_files", provenance, base_dirs), merged.get("review_files", []))
     runtime_metadata_files = _file_records(
         _base_for("runtime_metadata_files", provenance, base_dirs),
@@ -93,7 +102,10 @@ def build_ai_passport(
         prompt_files,
         output_files,
         input_files,
+        ai_code_draft_files,
         code_files,
+        human_interaction_files,
+        human_intervention_files,
         review_files,
         runtime_metadata_files,
     )
@@ -129,7 +141,10 @@ def build_ai_passport(
             "prompt_files": prompt_files,
             "output_files": output_files,
             "input_files": input_files,
+            "ai_code_draft_files": ai_code_draft_files,
             "code_files": code_files,
+            "human_interaction_files": human_interaction_files,
+            "human_intervention_files": human_intervention_files,
             "review_files": review_files,
             "runtime_metadata_files": runtime_metadata_files,
         },
@@ -197,6 +212,11 @@ def _public_ai_use(ai_use: dict[str, Any]) -> dict[str, Any]:
         "seed",
         "prompts_archived",
         "raw_outputs_archived",
+        "human_in_loop",
+        "human_interaction_files",
+        "human_modified_code",
+        "ai_code_draft_files",
+        "human_intervention_files",
         "human_reviewed",
         "review_status",
         "reviewer_role",
@@ -244,7 +264,10 @@ def _passport_findings(
     prompt_files: list[dict[str, Any]],
     output_files: list[dict[str, Any]],
     input_files: list[dict[str, Any]],
+    ai_code_draft_files: list[dict[str, Any]],
     code_files: list[dict[str, Any]],
+    human_interaction_files: list[dict[str, Any]],
+    human_intervention_files: list[dict[str, Any]],
     review_files: list[dict[str, Any]],
     runtime_metadata_files: list[dict[str, Any]],
 ) -> list[dict[str, str]]:
@@ -270,6 +293,39 @@ def _passport_findings(
         findings.append({"severity": "error", "code": "PROMPT_FILES_MISSING", "message": "prompt_files is empty."})
     if ai_use.get("raw_outputs_archived") is True and not output_files:
         findings.append({"severity": "error", "code": "OUTPUT_FILES_MISSING", "message": "output_files is empty."})
+    if ai_use.get("human_in_loop") is True and not human_interaction_files:
+        findings.append(
+            {
+                "severity": "error",
+                "code": "HUMAN_INTERACTION_FILES_MISSING",
+                "message": "human_in_loop is true but human_interaction_files is empty.",
+            }
+        )
+    if ai_use.get("human_modified_code") is True:
+        if not human_intervention_files:
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "HUMAN_INTERVENTION_FILES_MISSING",
+                    "message": "human_modified_code is true but human_intervention_files is empty.",
+                }
+            )
+        if not ai_code_draft_files:
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "AI_CODE_DRAFT_FILES_MISSING",
+                    "message": "human_modified_code is true but ai_code_draft_files is empty.",
+                }
+            )
+        if _has_no_change_intervention_file(human_intervention_files):
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "HUMAN_INTERVENTION_NO_CODE_CHANGE",
+                    "message": "human_modified_code is true but an intervention diff records no textual code changes.",
+                }
+            )
     if _looks_like_agent_tool_model(ai_use.get("model")):
         findings.append(
             {
@@ -344,7 +400,17 @@ def _passport_findings(
                     "message": "Declared AI code languages do not match the archived code file extensions.",
                 }
             )
-    for record in [*prompt_files, *output_files, *input_files, *code_files, *review_files, *runtime_metadata_files]:
+    for record in [
+        *prompt_files,
+        *output_files,
+        *input_files,
+        *ai_code_draft_files,
+        *code_files,
+        *human_interaction_files,
+        *human_intervention_files,
+        *review_files,
+        *runtime_metadata_files,
+    ]:
         if not record.get("exists") or "sha256" not in record:
             findings.append(
                 {
@@ -392,6 +458,22 @@ def _sha256_file(path: Path | None) -> str | None:
     if path is None or not path.exists() or not path.is_file():
         return None
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _has_no_change_intervention_file(records: list[dict[str, Any]]) -> bool:
+    for record in records:
+        if not record.get("exists"):
+            continue
+        path = Path(str(record.get("resolved_path", "")))
+        if not path.exists() or not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            text = path.read_text(encoding="cp1252")
+        if "AESDK-REVIEW-DIFF: no_textual_changes" in text:
+            return True
+    return False
 
 
 def _as_list(value: Any) -> list[Any]:

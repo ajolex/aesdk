@@ -72,6 +72,125 @@ def test_agent_copilot_runtime_writes_metadata(tmp_path, monkeypatch) -> None:
     assert output.exists()
 
 
+def test_agent_review_diff_writes_patch(tmp_path) -> None:
+    ai_code = tmp_path / "analysis_ai.py"
+    final_code = tmp_path / "analysis.py"
+    output = tmp_path / "review" / "human_code_diff.patch"
+    ai_code.write_text("print(1)\n", encoding="utf-8")
+    final_code.write_text("import random\nrandom.seed(20260514)\nprint(1)\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        ["agent", "review-diff", "--ai-code", str(ai_code), "--final-code", str(final_code), "--output", str(output)],
+    )
+
+    assert result.exit_code == 0
+    assert "review_diff_written=" in result.output
+    assert "changed=true" in result.output
+    assert "+import random" in output.read_text(encoding="utf-8")
+
+
+def test_agent_review_diff_handles_cp1252_code(tmp_path) -> None:
+    ai_code = tmp_path / "analysis_ai.do"
+    final_code = tmp_path / "analysis.do"
+    output = tmp_path / "human_code_diff.patch"
+    ai_code.write_bytes("* cafe\n display 1\n".replace("cafe", "caf\xe9").encode("cp1252"))
+    final_code.write_bytes("* cafe\n set seed 20260514\n display 1\n".replace("cafe", "caf\xe9").encode("cp1252"))
+
+    result = CliRunner().invoke(
+        app,
+        ["agent", "review-diff", "--ai-code", str(ai_code), "--final-code", str(final_code), "--output", str(output)],
+    )
+
+    assert result.exit_code == 0
+    assert "changed=true" in result.output
+    assert "+ set seed 20260514" in output.read_text(encoding="utf-8")
+
+
+def test_agent_review_diff_writes_r_patch(tmp_path) -> None:
+    ai_code = tmp_path / "analysis_ai.R"
+    final_code = tmp_path / "analysis.R"
+    output = tmp_path / "review" / "human_code_diff.patch"
+    ai_code.write_text("print(1)\n", encoding="utf-8")
+    final_code.write_text("set.seed(20260514)\nprint(1)\n", encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        ["agent", "review-diff", "--ai-code", str(ai_code), "--final-code", str(final_code), "--output", str(output)],
+    )
+
+    assert result.exit_code == 0
+    assert "changed=true" in result.output
+    assert "+set.seed(20260514)" in output.read_text(encoding="utf-8")
+
+
+def test_agent_interaction_log_appends_entries(tmp_path) -> None:
+    output = tmp_path / "review" / "followup_transcript.md"
+
+    first = CliRunner().invoke(
+        app,
+        ["agent", "interaction-log", "--output", str(output), "--speaker", "human", "--message", "Why cluster by state?", "--source", "chat"],
+    )
+    second = CliRunner().invoke(
+        app,
+        ["agent", "interaction-log", "--output", str(output), "--speaker", "agent", "--message", "AESDK requires the treatment-level cluster check."],
+    )
+
+    text = output.read_text(encoding="utf-8")
+    assert first.exit_code == 0
+    assert second.exit_code == 0
+    assert "entries=1" in first.output
+    assert "entries=2" in second.output
+    assert "Why cluster by state?" in text
+    assert "AESDK requires the treatment-level cluster check." in text
+
+
+def test_validate_uses_pap_and_proposal_directories_for_ai_evidence(valid_pap_dict, tmp_path) -> None:
+    import yaml
+
+    pap_dir = tmp_path / "pap"
+    proposal_dir = tmp_path / "proposal"
+    pap_dir.mkdir()
+    proposal_dir.mkdir()
+    pap_path = pap_dir / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+    (proposal_dir / "followup_transcript.md").write_text("Human asked a clarification question.", encoding="utf-8")
+    proposal_path = proposal_dir / "proposal.json"
+    proposal_path.write_text(
+        json.dumps(
+            {
+                "estimator": "DiD",
+                "standard_errors": "cluster",
+                "clustering": "state",
+                "ai_use": {
+                    "used": True,
+                    "role": "code_generation",
+                    "languages": ["stata"],
+                    "model": "gpt-example",
+                    "model_metadata_source": "api_response",
+                    "prompts_archived": True,
+                    "raw_outputs_archived": True,
+                    "human_in_loop": True,
+                    "human_interaction_files": ["followup_transcript.md"],
+                    "human_reviewed": False,
+                    "reproducible_without_ai": True,
+                    "live_model_required": False,
+                    "prompt_files": ["prompt.md"],
+                    "output_files": ["output.md"],
+                    "code_files": ["analysis.do"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(app, ["validate", "--pap", str(pap_path), "--proposal", str(proposal_path)])
+
+    assert result.exit_code == 0
+    assert "status=pass" in result.output
+    assert "AI-REP-022" not in result.output
+
+
 def test_agent_run_prints_sandbox_diagnostics_for_missing_r_runtime(valid_pap_file, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AESDK_R", "definitely-not-rscript")
     proposal_path = tmp_path / "proposal.json"

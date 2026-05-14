@@ -282,3 +282,55 @@ rules:
       authors: "AESDK"
       title: "AI Replicability Passport"
       year: 2026
+
+  - id: AI-REP-022
+    name: "Human In Loop Claim Requires Interaction Evidence"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_human_in_loop == true and (ai_human_interaction_file_count == 0 or ai_human_interaction_file_missing_count > 0)"
+    requirement: "A human-in-the-loop claim must include at least one existing interaction evidence file."
+    guidance: "Archive follow-up questions, clarification transcripts, review comments, or agent conversation exports in `ai_use.human_interaction_files`. This documents interaction, not final review approval."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-023
+    name: "Human Code Intervention Requires Change Evidence"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_human_modified_code == true and (ai_human_intervention_file_count == 0 or ai_human_intervention_file_missing_count > 0)"
+    requirement: "A human code-intervention claim must include an existing diff, patch, or manual-change note."
+    guidance: "Use `aesdk agent review-diff --ai-code <draft> --final-code <final> --output review/human_code_diff.patch`, or archive a manual-change note in `ai_use.human_intervention_files`."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-025
+    name: "Human Code Intervention Must Show A Code Change"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_human_modified_code == true and ai_human_intervention_no_change_file_count > 0"
+    requirement: "A human code-intervention claim cannot rely on a no-change diff."
+    guidance: "If the final code is identical to the AI draft, set `human_modified_code: false`. Keep `human_in_loop` or `human_reviewed` evidence separately when applicable."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-024
+    name: "Human Code Intervention Must Archive AI Draft"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_human_modified_code == true and (ai_code_draft_file_count == 0 or ai_code_draft_file_missing_count > 0)"
+    requirement: "When human code changes are documented, the AI-generated draft must also be archived."
+    guidance: "List the original AI-generated code draft in `ai_use.ai_code_draft_files` so reviewers can compare the AI draft, human edits, and final analysis script."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026

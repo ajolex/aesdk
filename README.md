@@ -192,6 +192,8 @@ AESDK_R="C:\Program Files\R\R-4.5.0\bin\Rscript.exe"
 
 Python, Stata, and R execution record `language=...` in the `.aesdk.json` audit file. When code does not already declare a seed, AESDK uses a date seed (`yyyymmdd`) and records it in the execution artifacts: Python seeds `random` and NumPy when available, Stata prepends `set seed yyyymmdd`, and R prepends `set.seed(yyyymmdd)`. If the researcher already declared a seed, AESDK preserves it and records that it was not injected. Stata logs are captured as execution artifacts when available, so the HTML workflow report can point reviewers to the actual run log. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. The R guard blocks shell calls, file deletion helpers, package installs, network `source`/`url` helpers, and `library()`/`require()` calls outside the AESDK R package allowlist. Python and R recipe packages are checked against the sandbox allowlists, so bundled recipes and governed execution stay aligned.
 
+Human-in-the-loop and human-intervention evidence works the same for Stata and R. For a Stata workflow, list the AI draft `.do`, final `.do`, and `review/human_code_diff.patch`; for an R workflow, list the AI draft `.R`, final `.R`, and the same patch or manual-change note. AESDK hashes these evidence files in the AI passport and blocks a claimed human code modification if the diff records no actual textual code change.
+
 ## AI Replicability Passport
 
 AESDK treats AI use as acceptable only when the work can be reproduced from archived artifacts without needing the same live AI model later. Add an `ai_use` block to the PAP or proposal when AI materially shapes the work:
@@ -209,6 +211,11 @@ ai_use:
   temperature: 0
   prompts_archived: true
   raw_outputs_archived: true
+  human_in_loop: true
+  human_interaction_files: ["review/followup_transcript.md"]
+  human_modified_code: true
+  ai_code_draft_files: ["ai_outputs/analysis_ai.do"]
+  human_intervention_files: ["review/human_code_diff.patch"]
   human_reviewed: false
   review_status: not_reviewed
   reproducible_without_ai: true
@@ -231,7 +238,16 @@ aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock
 
 The passport records model/tool metadata and hashes archived prompt/output/input/code files. `model` is for the underlying model id, while `agent_tool` is for the coding agent or editor, such as Codex, Claude Code, VS Code, or OpenCode. Every AI-use record must state `model_metadata_source`. If the coding agent does not expose the underlying model id, say so with `model_metadata_source: agent_unavailable`, name the tool in `agent_tool`, explain the limitation in `model_metadata_unavailable_reason`, and archive an existing runtime metadata file; do not put the tool name in `model`. AESDK can write runtime snapshots for Codex, Claude Code, and Copilot in VS Code. These commands record the local client or extension version when available, surface, repository name and commit SHA, session model and reasoning settings from explicit overrides or local config/settings, approval or permission policy, sandbox mode, config sources checked, and timestamp.
 
-If AI generated analysis code, declare the language and list the final reviewed code files in `code_files`; this applies equally to Python `.py`, R `.R`, and Stata `.do` workflows. AESDK checks that declared languages match the archived code extensions, so a passport cannot claim Stata while only hashing an R script. `human_reviewed: true` now requires review status and review evidence files; agent-only runs should leave it false until a researcher actually reviews the work. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived.
+If AI generated analysis code, declare the language and list the final reviewed code files in `code_files`; this applies equally to Python `.py`, R `.R`, and Stata `.do` workflows. AESDK checks that declared languages match the archived code extensions, so a passport cannot claim Stata while only hashing an R script. If a human asked follow-up questions or corrected the agent, set `human_in_loop: true` and archive the transcript or comment trail in `human_interaction_files`. If a human manually changed AI-generated code, set `human_modified_code: true`, archive the AI draft in `ai_code_draft_files`, and archive a patch or change note in `human_intervention_files`.
+
+AESDK can create the code-intervention patch:
+
+```bash
+aesdk agent interaction-log --output review/followup_transcript.md --speaker human --message "Please justify the clustering level." --source chat
+aesdk agent review-diff --ai-code ai_outputs/analysis_ai.do --final-code analysis.do --output review/human_code_diff.patch
+```
+
+These fields do not automatically count as final human review. `human_reviewed: true` still requires review status and review evidence files; agent-only runs should leave it false until a researcher actually reviews the work. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived.
 
 ## Method Protocols
 
@@ -265,7 +281,7 @@ Each method protocol now declares its curriculum stage and topic tags, so an AI 
 
 Governance files and knowledge packs are organized by econometric topic or method, not by textbook author. Textbooks and papers remain registered as sources inside the rule or pack, but the file identity is the research decision being governed: `did`, `iv_2sls`, `panel_inference`, `citation_integrity`, and the method pack ids. This is deliberate: it helps AI agents treat sources as evidence rather than inventing author-specific doctrine.
 
-Every bundled method pack now has an executable governance rule file. AESDK currently ships 116 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, citation integrity, and AI replicability. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
+Every bundled method pack now has an executable governance rule file. AESDK currently ships 120 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, citation integrity, and AI replicability. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
 
 The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Gujarati, Verbeek, Heiss, World Bank impact evaluation material, J-PAL randomized-evaluation resources, critical RCT scope sources, recent Wooldridge DiD sources, and package documentation. Public source registry entries must include an online locator such as a DOI, publisher page, journal page, author page, or official package page. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
 

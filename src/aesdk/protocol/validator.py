@@ -369,6 +369,23 @@ def _file_missing_count(values: Any, base_dirs: list[Path]) -> int:
     return missing
 
 
+def _file_text_match_count(values: Any, base_dirs: list[Path], marker: str) -> int:
+    matches = 0
+    for value in _as_list(values):
+        path = Path(str(value))
+        candidates = [path] if path.is_absolute() else [base / path for base in base_dirs]
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                try:
+                    text = candidate.read_text(encoding="utf-8-sig")
+                except UnicodeDecodeError:
+                    text = candidate.read_text(encoding="cp1252")
+                if marker in text:
+                    matches += 1
+                break
+    return matches
+
+
 def _estimator_matches(active: Any, rule_estimators: list[Any]) -> bool:
     if not rule_estimators:
         return True
@@ -428,10 +445,17 @@ def _apply_conformance_to_severity(severity: Severity, conformance: ConformanceL
 
 
 class ValidationContext:
-    def __init__(self, pap: dict[str, Any], proposal: dict[str, Any], artifact_base_dirs: list[Path] | None = None):
+    def __init__(
+        self,
+        pap: dict[str, Any],
+        proposal: dict[str, Any],
+        artifact_base_dirs: list[Path] | None = None,
+        artifact_base_dirs_by_source: dict[str, Path] | None = None,
+    ):
         self._pap = pap
         self._proposal = proposal
         self._artifact_base_dirs = artifact_base_dirs or [Path.cwd()]
+        self._artifact_base_dirs_by_source = artifact_base_dirs_by_source or {}
 
     def as_dict(self) -> dict[str, Any]:
         data = self._pap.get("data", {})
@@ -446,7 +470,7 @@ class ValidationContext:
         gmm = self._merged_block("gmm_block")
         limited = self._merged_block("limited_dependent_block")
         time_series = self._merged_block("time_series_block")
-        ai_use = self._merged_block("ai_use")
+        ai_use, ai_use_provenance = self._merged_block_with_provenance("ai_use")
         robustness = self._pap.get("robustness", {})
         covariates = identification.get("covariates", {})
         outcome_variable = self._proposal.get("outcome_variable", identification.get("outcome_variable"))
@@ -620,12 +644,40 @@ class ValidationContext:
             "ai_model_metadata_unavailable_reason": ai_use.get("model_metadata_unavailable_reason"),
             "ai_prompts_archived": ai_use.get("prompts_archived", False),
             "ai_raw_outputs_archived": ai_use.get("raw_outputs_archived", False),
+            "ai_human_in_loop": ai_use.get("human_in_loop", False),
+            "ai_human_interaction_file_count": len(_as_list(ai_use.get("human_interaction_files", []))),
+            "ai_human_interaction_file_missing_count": _file_missing_count(
+                ai_use.get("human_interaction_files", []),
+                self._field_base_dirs("human_interaction_files", ai_use_provenance),
+            ),
+            "ai_human_modified_code": ai_use.get("human_modified_code", False),
+            "ai_human_intervention_file_count": len(_as_list(ai_use.get("human_intervention_files", []))),
+            "ai_human_intervention_file_missing_count": _file_missing_count(
+                ai_use.get("human_intervention_files", []),
+                self._field_base_dirs("human_intervention_files", ai_use_provenance),
+            ),
+            "ai_human_intervention_no_change_file_count": _file_text_match_count(
+                ai_use.get("human_intervention_files", []),
+                self._field_base_dirs("human_intervention_files", ai_use_provenance),
+                "AESDK-REVIEW-DIFF: no_textual_changes",
+            ),
+            "ai_code_draft_file_count": len(_as_list(ai_use.get("ai_code_draft_files", []))),
+            "ai_code_draft_file_missing_count": _file_missing_count(
+                ai_use.get("ai_code_draft_files", []),
+                self._field_base_dirs("ai_code_draft_files", ai_use_provenance),
+            ),
             "ai_human_reviewed": ai_use.get("human_reviewed", False),
             "ai_review_status": ai_use.get("review_status"),
             "ai_review_file_count": len(_as_list(ai_use.get("review_files", []))),
-            "ai_review_file_missing_count": _file_missing_count(ai_use.get("review_files", []), self._artifact_base_dirs),
+            "ai_review_file_missing_count": _file_missing_count(
+                ai_use.get("review_files", []),
+                self._field_base_dirs("review_files", ai_use_provenance),
+            ),
             "ai_runtime_metadata_file_count": len(_as_list(ai_use.get("runtime_metadata_files", []))),
-            "ai_runtime_metadata_file_missing_count": _file_missing_count(ai_use.get("runtime_metadata_files", []), self._artifact_base_dirs),
+            "ai_runtime_metadata_file_missing_count": _file_missing_count(
+                ai_use.get("runtime_metadata_files", []),
+                self._field_base_dirs("runtime_metadata_files", ai_use_provenance),
+            ),
             "ai_reviewer_role": ai_use.get("reviewer_role"),
             "ai_reproducible_without_ai": ai_use.get("reproducible_without_ai"),
             "ai_live_model_required": ai_use.get("live_model_required", False),
@@ -650,11 +702,41 @@ class ValidationContext:
             block.update(proposal_block)
         return block
 
+    def _merged_block_with_provenance(self, name: str) -> tuple[dict[str, Any], dict[str, str]]:
+        block: dict[str, Any] = {}
+        provenance: dict[str, str] = {}
+        pap_block = self._pap.get(name, {})
+        proposal_block = self._proposal.get(name, {})
+        if isinstance(pap_block, dict):
+            for key, value in pap_block.items():
+                block[key] = value
+                provenance[key] = "pap"
+        if isinstance(proposal_block, dict):
+            for key, value in proposal_block.items():
+                if value is not None:
+                    block[key] = value
+                    provenance[key] = "proposal"
+        return block, provenance
+
+    def _field_base_dirs(self, field: str, provenance: dict[str, str]) -> list[Path]:
+        source = provenance.get(field)
+        if source and source in self._artifact_base_dirs_by_source:
+            return [self._artifact_base_dirs_by_source[source]]
+        return self._artifact_base_dirs
+
 
 class Validator:
-    def __init__(self, registry: RuleRegistry | None = None, artifact_base_dirs: list[str | Path] | None = None):
+    def __init__(
+        self,
+        registry: RuleRegistry | None = None,
+        artifact_base_dirs: list[str | Path] | None = None,
+        artifact_base_dirs_by_source: dict[str, str | Path] | None = None,
+    ):
         self.registry = registry or RuleRegistry()
         self.artifact_base_dirs = [Path(path) for path in (artifact_base_dirs or [Path.cwd()])]
+        self.artifact_base_dirs_by_source = {
+            source: Path(path) for source, path in (artifact_base_dirs_by_source or {}).items()
+        }
 
     def validate(
         self,
@@ -662,7 +744,12 @@ class Validator:
         proposal: dict[str, Any],
         conformance: ConformanceLevel = ConformanceLevel.BASIC,
     ) -> ValidationResult:
-        context = ValidationContext(pap, proposal, artifact_base_dirs=self.artifact_base_dirs).as_dict()
+        context = ValidationContext(
+            pap,
+            proposal,
+            artifact_base_dirs=self.artifact_base_dirs,
+            artifact_base_dirs_by_source=self.artifact_base_dirs_by_source,
+        ).as_dict()
         violations: list[RuleViolation] = []
         for rule in self.registry.all_rules:
             estimators = rule.get("estimators") or []

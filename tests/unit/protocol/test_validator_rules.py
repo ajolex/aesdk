@@ -1205,6 +1205,105 @@ def test_ai_human_review_claim_requires_existing_evidence(valid_pap_dict: dict, 
     assert result.status == "block"
 
 
+def test_ai_human_in_loop_requires_existing_interaction_evidence(valid_pap_dict: dict, tmp_path) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_in_loop": True,
+            "human_interaction_files": ["missing_transcript.md"],
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-022" in ids
+    assert result.status == "block"
+
+
+def test_ai_human_modified_code_requires_intervention_evidence(valid_pap_dict: dict, tmp_path) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_modified_code": True,
+            "human_intervention_files": ["missing_diff.patch"],
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-023" in ids
+    assert "AI-REP-024" in ids
+    assert result.status == "block"
+
+
+def test_ai_human_modified_code_blocks_no_change_diff(valid_pap_dict: dict, tmp_path) -> None:
+    draft = tmp_path / "analysis_ai.do"
+    patch = tmp_path / "human_code_diff.patch"
+    draft.write_text("display 1\n", encoding="utf-8")
+    patch.write_text("AESDK-REVIEW-DIFF: no_textual_changes\nNo textual differences detected.\n", encoding="utf-8")
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_modified_code": True,
+            "ai_code_draft_files": [draft.name],
+            "human_intervention_files": [patch.name],
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-025" in ids
+    assert result.status == "block"
+
+
 def test_ai_replicability_blocks_missing_reproducible_without_ai(valid_pap_dict: dict) -> None:
     proposal = {
         "estimator": "DiD",

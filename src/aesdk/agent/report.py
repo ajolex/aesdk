@@ -227,6 +227,11 @@ def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -
         ("model_metadata_unavailable_reason", ai_use.get("model_metadata_unavailable_reason")),
         ("prompts_archived", ai_use.get("prompts_archived")),
         ("raw_outputs_archived", ai_use.get("raw_outputs_archived")),
+        ("human_in_loop", ai_use.get("human_in_loop")),
+        ("human_interaction_files", ai_use.get("human_interaction_files")),
+        ("human_modified_code", ai_use.get("human_modified_code")),
+        ("ai_code_draft_files", ai_use.get("ai_code_draft_files")),
+        ("human_intervention_files", ai_use.get("human_intervention_files")),
         ("human_reviewed", ai_use.get("human_reviewed")),
         ("review_status", ai_use.get("review_status")),
         ("reviewer_role", ai_use.get("reviewer_role")),
@@ -286,6 +291,9 @@ def _sibling_artifacts(folder: Path, output: Path) -> str:
             ".py",
             ".csv",
             ".log",
+            ".md",
+            ".patch",
+            ".diff",
         }:
             interesting.append(path)
         if path.is_dir() and path.name.lower() == "results":
