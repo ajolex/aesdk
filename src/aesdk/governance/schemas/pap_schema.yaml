@@ -215,6 +215,14 @@ properties:
             items:
               type: string
               enum: [code_generation, text_classification, data_extraction, variable_construction, literature_summarization, translation, editing, other]
+      languages:
+        oneOf:
+          - type: string
+            enum: [python, r, stata, mixed, none]
+          - type: array
+            items:
+              type: string
+              enum: [python, r, stata, mixed, none]
       provider: {type: string}
       model: {type: string}
       model_version: {type: string}
@@ -237,6 +245,9 @@ properties:
         type: array
         items: {type: string}
       input_files:
+        type: array
+        items: {type: string}
+      code_files:
         type: array
         items: {type: string}
       qa_sample_plan: {type: string}

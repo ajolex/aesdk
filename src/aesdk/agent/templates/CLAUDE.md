@@ -6,6 +6,7 @@ When asked to write econometric analysis code, use AESDK first.
 - Supported method ids include `ols_cef`, `iv_2sls`, `panel_fe`, `did`, `experimental_rct`, `rdd`, `matching`, `synthetic_control`, `nonlinear_did`, `gmm`, `limited_dependent`, and `time_series`; use `aesdk methods list` if unsure.
 - If a task file exists but `pap.yaml` and `proposal.json` do not, draft reviewable starter files with `aesdk agent intake --task <task-file> --method <method> --output-dir .`.
 - If AI materially shaped code, classifications, extracted data, or variables, document `ai_use` and write `ai.lock.json` with `aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json`.
+- For AI-written analysis code, declare `ai_use.languages` and list the final reviewed `.py`, `.R`, or `.do` scripts in `ai_use.code_files`; the declared languages must match the archived code extensions.
 - Run preflight with `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`.
 - A `block` result is a hard stop.
 - A `warn` result requires researcher review.

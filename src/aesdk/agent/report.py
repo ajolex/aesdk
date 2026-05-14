@@ -219,6 +219,7 @@ def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -
     fields = [
         ("used", ai_use.get("used")),
         ("role", ai_use.get("role")),
+        ("languages", ai_use.get("languages")),
         ("provider", ai_use.get("provider")),
         ("model", ai_use.get("model")),
         ("prompts_archived", ai_use.get("prompts_archived")),
@@ -228,6 +229,7 @@ def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -
         ("live_model_required", ai_use.get("live_model_required")),
         ("ai_output_used_as_data", ai_use.get("ai_output_used_as_data")),
         ("ai_derived_variables", ai_use.get("ai_derived_variables")),
+        ("code_files", ai_use.get("code_files")),
         ("qa_sample_plan", ai_use.get("qa_sample_plan")),
         ("sensitivity_plan", ai_use.get("sensitivity_plan")),
         ("ai_passport_path", ai_use.get("ai_passport_path")),

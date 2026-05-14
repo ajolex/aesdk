@@ -147,13 +147,16 @@ def test_agent_ai_passport_writes_lockfile(valid_pap_dict, tmp_path) -> None:
 
     prompt = tmp_path / "prompt.md"
     output = tmp_path / "output.md"
+    code = tmp_path / "analysis.do"
     prompt.write_text("Write code.", encoding="utf-8")
     output.write_text("Generated code.", encoding="utf-8")
+    code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
     pap = {
         **valid_pap_dict,
         "ai_use": {
             "used": True,
             "role": "code_generation",
+            "languages": ["stata"],
             "provider": "Anthropic",
             "model": "claude-sonnet-4.6",
             "prompts_archived": True,
@@ -162,6 +165,7 @@ def test_agent_ai_passport_writes_lockfile(valid_pap_dict, tmp_path) -> None:
             "reproducible_without_ai": True,
             "prompt_files": [prompt.name],
             "output_files": [output.name],
+            "code_files": [code.name],
         },
     }
     pap_path = tmp_path / "pap.yaml"
@@ -175,6 +179,47 @@ def test_agent_ai_passport_writes_lockfile(valid_pap_dict, tmp_path) -> None:
 
     assert result.exit_code == 0
     assert "ai_passport_written=" in result.output
+    assert "status=pass" in result.output
+    assert output_path.exists()
+
+
+def test_agent_ai_passport_writes_r_lockfile(valid_pap_dict, tmp_path) -> None:
+    import yaml
+
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    code = tmp_path / "analysis.R"
+    prompt.write_text("Write R code.", encoding="utf-8")
+    output.write_text("Generated R code.", encoding="utf-8")
+    code.write_text("set.seed(20260514)\nprint(1)\n", encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": "r",
+            "provider": "Anthropic",
+            "model": "claude-sonnet-4.6",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    output_path = tmp_path / "ai.lock.json"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        ["agent", "ai-passport", "--pap", str(pap_path), "--output", str(output_path)],
+    )
+
+    assert result.exit_code == 0
     assert "status=pass" in result.output
     assert output_path.exists()
 

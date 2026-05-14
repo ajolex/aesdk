@@ -827,6 +827,33 @@ def test_ai_code_generation_with_archived_artifacts_passes(valid_pap_dict: dict)
         "ai_use": {
             "used": True,
             "role": "code_generation",
+            "languages": ["stata"],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "ai_output_used_as_data": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    assert not {item.rule_id for item in result.violations if item.rule_id.startswith("AI-REP")}
+    assert result.status == "pass"
+
+
+def test_ai_code_generation_requires_language_and_code_file_records(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
             "prompts_archived": True,
             "raw_outputs_archived": True,
             "human_reviewed": True,
@@ -840,8 +867,65 @@ def test_ai_code_generation_with_archived_artifacts_passes(valid_pap_dict: dict)
 
     result = Validator().validate(valid_pap_dict, proposal)
 
-    assert not {item.rule_id for item in result.violations if item.rule_id.startswith("AI-REP")}
-    assert result.status == "pass"
+    ids = {violation.rule_id for violation in result.violations}
+    assert {"AI-REP-011", "AI-REP-012"}.issubset(ids)
+    assert result.status == "block"
+
+
+def test_ai_code_generation_blocks_none_language(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["none"],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "ai_output_used_as_data": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-013" in ids
+    assert result.status == "block"
+
+
+def test_ai_code_generation_blocks_language_code_file_mismatch(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "ai_output_used_as_data": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.R"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-014" in ids
+    assert result.status == "block"
 
 
 def test_ai_replicability_blocks_missing_reproducible_without_ai(valid_pap_dict: dict) -> None:

@@ -43,6 +43,7 @@ def test_pap_schema_accepts_ai_use_block(valid_pap_dict: dict) -> None:
         "ai_use": {
             "used": True,
             "role": ["code_generation", "text_classification"],
+            "languages": ["stata", "r"],
             "provider": "Anthropic",
             "model": "claude-sonnet-4.6",
             "temperature": 0,
@@ -56,8 +57,30 @@ def test_pap_schema_accepts_ai_use_block(valid_pap_dict: dict) -> None:
             "prompt_files": ["prompts/topic_code.md"],
             "output_files": ["outputs/topic_code_raw.jsonl"],
             "input_files": ["data/articles.csv"],
+            "code_files": ["analysis.do", "analysis.R"],
             "qa_sample_plan": "Review 10 percent of coded texts.",
             "sensitivity_plan": "Re-estimate excluding uncertain labels.",
+        },
+    }
+
+    validate_pap_dict(pap)
+
+
+def test_pap_schema_accepts_single_ai_language(valid_pap_dict: dict) -> None:
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": "stata",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
         },
     }
 

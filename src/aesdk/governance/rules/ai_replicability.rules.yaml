@@ -139,3 +139,55 @@ rules:
       authors: "AESDK"
       title: "AI Replicability Passport"
       year: 2026
+
+  - id: AI-REP-011
+    name: "AI Code Generation Requires Code File Records"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and 'code_generation' in ai_roles and ai_code_file_count == 0"
+    requirement: "If AI generated or materially revised analysis code, the final reviewable code file must be listed in ai_use.code_files."
+    guidance: "Add every AI-generated or AI-revised analysis script, including Python `.py`, R `.R`, and Stata `.do` files, so the AI passport can hash the exact code that was checked, run, and archived."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-012
+    name: "AI Code Generation Requires Declared Analysis Language"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and 'code_generation' in ai_roles and len(ai_languages) == 0"
+    requirement: "If AI generated or materially revised analysis code, the analysis language must be declared."
+    guidance: "Set ai_use.languages to the language used by the analysis code, such as `python`, `r`, `stata`, or `mixed`, so reviewers know which runtime and replication conventions apply."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-013
+    name: "AI Code Generation Cannot Declare No Language"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and 'code_generation' in ai_roles and ai_code_language_has_none == true"
+    requirement: "If AI generated or materially revised analysis code, the analysis language cannot be declared as `none`."
+    guidance: "Use `python`, `r`, `stata`, or `mixed` for AI-written analysis code. Reserve `none` for AI use that did not produce or revise analysis code."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-014
+    name: "AI Code Language Must Match Archived Code Files"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and 'code_generation' in ai_roles and ai_code_language_mismatch == true"
+    requirement: "The declared AI code language must match the archived code files."
+    guidance: "If `code_files` contains Stata `.do`, R `.R`, or Python `.py` scripts, declare the same languages in `ai_use.languages`, or use `mixed` when the workflow genuinely spans multiple languages."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026

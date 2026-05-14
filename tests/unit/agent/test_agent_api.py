@@ -150,6 +150,7 @@ def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_pa
                 "ai_use": {
                     "used": True,
                     "role": "code_generation",
+                    "languages": ["python"],
                     "provider": "Anthropic",
                     "model": "claude-sonnet-4.6",
                     "prompts_archived": True,
@@ -159,6 +160,7 @@ def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_pa
                     "live_model_required": False,
                     "prompt_files": ["prompts/analysis_prompt.md"],
                     "output_files": ["ai_outputs/code_response.md"],
+                    "code_files": ["analysis.py"],
                 },
             }
         ),
@@ -354,12 +356,85 @@ def test_write_ai_passport_hashes_archived_files(valid_pap_dict, tmp_path) -> No
     assert len(passport["artifact_hashes"]["output_files"][0]["sha256"]) == 64
 
 
+def test_write_ai_passport_hashes_stata_and_r_code_files(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    stata_code = tmp_path / "analysis.do"
+    r_code = tmp_path / "analysis.R"
+    prompt.write_text("Write equivalent Stata and R analysis code.", encoding="utf-8")
+    output.write_text("Generated Stata and R scripts.", encoding="utf-8")
+    stata_code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    r_code.write_text("set.seed(20260514)\nprint(1)\n", encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata", "r"],
+            "provider": "OpenAI",
+            "model": "gpt-example",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [stata_code.name, r_code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+    code_records = result.passport["artifact_hashes"]["code_files"]
+
+    assert result.status == "pass"
+    assert result.passport["ai_use"]["languages"] == ["stata", "r"]
+    assert [record["original_path"] for record in code_records] == ["analysis.do", "analysis.R"]
+    assert all(len(record["sha256"]) == 64 for record in code_records)
+
+
+def test_write_ai_passport_blocks_language_code_file_mismatch(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    r_code = tmp_path / "analysis.R"
+    prompt.write_text("Write Stata code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    r_code.write_text("set.seed(20260514)\nprint(1)\n", encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [r_code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    codes = {item["code"] for item in result.passport["findings"]}
+    assert result.status == "block"
+    assert "AI_CODE_LANGUAGE_MISMATCH" in codes
+
+
 def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_path) -> None:
     pap = {
         **valid_pap_dict,
         "ai_use": {
             "used": True,
             "role": "code_generation",
+            "languages": ["stata"],
             "prompts_archived": True,
             "raw_outputs_archived": True,
             "human_reviewed": True,
@@ -367,6 +442,7 @@ def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_pat
             "live_model_required": False,
             "prompt_files": ["missing_prompt.md"],
             "output_files": ["missing_output.md"],
+            "code_files": ["missing_analysis.do"],
         },
     }
     pap_path = tmp_path / "pap.yaml"
@@ -382,11 +458,14 @@ def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_pat
 def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, valid_pap_dict, tmp_path) -> None:
     prompt = tmp_path / "prompt.md"
     output = tmp_path / "output.md"
+    code = tmp_path / "analysis.py"
     prompt.write_text("Write code.", encoding="utf-8")
     output.write_text("Generated code.", encoding="utf-8")
+    code.write_text("print('ran')", encoding="utf-8")
     valid_pap_dict["ai_use"] = {
         "used": True,
         "role": "code_generation",
+        "languages": ["python"],
         "provider": "Anthropic",
         "model": "claude-sonnet-4.6",
         "prompts_archived": True,
@@ -396,6 +475,7 @@ def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, val
         "live_model_required": False,
         "prompt_files": [prompt.name],
         "output_files": [output.name],
+        "code_files": [code.name],
     }
     pap_path = tmp_path / "pap.yaml"
     pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
@@ -404,8 +484,7 @@ def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, val
         json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
         encoding="utf-8",
     )
-    code_path = tmp_path / "analysis.py"
-    code_path.write_text("print('ran')", encoding="utf-8")
+    code_path = code
     blob_path = tmp_path / ".aesdk.json"
 
     run = ae.run_analysis(method="did", pap_path=pap_path, proposal=proposal_path, code_path=code_path, blob_path=blob_path)

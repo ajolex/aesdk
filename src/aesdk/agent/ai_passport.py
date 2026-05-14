@@ -82,7 +82,8 @@ def build_ai_passport(
     prompt_files = _file_records(_base_for("prompt_files", provenance, base_dirs), merged.get("prompt_files", []))
     output_files = _file_records(_base_for("output_files", provenance, base_dirs), merged.get("output_files", []))
     input_files = _file_records(_base_for("input_files", provenance, base_dirs), merged.get("input_files", []))
-    findings = _passport_findings(merged, prompt_files, output_files, input_files)
+    code_files = _file_records(_base_for("code_files", provenance, base_dirs), merged.get("code_files", []))
+    findings = _passport_findings(merged, prompt_files, output_files, input_files, code_files)
     validation = _validation_summary(active_pap, active_proposal) if active_pap else None
     if validation and validation["status"] == "block":
         findings.append(
@@ -113,6 +114,7 @@ def build_ai_passport(
             "prompt_files": prompt_files,
             "output_files": output_files,
             "input_files": input_files,
+            "code_files": code_files,
         },
         "validation": validation,
         "findings": findings,
@@ -165,6 +167,7 @@ def _public_ai_use(ai_use: dict[str, Any]) -> dict[str, Any]:
     fields = [
         "used",
         "role",
+        "languages",
         "provider",
         "model",
         "model_version",
@@ -178,6 +181,7 @@ def _public_ai_use(ai_use: dict[str, Any]) -> dict[str, Any]:
         "live_model_required",
         "ai_output_used_as_data",
         "ai_derived_variables",
+        "code_files",
         "qa_sample_plan",
         "sensitivity_plan",
         "notes",
@@ -213,6 +217,7 @@ def _passport_findings(
     prompt_files: list[dict[str, Any]],
     output_files: list[dict[str, Any]],
     input_files: list[dict[str, Any]],
+    code_files: list[dict[str, Any]],
 ) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     if not ai_use:
@@ -236,7 +241,24 @@ def _passport_findings(
         findings.append({"severity": "error", "code": "PROMPT_FILES_MISSING", "message": "prompt_files is empty."})
     if ai_use.get("raw_outputs_archived") is True and not output_files:
         findings.append({"severity": "error", "code": "OUTPUT_FILES_MISSING", "message": "output_files is empty."})
-    for record in [*prompt_files, *output_files, *input_files]:
+    roles = _as_list(ai_use.get("role", []))
+    if "code_generation" in roles:
+        languages = _normalized_languages(ai_use.get("languages", []))
+        if not languages:
+            findings.append({"severity": "error", "code": "AI_CODE_LANGUAGE_MISSING", "message": "languages is empty for AI-generated code."})
+        if "none" in languages:
+            findings.append({"severity": "error", "code": "AI_CODE_LANGUAGE_NONE", "message": "languages cannot include none for AI-generated code."})
+        if not code_files:
+            findings.append({"severity": "error", "code": "CODE_FILES_MISSING", "message": "code_files is empty for AI-generated code."})
+        if _ai_code_language_mismatch(languages, code_files):
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "AI_CODE_LANGUAGE_MISMATCH",
+                    "message": "Declared AI code languages do not match the archived code file extensions.",
+                }
+            )
+    for record in [*prompt_files, *output_files, *input_files, *code_files]:
         if not record.get("exists") or "sha256" not in record:
             findings.append(
                 {
@@ -294,6 +316,35 @@ def _as_list(value: Any) -> list[Any]:
     if isinstance(value, tuple):
         return list(value)
     return [value]
+
+
+def _code_languages_from_records(records: list[dict[str, Any]]) -> list[str]:
+    languages: list[str] = []
+    for record in records:
+        suffix = Path(str(record.get("original_path", ""))).suffix.lower()
+        if suffix == ".py":
+            languages.append("python")
+        elif suffix == ".r":
+            languages.append("r")
+        elif suffix == ".do":
+            languages.append("stata")
+    return sorted(set(languages))
+
+
+def _normalized_languages(values: Any) -> list[str]:
+    return sorted({str(value).strip().lower() for value in _as_list(values) if str(value).strip()})
+
+
+def _ai_code_language_mismatch(declared_languages: Any, code_file_records: list[dict[str, Any]]) -> bool:
+    declared = set(_normalized_languages(declared_languages))
+    recognized = set(_code_languages_from_records(code_file_records))
+    if not declared or "none" in declared:
+        return False
+    if "mixed" in declared:
+        return False
+    if not recognized:
+        return False
+    return declared != recognized
 
 
 def _replication_statement(ai_use: dict[str, Any], status: str) -> str:

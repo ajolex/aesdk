@@ -9,6 +9,7 @@ For econometric analysis, always use AESDK before writing or running code.
    `aesdk agent intake --task <task-file> --method <method> --output-dir .`
 4. If AI materially shaped code, classifications, extracted data, or variables, document `ai_use` in the PAP/proposal and write a passport:
    `aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json`
+   For AI-written analysis code, `ai_use` must declare `languages` and list the final reviewed `.py`, `.R`, or `.do` scripts in `code_files`; the declared languages must match the archived code extensions.
 5. Run preflight:
    `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`
 6. If AESDK returns `block`, stop and explain the issue in plain research language.

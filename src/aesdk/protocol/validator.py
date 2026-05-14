@@ -108,6 +108,35 @@ def _text_missing(value: Any) -> bool:
     return text in {"", "tbd", "todo", "to_be_determined", "unknown", "na", "n_a", "none", "not_applicable"}
 
 
+def _code_languages_from_files(values: Any) -> list[str]:
+    languages: list[str] = []
+    for value in _as_list(values):
+        suffix = Path(str(value)).suffix.lower()
+        if suffix == ".py":
+            languages.append("python")
+        elif suffix == ".r":
+            languages.append("r")
+        elif suffix == ".do":
+            languages.append("stata")
+    return sorted(set(languages))
+
+
+def _normalized_languages(values: Any) -> list[str]:
+    return sorted({str(value).strip().lower() for value in _as_list(values) if str(value).strip()})
+
+
+def _ai_code_language_mismatch(declared_values: Any, code_file_values: Any) -> bool:
+    declared = set(_normalized_languages(declared_values))
+    recognized = set(_code_languages_from_files(code_file_values))
+    if not declared or "none" in declared:
+        return False
+    if "mixed" in declared:
+        return False
+    if not recognized:
+        return False
+    return declared != recognized
+
+
 def _cluster_level_missing(level: Any) -> bool:
     return not _cluster_level_parts(level)
 
@@ -543,6 +572,11 @@ class ValidationContext:
             "lookahead_bias": time_series.get("lookahead_bias", False),
             "ai_used": ai_use.get("used", False),
             "ai_role": ai_use.get("role"),
+            "ai_roles": _as_list(ai_use.get("role", [])),
+            "ai_languages": _normalized_languages(ai_use.get("languages", [])),
+            "ai_code_file_languages": _code_languages_from_files(ai_use.get("code_files", [])),
+            "ai_code_language_has_none": "none" in _normalized_languages(ai_use.get("languages", [])),
+            "ai_code_language_mismatch": _ai_code_language_mismatch(ai_use.get("languages", []), ai_use.get("code_files", [])),
             "ai_provider": ai_use.get("provider"),
             "ai_model": ai_use.get("model"),
             "ai_prompts_archived": ai_use.get("prompts_archived", False),
@@ -555,6 +589,7 @@ class ValidationContext:
             "ai_prompt_file_count": len(_as_list(ai_use.get("prompt_files", []))),
             "ai_output_file_count": len(_as_list(ai_use.get("output_files", []))),
             "ai_input_file_count": len(_as_list(ai_use.get("input_files", []))),
+            "ai_code_file_count": len(_as_list(ai_use.get("code_files", []))),
             "ai_qa_sample_plan": ai_use.get("qa_sample_plan"),
             "ai_sensitivity_plan": ai_use.get("sensitivity_plan"),
         }
