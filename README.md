@@ -170,14 +170,29 @@ For most users, the most useful setup is to tell the AI agent:
 
 ```text
 First make sure AESDK is installed. Run `aesdk agent doctor`; if the command is missing, run `python -m pip install aesdk` and then retry with `python -m aesdk agent doctor`.
+
 Before writing econometric analysis code, use AESDK.
-Load method context with `aesdk agent context --method <method>`.
-Run intake when starting from a task document: `aesdk agent intake --task <task.pdf> --method <method> --output-dir .`; this writes starter files and `.aesdk.json`.
-If there is no task file, use the actual prompt: `aesdk agent intake --prompt "<research task>" --method <method> --output-dir .`.
-Before writing code, create the required `.aesdk.json` blob with `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .`.
-If AI materially shaped the analysis, document `ai_use` and write `ai.lock.json` with `aesdk agent ai-passport --pap pap.yaml --proposal proposal.json`.
-Run preflight with `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`.
-If AESDK returns block, stop and explain the violated assumptions.
+
+Identify the method, then load method context:
+`aesdk agent context --method <method>`
+
+If starting from a task document, run:
+`aesdk agent intake --task <task.pdf> --method <method> --output-dir .`
+
+If there is no task file, use the actual prompt:
+`aesdk agent intake --prompt "<research task>" --method <method> --output-dir .`
+
+Intake writes starter files and the required `.aesdk.json` blob. If `pap.yaml` or `proposal.json` are edited later, refresh the blob with:
+`aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .`
+
+If AI materially shaped the analysis, document `ai_use` and write `ai.lock.json`:
+`aesdk agent ai-passport --pap pap.yaml --proposal proposal.json`
+
+Run preflight:
+`aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`
+
+If AESDK returns `block`, stop and explain the violated assumptions. If AESDK returns `warn`, explain what needs researcher acknowledgement.
+
 Do not invent econometric assumptions, diagnostics, citations, estimator requirements, task files, or AI-use evidence.
 ```
 
