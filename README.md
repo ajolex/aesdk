@@ -62,16 +62,31 @@ If the proposed analysis uses panel DiD with non-clustered standard errors, AESD
 
 ## Install
 
+Install AESDK before adding AESDK commands to `AGENTS.md`, `CLAUDE.md`, or another agent instruction file. If the package is not installed, the agent will usually report `aesdk` as missing when it tries to run preflight.
+
 For local development from this repository:
 
 ```bash
 pip install -e .
 ```
 
-After a public release:
+From PyPI:
 
 ```bash
 pip install aesdk
+```
+
+Check that the command is available:
+
+```bash
+aesdk methods list
+```
+
+If your shell cannot find `aesdk` after installation, use the Python module entry point or install with the same Python interpreter your agent uses:
+
+```bash
+python -m pip install aesdk
+python -m aesdk.cli.main methods list
 ```
 
 ## Use AESDK From Python
@@ -144,6 +159,7 @@ aesdk agent template --target CLAUDE.md
 For most users, the most useful setup is to tell the AI agent:
 
 ```text
+First make sure AESDK is installed. Run `aesdk methods list`; if the command is missing, run `python -m pip install aesdk` and then retry.
 Before writing econometric analysis code, use AESDK.
 Load method context with `aesdk agent context --method <method>`.
 Run intake when starting from a task document: `aesdk agent intake --task <task.pdf> --output-dir .`.
