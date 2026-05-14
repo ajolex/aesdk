@@ -159,7 +159,10 @@ def preflight(
     if pap_path is None:
         return PreflightResult(method_id=method, context=ctx, proposal=loaded_proposal)
     pap = validate_pap_file(pap_path)
-    validation = Validator().validate(
+    artifact_base_dirs = [Path.cwd(), Path(pap_path).resolve().parent]
+    if isinstance(proposal, (str, Path)):
+        artifact_base_dirs.append(Path(proposal).resolve().parent)
+    validation = Validator(artifact_base_dirs=artifact_base_dirs).validate(
         pap=pap,
         proposal=loaded_proposal,
         conformance=ConformanceLevel(conformance.lower()),

@@ -5,6 +5,73 @@ from typer.testing import CliRunner
 from aesdk.cli.main import app
 
 
+def test_agent_codex_runtime_writes_metadata(tmp_path, monkeypatch) -> None:
+    home = tmp_path / "home"
+    (home / ".codex").mkdir(parents=True)
+    (home / ".codex" / "config.toml").write_text('model = "gpt-test"\nmodel_reasoning_effort = "high"\n', encoding="utf-8")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    monkeypatch.setattr("pathlib.Path.home", lambda: home)
+    monkeypatch.setattr("aesdk.agent.runtime_metadata._codex_version", lambda: "codex-cli test")
+    monkeypatch.setattr("aesdk.agent.runtime_metadata._git_output", lambda args, cwd: "abc123")
+
+    output = tmp_path / "codex_runtime.json"
+    result = CliRunner().invoke(
+        app,
+        ["agent", "codex-runtime", "--workspace", str(workspace), "--output", str(output)],
+    )
+
+    assert result.exit_code == 0
+    assert "runtime_metadata_written=" in result.output
+    assert "Codex client: codex-cli test" in result.output
+    assert output.exists()
+
+
+def test_agent_claude_runtime_writes_metadata(tmp_path, monkeypatch) -> None:
+    home = tmp_path / "home"
+    (home / ".claude").mkdir(parents=True)
+    (home / ".claude" / "settings.json").write_text('{"model":"claude-test"}', encoding="utf-8")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    monkeypatch.setattr("pathlib.Path.home", lambda: home)
+    monkeypatch.setattr("aesdk.agent.runtime_metadata._command_version", lambda command, args: "claude test")
+    monkeypatch.setattr("aesdk.agent.runtime_metadata._git_output", lambda args, cwd: "abc123")
+
+    output = tmp_path / "claude_runtime.json"
+    result = CliRunner().invoke(
+        app,
+        ["agent", "claude-runtime", "--workspace", str(workspace), "--output", str(output)],
+    )
+
+    assert result.exit_code == 0
+    assert "runtime_metadata_written=" in result.output
+    assert "Claude Code client: claude test" in result.output
+    assert output.exists()
+
+
+def test_agent_copilot_runtime_writes_metadata(tmp_path, monkeypatch) -> None:
+    appdata = tmp_path / "AppData"
+    (appdata / "Code" / "User").mkdir(parents=True)
+    (appdata / "Code" / "User" / "settings.json").write_text('{"github.copilot.chat.model":"gpt-test"}', encoding="utf-8")
+    workspace = tmp_path / "repo"
+    workspace.mkdir()
+    monkeypatch.setenv("APPDATA", str(appdata))
+    monkeypatch.setattr("aesdk.agent.runtime_metadata._vscode_version", lambda: "code test")
+    monkeypatch.setattr("aesdk.agent.runtime_metadata._copilot_extensions", lambda: ["GitHub.copilot@1.2.3"])
+    monkeypatch.setattr("aesdk.agent.runtime_metadata._git_output", lambda args, cwd: "abc123")
+
+    output = tmp_path / "copilot_runtime.json"
+    result = CliRunner().invoke(
+        app,
+        ["agent", "copilot-runtime", "--workspace", str(workspace), "--output", str(output)],
+    )
+
+    assert result.exit_code == 0
+    assert "runtime_metadata_written=" in result.output
+    assert "VS Code client: code test" in result.output
+    assert output.exists()
+
+
 def test_agent_run_prints_sandbox_diagnostics_for_missing_r_runtime(valid_pap_file, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AESDK_R", "definitely-not-rscript")
     proposal_path = tmp_path / "proposal.json"
@@ -159,9 +226,10 @@ def test_agent_ai_passport_writes_lockfile(valid_pap_dict, tmp_path) -> None:
             "languages": ["stata"],
             "provider": "Anthropic",
             "model": "claude-sonnet-4.6",
+            "model_metadata_source": "agent_reported",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "prompt_files": [prompt.name],
             "output_files": [output.name],
@@ -200,9 +268,10 @@ def test_agent_ai_passport_writes_r_lockfile(valid_pap_dict, tmp_path) -> None:
             "languages": "r",
             "provider": "Anthropic",
             "model": "claude-sonnet-4.6",
+            "model_metadata_source": "agent_reported",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "prompt_files": [prompt.name],
@@ -234,7 +303,7 @@ def test_agent_ai_passport_blocks_incomplete_evidence(valid_pap_dict, tmp_path) 
             "role": "code_generation",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "prompt_files": ["missing_prompt.md"],
             "output_files": ["missing_output.md"],

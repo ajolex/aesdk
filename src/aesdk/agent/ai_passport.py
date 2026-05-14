@@ -83,8 +83,22 @@ def build_ai_passport(
     output_files = _file_records(_base_for("output_files", provenance, base_dirs), merged.get("output_files", []))
     input_files = _file_records(_base_for("input_files", provenance, base_dirs), merged.get("input_files", []))
     code_files = _file_records(_base_for("code_files", provenance, base_dirs), merged.get("code_files", []))
-    findings = _passport_findings(merged, prompt_files, output_files, input_files, code_files)
-    validation = _validation_summary(active_pap, active_proposal) if active_pap else None
+    review_files = _file_records(_base_for("review_files", provenance, base_dirs), merged.get("review_files", []))
+    runtime_metadata_files = _file_records(
+        _base_for("runtime_metadata_files", provenance, base_dirs),
+        merged.get("runtime_metadata_files", []),
+    )
+    findings = _passport_findings(
+        merged,
+        prompt_files,
+        output_files,
+        input_files,
+        code_files,
+        review_files,
+        runtime_metadata_files,
+    )
+    validation_base_dirs = [Path.cwd(), *base_dirs.values()]
+    validation = _validation_summary(active_pap, active_proposal, validation_base_dirs) if active_pap else None
     if validation and validation["status"] == "block":
         findings.append(
             {
@@ -109,12 +123,15 @@ def build_ai_passport(
             "rulepack_hash": compute_rulepack_hash(DEFAULT_RULES_DIR),
         },
         "field_provenance": provenance,
+        "field_provenance_note": "Field provenance records which source document supplied each metadata field; it is not independent verification of the field value.",
         "ai_use": _public_ai_use(merged),
         "artifact_hashes": {
             "prompt_files": prompt_files,
             "output_files": output_files,
             "input_files": input_files,
             "code_files": code_files,
+            "review_files": review_files,
+            "runtime_metadata_files": runtime_metadata_files,
         },
         "validation": validation,
         "findings": findings,
@@ -171,12 +188,22 @@ def _public_ai_use(ai_use: dict[str, Any]) -> dict[str, Any]:
         "provider",
         "model",
         "model_version",
+        "agent_tool",
+        "agent_tool_version",
+        "model_metadata_source",
+        "model_metadata_unavailable_reason",
         "temperature",
         "top_p",
         "seed",
         "prompts_archived",
         "raw_outputs_archived",
         "human_reviewed",
+        "review_status",
+        "reviewer_role",
+        "review_date",
+        "review_files",
+        "runtime_metadata_files",
+        "review_checklist",
         "reproducible_without_ai",
         "live_model_required",
         "ai_output_used_as_data",
@@ -218,6 +245,8 @@ def _passport_findings(
     output_files: list[dict[str, Any]],
     input_files: list[dict[str, Any]],
     code_files: list[dict[str, Any]],
+    review_files: list[dict[str, Any]],
+    runtime_metadata_files: list[dict[str, Any]],
 ) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     if not ai_use:
@@ -241,6 +270,63 @@ def _passport_findings(
         findings.append({"severity": "error", "code": "PROMPT_FILES_MISSING", "message": "prompt_files is empty."})
     if ai_use.get("raw_outputs_archived") is True and not output_files:
         findings.append({"severity": "error", "code": "OUTPUT_FILES_MISSING", "message": "output_files is empty."})
+    if _looks_like_agent_tool_model(ai_use.get("model")):
+        findings.append(
+            {
+                "severity": "error",
+                "code": "MODEL_FIELD_IS_AGENT_TOOL",
+                "message": "The model field names a coding agent/tool rather than the underlying model.",
+            }
+        )
+    if _text_missing(ai_use.get("model")) and _text_missing(ai_use.get("model_metadata_unavailable_reason")):
+        findings.append(
+            {
+                "severity": "error",
+                "code": "MODEL_METADATA_MISSING",
+                "message": "Record the underlying model or explain why model metadata is unavailable.",
+            }
+        )
+    if _text_missing(ai_use.get("model_metadata_source")):
+        findings.append(
+            {
+                "severity": "error",
+                "code": "MODEL_METADATA_SOURCE_MISSING",
+                "message": "Record where the model metadata came from.",
+            }
+        )
+    if not _text_missing(ai_use.get("model_metadata_unavailable_reason")) and ai_use.get("model_metadata_source") != "agent_unavailable":
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "MODEL_METADATA_SOURCE_MISMATCH",
+                "message": "Unavailable model metadata should use model_metadata_source=agent_unavailable.",
+            }
+        )
+    if ai_use.get("model_metadata_source") == "agent_unavailable" and _text_missing(ai_use.get("agent_tool")):
+        findings.append(
+            {
+                "severity": "error",
+                "code": "AGENT_TOOL_MISSING",
+                "message": "model metadata is marked unavailable but agent_tool is empty.",
+            }
+        )
+    if ai_use.get("model_metadata_source") == "agent_unavailable" and not runtime_metadata_files:
+        findings.append(
+            {
+                "severity": "error",
+                "code": "RUNTIME_METADATA_FILES_MISSING",
+                "message": "model metadata is marked unavailable but runtime_metadata_files is empty.",
+            }
+        )
+    if ai_use.get("human_reviewed") is True:
+        if ai_use.get("review_status") in {None, "not_reviewed"} or not review_files:
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "HUMAN_REVIEW_EVIDENCE_MISSING",
+                    "message": "human_reviewed is true but review status or review_files evidence is missing.",
+                }
+            )
     roles = _as_list(ai_use.get("role", []))
     if "code_generation" in roles:
         languages = _normalized_languages(ai_use.get("languages", []))
@@ -258,7 +344,7 @@ def _passport_findings(
                     "message": "Declared AI code languages do not match the archived code file extensions.",
                 }
             )
-    for record in [*prompt_files, *output_files, *input_files, *code_files]:
+    for record in [*prompt_files, *output_files, *input_files, *code_files, *review_files, *runtime_metadata_files]:
         if not record.get("exists") or "sha256" not in record:
             findings.append(
                 {
@@ -279,8 +365,8 @@ def _passport_findings(
     return findings
 
 
-def _validation_summary(pap: dict[str, Any], proposal: dict[str, Any]) -> dict[str, Any]:
-    result = Validator().validate(pap, proposal)
+def _validation_summary(pap: dict[str, Any], proposal: dict[str, Any], artifact_base_dirs: list[Path]) -> dict[str, Any]:
+    result = Validator(artifact_base_dirs=artifact_base_dirs).validate(pap, proposal)
     return {
         "status": result.status,
         "violations": [
@@ -333,6 +419,43 @@ def _code_languages_from_records(records: list[dict[str, Any]]) -> list[str]:
 
 def _normalized_languages(values: Any) -> list[str]:
     return sorted({str(value).strip().lower() for value in _as_list(values) if str(value).strip()})
+
+
+def _normalized_phrase(value: Any) -> str:
+    if value is None:
+        return ""
+    text = str(value).strip().lower()
+    for separator in ["-", "/", "\\", ",", ";", ":"]:
+        text = text.replace(separator, " ")
+    return "_".join(part for part in text.split() if part)
+
+
+def _text_missing(value: Any) -> bool:
+    return _normalized_phrase(value) in {"", "tbd", "todo", "to_be_determined", "unknown", "na", "n_a", "none", "not_applicable", "undisclosed", "not_disclosed", "unavailable"}
+
+
+def _looks_like_agent_tool_model(value: Any) -> bool:
+    text = _normalized_phrase(value)
+    if text in {
+        "codex",
+        "codex_cli",
+        "openai_codex",
+        "claude_code",
+        "claude",
+        "claude_cli",
+        "vs_code",
+        "vscode",
+        "vs_code_copilot",
+        "vscode_copilot",
+        "github_copilot",
+        "copilot",
+        "open_code",
+        "opencode",
+        "cursor",
+        "windsurf",
+    }:
+        return True
+    return any(token in text.split("_") for token in {"codex", "copilot"})
 
 
 def _ai_code_language_mismatch(declared_languages: Any, code_file_records: list[dict[str, Any]]) -> bool:

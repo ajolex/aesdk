@@ -179,7 +179,7 @@ def _load_ai_passport(folder: Path, ai_use: dict[str, Any]) -> dict[str, Any]:
         candidates.append(Path(str(ai_use["ai_passport_path"])))
     candidates.append(folder / "ai.lock.json")
     for candidate in candidates:
-        path = candidate if candidate.is_absolute() or candidate.exists() else folder / candidate
+        path = candidate if candidate.is_absolute() else folder / candidate
         if path.exists() and path.is_file():
             try:
                 return json.loads(path.read_text(encoding="utf-8-sig"))
@@ -222,9 +222,16 @@ def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -
         ("languages", ai_use.get("languages")),
         ("provider", ai_use.get("provider")),
         ("model", ai_use.get("model")),
+        ("agent_tool", ai_use.get("agent_tool")),
+        ("model_metadata_source", ai_use.get("model_metadata_source")),
+        ("model_metadata_unavailable_reason", ai_use.get("model_metadata_unavailable_reason")),
         ("prompts_archived", ai_use.get("prompts_archived")),
         ("raw_outputs_archived", ai_use.get("raw_outputs_archived")),
         ("human_reviewed", ai_use.get("human_reviewed")),
+        ("review_status", ai_use.get("review_status")),
+        ("reviewer_role", ai_use.get("reviewer_role")),
+        ("review_files", ai_use.get("review_files")),
+        ("runtime_metadata_files", ai_use.get("runtime_metadata_files")),
         ("reproducible_without_ai", ai_use.get("reproducible_without_ai")),
         ("live_model_required", ai_use.get("live_model_required")),
         ("ai_output_used_as_data", ai_use.get("ai_output_used_as_data")),

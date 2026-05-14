@@ -777,7 +777,7 @@ def test_ai_replicability_blocks_live_model_dependency(valid_pap_dict: dict) -> 
             "role": "text_classification",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": False,
             "live_model_required": True,
             "prompt_files": ["prompts/classify.md"],
@@ -802,7 +802,7 @@ def test_ai_derived_data_requires_archived_outputs(valid_pap_dict: dict) -> None
             "role": "text_classification",
             "prompts_archived": True,
             "raw_outputs_archived": False,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "ai_output_used_as_data": True,
             "ai_derived_variables": ["topic_code"],
@@ -828,9 +828,11 @@ def test_ai_code_generation_with_archived_artifacts_passes(valid_pap_dict: dict)
             "used": True,
             "role": "code_generation",
             "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "ai_output_used_as_data": False,
@@ -856,7 +858,7 @@ def test_ai_code_generation_requires_language_and_code_file_records(valid_pap_di
             "role": "code_generation",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "ai_output_used_as_data": False,
@@ -883,7 +885,7 @@ def test_ai_code_generation_blocks_none_language(valid_pap_dict: dict) -> None:
             "languages": ["none"],
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "ai_output_used_as_data": False,
@@ -911,7 +913,7 @@ def test_ai_code_generation_blocks_language_code_file_mismatch(valid_pap_dict: d
             "languages": ["stata"],
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "ai_output_used_as_data": False,
@@ -928,6 +930,281 @@ def test_ai_code_generation_blocks_language_code_file_mismatch(valid_pap_dict: d
     assert result.status == "block"
 
 
+def test_ai_model_field_cannot_be_agent_tool(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "OpenAI",
+            "model": "Codex",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-015" in ids
+    assert result.status == "block"
+
+
+def test_ai_model_field_catches_copilot_tool_names(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "GitHub",
+            "model": "GitHub Copilot",
+            "model_metadata_source": "agent_reported",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-015" in ids
+    assert result.status == "block"
+
+
+def test_ai_model_metadata_source_required(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "OpenAI",
+            "model": "gpt-example",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-020" in ids
+    assert result.status == "block"
+
+
+def test_ai_coding_agent_can_record_unavailable_model_metadata(valid_pap_dict: dict, tmp_path) -> None:
+    (tmp_path / "codex_runtime.json").write_text('{"schema":"aesdk.codex_runtime.v1"}', encoding="utf-8")
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "OpenAI",
+            "agent_tool": "Codex",
+            "model_metadata_source": "agent_unavailable",
+            "model_metadata_unavailable_reason": "The coding agent transcript exposed the tool name but not the underlying model id.",
+            "runtime_metadata_files": ["codex_runtime.json"],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "ai_output_used_as_data": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    assert not {item.rule_id for item in result.violations if item.rule_id.startswith("AI-REP")}
+    assert result.status == "pass"
+
+
+def test_ai_unavailable_model_metadata_requires_agent_tool(valid_pap_dict: dict, tmp_path) -> None:
+    (tmp_path / "codex_runtime.json").write_text('{"schema":"aesdk.codex_runtime.v1"}', encoding="utf-8")
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "OpenAI",
+            "model_metadata_source": "agent_unavailable",
+            "model_metadata_unavailable_reason": "The coding agent transcript exposed the tool name but not the underlying model id.",
+            "runtime_metadata_files": ["codex_runtime.json"],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-021" in ids
+    assert result.status == "block"
+
+
+def test_ai_unavailable_model_metadata_requires_runtime_snapshot(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "OpenAI",
+            "agent_tool": "Codex",
+            "model_metadata_source": "agent_unavailable",
+            "model_metadata_unavailable_reason": "The coding agent transcript exposed the tool name but not the underlying model id.",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-019" in ids
+    assert result.status == "block"
+
+
+def test_ai_unavailable_model_metadata_requires_existing_runtime_snapshot(valid_pap_dict: dict, tmp_path) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "OpenAI",
+            "agent_tool": "Codex",
+            "model_metadata_source": "agent_unavailable",
+            "model_metadata_unavailable_reason": "The coding agent transcript exposed the tool name but not the underlying model id.",
+            "runtime_metadata_files": ["missing_runtime.json"],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-019" in ids
+    assert result.status == "block"
+
+
+def test_ai_human_review_claim_requires_evidence(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-018" in ids
+    assert result.status == "block"
+
+
+def test_ai_human_review_claim_requires_existing_evidence(valid_pap_dict: dict, tmp_path) -> None:
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "review_status": "self_reviewed",
+            "review_files": ["missing_review.md"],
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-018" in ids
+    assert result.status == "block"
+
+
 def test_ai_replicability_blocks_missing_reproducible_without_ai(valid_pap_dict: dict) -> None:
     proposal = {
         "estimator": "DiD",
@@ -938,7 +1215,7 @@ def test_ai_replicability_blocks_missing_reproducible_without_ai(valid_pap_dict:
             "role": "code_generation",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "prompt_files": ["prompts/code.md"],
             "output_files": ["outputs/code.md"],
         },
@@ -961,7 +1238,7 @@ def test_ai_replicability_blocks_archive_booleans_without_file_records(valid_pap
             "role": "code_generation",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
         },

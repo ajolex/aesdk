@@ -191,3 +191,94 @@ rules:
       authors: "AESDK"
       title: "AI Replicability Passport"
       year: 2026
+
+  - id: AI-REP-015
+    name: "AI Model Field Cannot Be A Coding Agent Tool"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_model_looks_like_agent_tool == true"
+    requirement: "The AI model field must name the underlying model, not the coding agent or editor."
+    guidance: "Record tools such as Codex, Claude Code, GitHub Copilot, VS Code, OpenCode, Cursor, or Windsurf in `ai_use.agent_tool`. Put the model name in `ai_use.model` only when the tool or API discloses it."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-016
+    name: "AI Model Metadata Requires Model Or Unavailable Reason"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and text_missing(ai_model) and text_missing(ai_model_metadata_unavailable_reason)"
+    requirement: "AI-use metadata must either record the underlying model or explain why the model metadata is unavailable."
+    guidance: "For API calls, archive the model id from the response. For coding agents that do not expose the underlying model, set `model_metadata_source: agent_unavailable` and explain the limitation in `model_metadata_unavailable_reason`."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-020
+    name: "AI Model Metadata Source Required"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and text_missing(ai_model_metadata_source)"
+    requirement: "AI-use metadata must state where the model metadata came from."
+    guidance: "Use `api_response` for direct API metadata, `agent_reported` when the agent surface reports the model, `user_reported` when a researcher supplies it, or `agent_unavailable` when the coding agent does not expose the model id."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-017
+    name: "Unavailable Model Metadata Requires Explicit Source"
+    severity: "warning"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and not text_missing(ai_model_metadata_unavailable_reason) and ai_model_metadata_source != 'agent_unavailable'"
+    requirement: "When model metadata is unavailable, the metadata source should say so explicitly."
+    guidance: "Set `model_metadata_source: agent_unavailable` when using a coding agent that does not disclose the exact underlying model in the project artifacts."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-018
+    name: "Human Review Claim Requires Review Evidence"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_human_reviewed == true and (ai_review_status is None or ai_review_status == 'not_reviewed' or ai_review_file_count == 0 or ai_review_file_missing_count > 0)"
+    requirement: "A true human-review claim must include review status and at least one existing review evidence file."
+    guidance: "Use `review_status`, `reviewer_role`, and `review_files` to record who reviewed the AI-assisted work and what evidence documents that review. Do not set `human_reviewed: true` for an agent-only run."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-019
+    name: "Unavailable Agent Model Metadata Requires Runtime Snapshot"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_model_metadata_source == 'agent_unavailable' and (ai_runtime_metadata_file_count == 0 or ai_runtime_metadata_file_missing_count > 0)"
+    requirement: "If a coding agent cannot expose the underlying model id, the project must archive an existing runtime metadata snapshot."
+    guidance: "Run `aesdk agent codex-runtime --output codex_runtime.json` or archive an equivalent tool/runtime metadata file, then list it in `ai_use.runtime_metadata_files`."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-021
+    name: "Unavailable Agent Model Metadata Requires Agent Tool"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_model_metadata_source == 'agent_unavailable' and text_missing(ai_agent_tool)"
+    requirement: "When model metadata is unavailable because of a coding agent, the agent tool must be named."
+    guidance: "Record the coding agent or editor in `ai_use.agent_tool`, for example Codex, Claude Code, GitHub Copilot in VS Code, OpenCode, Cursor, or Windsurf."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026

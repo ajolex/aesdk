@@ -226,12 +226,34 @@ properties:
       provider: {type: string}
       model: {type: string}
       model_version: {type: string}
+      agent_tool: {type: string}
+      agent_tool_version: {type: string}
+      model_metadata_source:
+        type: string
+        enum: [api_response, agent_reported, user_reported, agent_unavailable, unknown]
+      model_metadata_unavailable_reason: {type: string}
       temperature: {type: number, minimum: 0}
       top_p: {type: number, minimum: 0, maximum: 1}
       seed: {}
       prompts_archived: {type: boolean}
       raw_outputs_archived: {type: boolean}
       human_reviewed: {type: boolean}
+      review_status:
+        type: string
+        enum: [not_reviewed, self_reviewed, independent_reviewed, approved]
+      reviewer_role: {type: string}
+      review_date:
+        type: string
+        format: date
+      review_files:
+        type: array
+        items: {type: string}
+      runtime_metadata_files:
+        type: array
+        items: {type: string}
+      review_checklist:
+        type: array
+        items: {type: string}
       reproducible_without_ai: {type: boolean}
       live_model_required: {type: boolean}
       ai_output_used_as_data: {type: boolean}
@@ -288,4 +310,4 @@ allOf:
     then:
       properties:
         ai_use:
-          required: [role, reproducible_without_ai, live_model_required, prompts_archived, raw_outputs_archived, human_reviewed]
+          required: [role, model_metadata_source, reproducible_without_ai, live_model_required, prompts_archived, raw_outputs_archived, human_reviewed]

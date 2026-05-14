@@ -153,9 +153,10 @@ def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_pa
                     "languages": ["python"],
                     "provider": "Anthropic",
                     "model": "claude-sonnet-4.6",
+                    "model_metadata_source": "agent_reported",
                     "prompts_archived": True,
                     "raw_outputs_archived": True,
-                    "human_reviewed": True,
+                    "human_reviewed": False,
                     "reproducible_without_ai": True,
                     "live_model_required": False,
                     "prompt_files": ["prompts/analysis_prompt.md"],
@@ -333,9 +334,10 @@ def test_write_ai_passport_hashes_archived_files(valid_pap_dict, tmp_path) -> No
             "role": "text_classification",
             "provider": "OpenAI",
             "model": "gpt-example",
+            "model_metadata_source": "api_response",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "prompt_files": [prompt.name],
             "output_files": [output.name],
@@ -373,9 +375,10 @@ def test_write_ai_passport_hashes_stata_and_r_code_files(valid_pap_dict, tmp_pat
             "languages": ["stata", "r"],
             "provider": "OpenAI",
             "model": "gpt-example",
+            "model_metadata_source": "api_response",
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "prompt_files": [prompt.name],
@@ -410,7 +413,7 @@ def test_write_ai_passport_blocks_language_code_file_mismatch(valid_pap_dict, tm
             "languages": ["stata"],
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "prompt_files": [prompt.name],
@@ -428,6 +431,86 @@ def test_write_ai_passport_blocks_language_code_file_mismatch(valid_pap_dict, tm
     assert "AI_CODE_LANGUAGE_MISMATCH" in codes
 
 
+def test_write_ai_passport_hashes_human_review_evidence(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    code = tmp_path / "analysis.do"
+    review = tmp_path / "review.md"
+    prompt.write_text("Write Stata code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    review.write_text("Reviewed estimator, clustering, and code outputs.", encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "review_status": "self_reviewed",
+            "reviewer_role": "researcher",
+            "review_files": [review.name],
+            "review_checklist": ["estimator", "standard_errors", "outputs"],
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert result.status == "pass"
+    assert result.passport["ai_use"]["review_status"] == "self_reviewed"
+    assert len(result.passport["artifact_hashes"]["review_files"][0]["sha256"]) == 64
+
+
+def test_write_ai_passport_hashes_runtime_metadata(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    code = tmp_path / "analysis.do"
+    runtime = tmp_path / "codex_runtime.json"
+    prompt.write_text("Write Stata code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    runtime.write_text('{"schema":"aesdk.codex_runtime.v1","codex_client":"codex-cli test"}', encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "OpenAI",
+            "agent_tool": "Codex",
+            "model_metadata_source": "agent_unavailable",
+            "model_metadata_unavailable_reason": "The coding agent transcript exposed the tool name but not the underlying model id.",
+            "runtime_metadata_files": [runtime.name],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert result.status == "pass"
+    assert len(result.passport["artifact_hashes"]["runtime_metadata_files"][0]["sha256"]) == 64
+
+
 def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_path) -> None:
     pap = {
         **valid_pap_dict,
@@ -437,7 +520,7 @@ def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_pat
             "languages": ["stata"],
             "prompts_archived": True,
             "raw_outputs_archived": True,
-            "human_reviewed": True,
+            "human_reviewed": False,
             "reproducible_without_ai": True,
             "live_model_required": False,
             "prompt_files": ["missing_prompt.md"],
@@ -468,9 +551,10 @@ def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, val
         "languages": ["python"],
         "provider": "Anthropic",
         "model": "claude-sonnet-4.6",
+        "model_metadata_source": "agent_reported",
         "prompts_archived": True,
         "raw_outputs_archived": True,
-        "human_reviewed": True,
+            "human_reviewed": False,
         "reproducible_without_ai": True,
         "live_model_required": False,
         "prompt_files": [prompt.name],

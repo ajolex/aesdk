@@ -7,6 +7,7 @@ from .agent import (
     AnalysisRunResult,
     IntakeResult,
     PreflightResult,
+    RuntimeMetadataResult,
     agent_context,
     build_ai_passport,
     draft_pap,
@@ -14,6 +15,9 @@ from .agent import (
     preflight,
     run_analysis,
     write_ai_passport,
+    write_claude_runtime_metadata,
+    write_codex_runtime_metadata,
+    write_copilot_runtime_metadata,
     write_workflow_report,
 )
 from .knowledge import get_knowledge_pack
@@ -24,6 +28,7 @@ __all__ = [
     "AnalysisRunResult",
     "IntakeResult",
     "PreflightResult",
+    "RuntimeMetadataResult",
     "__version__",
     "agent_context",
     "build_ai_passport",
@@ -33,5 +38,8 @@ __all__ = [
     "preflight",
     "run_analysis",
     "write_ai_passport",
+    "write_claude_runtime_metadata",
+    "write_codex_runtime_metadata",
+    "write_copilot_runtime_metadata",
     "write_workflow_report",
 ]

@@ -105,7 +105,7 @@ def _normalized_phrase(value: Any) -> str:
 
 def _text_missing(value: Any) -> bool:
     text = _normalized_phrase(value)
-    return text in {"", "tbd", "todo", "to_be_determined", "unknown", "na", "n_a", "none", "not_applicable"}
+    return text in {"", "tbd", "todo", "to_be_determined", "unknown", "na", "n_a", "none", "not_applicable", "undisclosed", "not_disclosed", "unavailable"}
 
 
 def _code_languages_from_files(values: Any) -> list[str]:
@@ -135,6 +135,30 @@ def _ai_code_language_mismatch(declared_values: Any, code_file_values: Any) -> b
     if not recognized:
         return False
     return declared != recognized
+
+
+def _looks_like_agent_tool_model(value: Any) -> bool:
+    text = _normalized_phrase(value)
+    if text in {
+        "codex",
+        "codex_cli",
+        "openai_codex",
+        "claude_code",
+        "claude",
+        "claude_cli",
+        "vs_code",
+        "vscode",
+        "vs_code_copilot",
+        "vscode_copilot",
+        "github_copilot",
+        "copilot",
+        "open_code",
+        "opencode",
+        "cursor",
+        "windsurf",
+    }:
+        return True
+    return any(token in text.split("_") for token in {"codex", "copilot"})
 
 
 def _cluster_level_missing(level: Any) -> bool:
@@ -335,6 +359,16 @@ def _as_list(value: Any) -> list[Any]:
     return [value]
 
 
+def _file_missing_count(values: Any, base_dirs: list[Path]) -> int:
+    missing = 0
+    for value in _as_list(values):
+        path = Path(str(value))
+        candidates = [path] if path.is_absolute() else [base / path for base in base_dirs]
+        if not any(candidate.exists() and candidate.is_file() for candidate in candidates):
+            missing += 1
+    return missing
+
+
 def _estimator_matches(active: Any, rule_estimators: list[Any]) -> bool:
     if not rule_estimators:
         return True
@@ -394,9 +428,10 @@ def _apply_conformance_to_severity(severity: Severity, conformance: ConformanceL
 
 
 class ValidationContext:
-    def __init__(self, pap: dict[str, Any], proposal: dict[str, Any]):
+    def __init__(self, pap: dict[str, Any], proposal: dict[str, Any], artifact_base_dirs: list[Path] | None = None):
         self._pap = pap
         self._proposal = proposal
+        self._artifact_base_dirs = artifact_base_dirs or [Path.cwd()]
 
     def as_dict(self) -> dict[str, Any]:
         data = self._pap.get("data", {})
@@ -579,9 +614,19 @@ class ValidationContext:
             "ai_code_language_mismatch": _ai_code_language_mismatch(ai_use.get("languages", []), ai_use.get("code_files", [])),
             "ai_provider": ai_use.get("provider"),
             "ai_model": ai_use.get("model"),
+            "ai_model_looks_like_agent_tool": _looks_like_agent_tool_model(ai_use.get("model")),
+            "ai_agent_tool": ai_use.get("agent_tool"),
+            "ai_model_metadata_source": ai_use.get("model_metadata_source"),
+            "ai_model_metadata_unavailable_reason": ai_use.get("model_metadata_unavailable_reason"),
             "ai_prompts_archived": ai_use.get("prompts_archived", False),
             "ai_raw_outputs_archived": ai_use.get("raw_outputs_archived", False),
             "ai_human_reviewed": ai_use.get("human_reviewed", False),
+            "ai_review_status": ai_use.get("review_status"),
+            "ai_review_file_count": len(_as_list(ai_use.get("review_files", []))),
+            "ai_review_file_missing_count": _file_missing_count(ai_use.get("review_files", []), self._artifact_base_dirs),
+            "ai_runtime_metadata_file_count": len(_as_list(ai_use.get("runtime_metadata_files", []))),
+            "ai_runtime_metadata_file_missing_count": _file_missing_count(ai_use.get("runtime_metadata_files", []), self._artifact_base_dirs),
+            "ai_reviewer_role": ai_use.get("reviewer_role"),
             "ai_reproducible_without_ai": ai_use.get("reproducible_without_ai"),
             "ai_live_model_required": ai_use.get("live_model_required", False),
             "ai_output_used_as_data": ai_use.get("ai_output_used_as_data", False),
@@ -607,8 +652,9 @@ class ValidationContext:
 
 
 class Validator:
-    def __init__(self, registry: RuleRegistry | None = None):
+    def __init__(self, registry: RuleRegistry | None = None, artifact_base_dirs: list[str | Path] | None = None):
         self.registry = registry or RuleRegistry()
+        self.artifact_base_dirs = [Path(path) for path in (artifact_base_dirs or [Path.cwd()])]
 
     def validate(
         self,
@@ -616,7 +662,7 @@ class Validator:
         proposal: dict[str, Any],
         conformance: ConformanceLevel = ConformanceLevel.BASIC,
     ) -> ValidationResult:
-        context = ValidationContext(pap, proposal).as_dict()
+        context = ValidationContext(pap, proposal, artifact_base_dirs=self.artifact_base_dirs).as_dict()
         violations: list[RuleViolation] = []
         for rule in self.registry.all_rules:
             estimators = rule.get("estimators") or []

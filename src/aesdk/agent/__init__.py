@@ -7,6 +7,12 @@ from .pap_draft import draft_pap
 from .preflight import PreflightResult, preflight
 from .report import write_workflow_report
 from .run import AnalysisRunResult, run_analysis
+from .runtime_metadata import (
+    RuntimeMetadataResult,
+    write_claude_runtime_metadata,
+    write_codex_runtime_metadata,
+    write_copilot_runtime_metadata,
+)
 
 __all__ = [
     "AgentContext",
@@ -14,6 +20,7 @@ __all__ = [
     "AnalysisRunResult",
     "IntakeResult",
     "PreflightResult",
+    "RuntimeMetadataResult",
     "agent_context",
     "build_ai_passport",
     "draft_pap",
@@ -21,5 +28,8 @@ __all__ = [
     "preflight",
     "run_analysis",
     "write_ai_passport",
+    "write_claude_runtime_metadata",
+    "write_codex_runtime_metadata",
+    "write_copilot_runtime_metadata",
     "write_workflow_report",
 ]

@@ -17,6 +17,9 @@ from aesdk.agent import (
     preflight,
     run_analysis,
     write_ai_passport,
+    write_claude_runtime_metadata,
+    write_codex_runtime_metadata,
+    write_copilot_runtime_metadata,
     write_workflow_report,
 )
 from aesdk.config import config
@@ -203,6 +206,93 @@ def agent_ai_passport_cmd(
         for finding in result.passport.get("findings", []):
             typer.echo(f"- {finding.get('code')} severity={finding.get('severity')} message={finding.get('message')}")
         raise typer.Exit(code=1)
+
+
+@agent_app.command("codex-runtime")
+def agent_codex_runtime_cmd(
+    output: Path = typer.Option(Path("codex_runtime.json"), help="Output runtime metadata JSON path."),
+    workspace: Path = typer.Option(Path("."), help="Workspace/repo path to inspect."),
+    surface: str = typer.Option("Codex Desktop / IDE extension", help="Codex surface, for example Desktop or IDE extension."),
+    session_model: str | None = typer.Option(None, help="Override active session model when known from /status or /model."),
+    reasoning_effort: str | None = typer.Option(None, help="Override reasoning effort when known from /status, /model, or config."),
+    reasoning_summary: str | None = typer.Option(None, help="Override reasoning summary config value when known."),
+    verbosity: str | None = typer.Option(None, help="Override verbosity config value when known."),
+    approval_policy: str | None = typer.Option(None, help="Override approval policy when known."),
+    sandbox_mode: str | None = typer.Option(None, help="Override sandbox mode when known."),
+    timezone: str = typer.Option("Asia/Manila", help="IANA timezone for timestamp rendering."),
+) -> None:
+    result = write_codex_runtime_metadata(
+        output_path=output,
+        workspace_path=workspace,
+        surface=surface,
+        session_model=session_model,
+        reasoning_effort=reasoning_effort,
+        reasoning_summary=reasoning_summary,
+        verbosity=verbosity,
+        approval_policy=approval_policy,
+        sandbox_mode=sandbox_mode,
+        timezone=timezone,
+    )
+    typer.echo(f"runtime_metadata_written={result.path}")
+    typer.echo(result.metadata.get("metadata_block", ""))
+
+
+@agent_app.command("claude-runtime")
+def agent_claude_runtime_cmd(
+    output: Path = typer.Option(Path("claude_runtime.json"), help="Output runtime metadata JSON path."),
+    workspace: Path = typer.Option(Path("."), help="Workspace/repo path to inspect."),
+    surface: str = typer.Option("Claude Code", help="Claude Code surface."),
+    session_model: str | None = typer.Option(None, help="Override active session model when known from status/model UI."),
+    reasoning_effort: str | None = typer.Option(None, help="Override reasoning effort when known."),
+    reasoning_summary: str | None = typer.Option(None, help="Override reasoning summary when known."),
+    verbosity: str | None = typer.Option(None, help="Override verbosity when known."),
+    approval_policy: str | None = typer.Option(None, help="Override permission/approval policy when known."),
+    sandbox_mode: str | None = typer.Option(None, help="Override sandbox mode when known."),
+    timezone: str = typer.Option("Asia/Manila", help="IANA timezone for timestamp rendering."),
+) -> None:
+    result = write_claude_runtime_metadata(
+        output_path=output,
+        workspace_path=workspace,
+        surface=surface,
+        session_model=session_model,
+        reasoning_effort=reasoning_effort,
+        reasoning_summary=reasoning_summary,
+        verbosity=verbosity,
+        approval_policy=approval_policy,
+        sandbox_mode=sandbox_mode,
+        timezone=timezone,
+    )
+    typer.echo(f"runtime_metadata_written={result.path}")
+    typer.echo(result.metadata.get("metadata_block", ""))
+
+
+@agent_app.command("copilot-runtime")
+def agent_copilot_runtime_cmd(
+    output: Path = typer.Option(Path("copilot_runtime.json"), help="Output runtime metadata JSON path."),
+    workspace: Path = typer.Option(Path("."), help="Workspace/repo path to inspect."),
+    surface: str = typer.Option("VS Code / GitHub Copilot", help="Copilot surface."),
+    session_model: str | None = typer.Option(None, help="Override active Copilot chat model when known."),
+    reasoning_effort: str | None = typer.Option(None, help="Override reasoning effort when known."),
+    reasoning_summary: str | None = typer.Option(None, help="Override reasoning summary when known."),
+    verbosity: str | None = typer.Option(None, help="Override verbosity when known."),
+    approval_policy: str | None = typer.Option(None, help="Override approval policy when known."),
+    sandbox_mode: str | None = typer.Option(None, help="Override sandbox mode when known."),
+    timezone: str = typer.Option("Asia/Manila", help="IANA timezone for timestamp rendering."),
+) -> None:
+    result = write_copilot_runtime_metadata(
+        output_path=output,
+        workspace_path=workspace,
+        surface=surface,
+        session_model=session_model,
+        reasoning_effort=reasoning_effort,
+        reasoning_summary=reasoning_summary,
+        verbosity=verbosity,
+        approval_policy=approval_policy,
+        sandbox_mode=sandbox_mode,
+        timezone=timezone,
+    )
+    typer.echo(f"runtime_metadata_written={result.path}")
+    typer.echo(result.metadata.get("metadata_block", ""))
 
 
 @agent_app.command("run")
