@@ -72,6 +72,9 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
       - name: Publish to PyPI with Trusted Publishing
         if: ${{ env.PYPI_API_TOKEN == '' }}
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
