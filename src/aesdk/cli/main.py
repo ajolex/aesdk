@@ -552,6 +552,7 @@ def rules_list_cmd(
 @app.command("init")
 def init_cmd(
     pap: Path = typer.Option(..., exists=True),
+    proposal: Path | None = typer.Option(None, exists=True, help="Optional proposal JSON path for artifact resolution."),
     blob: Path | None = typer.Option(None),
     context: str = typer.Option("research", help="Execution context: research|production|regulated"),
     conformance: str | None = typer.Option(None, help="Conformance level override: basic|strict|regulated"),

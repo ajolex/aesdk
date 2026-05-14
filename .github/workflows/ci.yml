@@ -36,8 +36,14 @@ jobs:
       - name: CLI smoke (blocked DiD)
         run: |
           aesdk init --pap docs/examples/did_min_wage/pap.yaml
-          aesdk validate --pap docs/examples/did_min_wage/pap.yaml --proposal docs/examples/did_min_wage/proposal_blocked.json
-          aesdk reproduce --blob docs/examples/did_min_wage/.aesdk.json --replay --fail-on-replay-mismatch=false
+          set +e
+          aesdk validate --pap docs/examples/did_min_wage/pap.yaml --proposal docs/examples/did_min_wage/proposal_blocked.json > /tmp/aesdk-blocked-did.txt
+          status=$?
+          set -e
+          cat /tmp/aesdk-blocked-did.txt
+          test "$status" -eq 1
+          grep -q "status=block" /tmp/aesdk-blocked-did.txt
+          aesdk reproduce --blob docs/examples/did_min_wage/.aesdk.json --replay --no-fail-on-replay-mismatch
       - name: CLI smoke (regulated + signed audit)
         run: |
           aesdk execute --pap docs/examples/regulated_profile/pap.yaml --proposal docs/examples/regulated_profile/proposal_pass.json --code-file docs/examples/regulated_profile/exec_code.py --context regulated --conformance regulated --policy-version 1.2.0

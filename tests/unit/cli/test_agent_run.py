@@ -232,6 +232,16 @@ def test_validate_exits_nonzero_when_blocked(valid_pap_dict, tmp_path) -> None:
     assert "AI-REP-022" in result.output
 
 
+def test_init_accepts_pap_without_proposal(valid_pap_file, tmp_path) -> None:
+    blob_path = tmp_path / ".aesdk.json"
+
+    result = CliRunner().invoke(app, ["init", "--pap", str(valid_pap_file), "--blob", str(blob_path)])
+
+    assert result.exit_code == 0
+    assert "initialized project=" in result.output
+    assert blob_path.exists()
+
+
 def test_agent_run_prints_sandbox_diagnostics_for_missing_r_runtime(valid_pap_file, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AESDK_R", "definitely-not-rscript")
     proposal_path = tmp_path / "proposal.json"
