@@ -110,7 +110,7 @@ def build_ai_passport(
         runtime_metadata_files,
     )
     validation_base_dirs = [Path.cwd(), *base_dirs.values()]
-    validation = _validation_summary(active_pap, active_proposal, validation_base_dirs) if active_pap else None
+    validation = _validation_summary(active_pap, active_proposal, validation_base_dirs, base_dirs) if active_pap else None
     if validation and validation["status"] == "block":
         findings.append(
             {
@@ -301,6 +301,14 @@ def _passport_findings(
                 "message": "human_in_loop is true but human_interaction_files is empty.",
             }
         )
+    if ai_use.get("human_in_loop") is True and _has_blank_text_file(human_interaction_files):
+        findings.append(
+            {
+                "severity": "error",
+                "code": "HUMAN_INTERACTION_FILE_BLANK",
+                "message": "human_in_loop is true but an interaction evidence file is blank.",
+            }
+        )
     if ai_use.get("human_modified_code") is True:
         if not human_intervention_files:
             findings.append(
@@ -308,6 +316,14 @@ def _passport_findings(
                     "severity": "error",
                     "code": "HUMAN_INTERVENTION_FILES_MISSING",
                     "message": "human_modified_code is true but human_intervention_files is empty.",
+                }
+            )
+        if _has_blank_text_file(human_intervention_files):
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "HUMAN_INTERVENTION_FILE_BLANK",
+                    "message": "human_modified_code is true but an intervention evidence file is blank.",
                 }
             )
         if not ai_code_draft_files:
@@ -383,6 +399,14 @@ def _passport_findings(
                     "message": "human_reviewed is true but review status or review_files evidence is missing.",
                 }
             )
+        if _has_blank_text_file(review_files):
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "HUMAN_REVIEW_FILE_BLANK",
+                    "message": "human_reviewed is true but a review evidence file is blank.",
+                }
+            )
     roles = _as_list(ai_use.get("role", []))
     if "code_generation" in roles:
         languages = _normalized_languages(ai_use.get("languages", []))
@@ -431,8 +455,16 @@ def _passport_findings(
     return findings
 
 
-def _validation_summary(pap: dict[str, Any], proposal: dict[str, Any], artifact_base_dirs: list[Path]) -> dict[str, Any]:
-    result = Validator(artifact_base_dirs=artifact_base_dirs).validate(pap, proposal)
+def _validation_summary(
+    pap: dict[str, Any],
+    proposal: dict[str, Any],
+    artifact_base_dirs: list[Path],
+    artifact_base_dirs_by_source: dict[str, Path],
+) -> dict[str, Any]:
+    result = Validator(
+        artifact_base_dirs=artifact_base_dirs,
+        artifact_base_dirs_by_source=artifact_base_dirs_by_source,
+    ).validate(pap, proposal)
     return {
         "status": result.status,
         "violations": [
@@ -472,6 +504,22 @@ def _has_no_change_intervention_file(records: list[dict[str, Any]]) -> bool:
         except UnicodeDecodeError:
             text = path.read_text(encoding="cp1252")
         if "AESDK-REVIEW-DIFF: no_textual_changes" in text:
+            return True
+    return False
+
+
+def _has_blank_text_file(records: list[dict[str, Any]]) -> bool:
+    for record in records:
+        if not record.get("exists"):
+            continue
+        path = Path(str(record.get("resolved_path", "")))
+        if not path.exists() or not path.is_file():
+            continue
+        try:
+            text = path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            text = path.read_text(encoding="cp1252")
+        if not text.strip():
             return True
     return False
 

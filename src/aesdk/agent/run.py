@@ -70,6 +70,7 @@ def run_analysis(
 
     project = Project.create(
         pap_path=pap_path,
+        proposal_path=proposal if isinstance(proposal, (str, Path)) else None,
         blob_path=blob_path,
         context=context,
         conformance=conformance,

@@ -39,6 +39,7 @@ class Project:
         cls,
         *,
         pap_path: str | Path,
+        proposal_path: str | Path | None = None,
         blob_path: str | Path | None = None,
         registry: RuleRegistry | None = None,
         blob: ReplicationBlob | None = None,
@@ -51,6 +52,7 @@ class Project:
         attestation_token: str | None = None,
     ) -> "Project":
         pap_target = Path(pap_path)
+        proposal_target = Path(proposal_path) if proposal_path else None
         if not pap_target.exists():
             raise MissingPAPError(f"PAP is required and was not found: {pap_target}")
         pap = validate_pap_file(pap_target)
@@ -104,13 +106,22 @@ class Project:
             ),
         )
         active_blob.save(blob_target)
+        artifact_base_dirs = [Path.cwd(), pap_target.resolve().parent]
+        artifact_base_dirs_by_source = {"pap": pap_target.resolve().parent}
+        if proposal_target:
+            artifact_base_dirs.append(proposal_target.resolve().parent)
+            artifact_base_dirs_by_source["proposal"] = proposal_target.resolve().parent
 
         return cls(
             pap_path=pap_target,
             pap=pap,
             blob_path=blob_target,
             blob=active_blob,
-            validator=Validator(registry=active_registry),
+            validator=Validator(
+                registry=active_registry,
+                artifact_base_dirs=artifact_base_dirs,
+                artifact_base_dirs_by_source=artifact_base_dirs_by_source,
+            ),
             sandbox_runner=sandbox_runner
             or SandboxRunner(
                 mem_limit_mb=config.sandbox_mem_limit_mb,

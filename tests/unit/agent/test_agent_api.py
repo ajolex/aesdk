@@ -139,6 +139,58 @@ def test_run_analysis_executes_when_preflight_passes(valid_pap_file, tmp_path) -
     assert blob_path.exists()
 
 
+def test_run_analysis_uses_proposal_directory_for_human_evidence(valid_pap_file, tmp_path) -> None:
+    pap_dir = tmp_path / "pap"
+    proposal_dir = tmp_path / "proposal"
+    pap_dir.mkdir()
+    proposal_dir.mkdir()
+    pap_path = pap_dir / "pap.yaml"
+    pap_path.write_text(valid_pap_file.read_text(encoding="utf-8"), encoding="utf-8")
+    (proposal_dir / "followup_transcript.md").write_text("Human asked a clarification question.", encoding="utf-8")
+    proposal_path = proposal_dir / "proposal.json"
+    proposal_path.write_text(
+        json.dumps(
+            {
+                "estimator": "DiD",
+                "standard_errors": "cluster",
+                "clustering": "state",
+                "ai_use": {
+                    "used": True,
+                    "role": "code_generation",
+                    "languages": ["python"],
+                    "model": "gpt-example",
+                    "model_metadata_source": "api_response",
+                    "prompts_archived": True,
+                    "raw_outputs_archived": True,
+                    "human_in_loop": True,
+                    "human_interaction_files": ["followup_transcript.md"],
+                    "human_reviewed": False,
+                    "reproducible_without_ai": True,
+                    "live_model_required": False,
+                    "prompt_files": ["prompt.md"],
+                    "output_files": ["output.md"],
+                    "code_files": ["analysis.py"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    code_path = proposal_dir / "analysis.py"
+    code_path.write_text("print('ran')", encoding="utf-8")
+
+    result = ae.run_analysis(
+        method="did",
+        pap_path=pap_path,
+        proposal=proposal_path,
+        code_path=code_path,
+        blob_path=tmp_path / ".aesdk.json",
+    )
+
+    assert result.status == "pass"
+    assert result.sandbox is not None
+    assert result.sandbox.stdout.strip() == "ran"
+
+
 def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_path) -> None:
     proposal_path = tmp_path / "proposal.json"
     proposal_path.write_text(
@@ -188,7 +240,11 @@ def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_pa
     assert report_path.exists()
     report_text = report_path.read_text(encoding="utf-8")
     assert "AESDK Workflow Report" in report_text
+    assert "Review Summary" in report_text
+    assert "Econometric Gatekeeping" in report_text
     assert "AI Use" in report_text
+    assert "AI Evidence Archive" in report_text
+    assert "Workflow Timeline" in report_text
     assert "claude-sonnet-4.6" in report_text
 
 
@@ -658,6 +714,45 @@ def test_write_ai_passport_blocks_no_change_human_intervention(valid_pap_dict, t
     assert "HUMAN_INTERVENTION_NO_CODE_CHANGE" in codes
 
 
+def test_write_ai_passport_blocks_blank_human_review_evidence(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    code = tmp_path / "analysis.do"
+    review = tmp_path / "review.md"
+    prompt.write_text("Write Stata code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    review.write_text("   \n", encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "review_status": "self_reviewed",
+            "review_files": [review.name],
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert result.status == "block"
+    codes = {item["code"] for item in result.passport["findings"]}
+    assert "HUMAN_REVIEW_FILE_BLANK" in codes
+
+
 def test_append_interaction_log_writes_hashable_transcript(tmp_path) -> None:
     log = tmp_path / "review" / "followup_transcript.md"
 
@@ -718,6 +813,51 @@ def test_preflight_uses_proposal_directory_for_proposal_ai_evidence(valid_pap_fi
     assert result.blocked
 
 
+def test_ai_passport_validation_summary_uses_field_provenance(valid_pap_file, tmp_path) -> None:
+    pap_dir = tmp_path / "pap"
+    proposal_dir = tmp_path / "proposal"
+    pap_dir.mkdir()
+    proposal_dir.mkdir()
+    pap_path = pap_dir / "pap.yaml"
+    pap_path.write_text(valid_pap_file.read_text(encoding="utf-8"), encoding="utf-8")
+    (pap_dir / "followup_transcript.md").write_text("Wrong-folder transcript.", encoding="utf-8")
+    proposal_path = proposal_dir / "proposal.json"
+    proposal_path.write_text(
+        json.dumps(
+            {
+                "estimator": "DiD",
+                "standard_errors": "cluster",
+                "clustering": "state",
+                "ai_use": {
+                    "used": True,
+                    "role": "code_generation",
+                    "languages": ["stata"],
+                    "model": "gpt-example",
+                    "model_metadata_source": "api_response",
+                    "prompts_archived": True,
+                    "raw_outputs_archived": True,
+                    "human_in_loop": True,
+                    "human_interaction_files": ["followup_transcript.md"],
+                    "human_reviewed": False,
+                    "reproducible_without_ai": True,
+                    "live_model_required": False,
+                    "prompt_files": ["prompt.md"],
+                    "output_files": ["output.md"],
+                    "code_files": ["analysis.do"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = ae.write_ai_passport(pap_path=pap_path, proposal_path=proposal_path)
+
+    assert result.status == "block"
+    assert result.passport["validation"]["status"] == "block"
+    ids = {item["rule_id"] for item in result.passport["validation"]["violations"]}
+    assert "AI-REP-022" in ids
+
+
 def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_path) -> None:
     pap = {
         **valid_pap_dict,
@@ -749,9 +889,11 @@ def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, val
     prompt = tmp_path / "prompt.md"
     output = tmp_path / "output.md"
     code = tmp_path / "analysis.py"
+    interaction = tmp_path / "followup_transcript.md"
     prompt.write_text("Write code.", encoding="utf-8")
     output.write_text("Generated code.", encoding="utf-8")
     code.write_text("print('ran')", encoding="utf-8")
+    interaction.write_text("Human asked a follow-up question.", encoding="utf-8")
     valid_pap_dict["ai_use"] = {
         "used": True,
         "role": "code_generation",
@@ -761,7 +903,9 @@ def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, val
         "model_metadata_source": "agent_reported",
         "prompts_archived": True,
         "raw_outputs_archived": True,
-            "human_reviewed": False,
+        "human_in_loop": True,
+        "human_interaction_files": [interaction.name],
+        "human_reviewed": False,
         "reproducible_without_ai": True,
         "live_model_required": False,
         "prompt_files": [prompt.name],
@@ -787,6 +931,9 @@ def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, val
     assert "claude-sonnet-4.6" in text
     assert "passport_status" in text
     assert "sha256=" in text
+    assert "Replication statement" in text
+    assert 'href="followup_transcript.md"' in text
+    assert 'href="analysis.py"' in text
 
 
 def test_drafted_rct_pap_can_be_serialized_and_validated(tmp_path) -> None:

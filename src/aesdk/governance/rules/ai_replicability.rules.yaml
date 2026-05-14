@@ -249,8 +249,8 @@ rules:
     severity: "error"
     estimators: []
     data_structures: []
-    condition: "ai_used == true and ai_human_reviewed == true and (ai_review_status is None or ai_review_status == 'not_reviewed' or ai_review_file_count == 0 or ai_review_file_missing_count > 0)"
-    requirement: "A true human-review claim must include review status and at least one existing review evidence file."
+    condition: "ai_used == true and ai_human_reviewed == true and (ai_review_status is None or ai_review_status == 'not_reviewed' or ai_review_file_count == 0 or ai_review_file_missing_count > 0 or ai_review_file_trivial_count > 0)"
+    requirement: "A true human-review claim must include review status and at least one existing non-empty review evidence file."
     guidance: "Use `review_status`, `reviewer_role`, and `review_files` to record who reviewed the AI-assisted work and what evidence documents that review. Do not set `human_reviewed: true` for an agent-only run."
     reference:
       authors: "AESDK"
@@ -288,8 +288,8 @@ rules:
     severity: "error"
     estimators: []
     data_structures: []
-    condition: "ai_used == true and ai_human_in_loop == true and (ai_human_interaction_file_count == 0 or ai_human_interaction_file_missing_count > 0)"
-    requirement: "A human-in-the-loop claim must include at least one existing interaction evidence file."
+    condition: "ai_used == true and ai_human_in_loop == true and (ai_human_interaction_file_count == 0 or ai_human_interaction_file_missing_count > 0 or ai_human_interaction_file_trivial_count > 0)"
+    requirement: "A human-in-the-loop claim must include at least one existing non-empty interaction evidence file."
     guidance: "Archive follow-up questions, clarification transcripts, review comments, or agent conversation exports in `ai_use.human_interaction_files`. This documents interaction, not final review approval."
     reference:
       authors: "AESDK"
@@ -301,8 +301,8 @@ rules:
     severity: "error"
     estimators: []
     data_structures: []
-    condition: "ai_used == true and ai_human_modified_code == true and (ai_human_intervention_file_count == 0 or ai_human_intervention_file_missing_count > 0)"
-    requirement: "A human code-intervention claim must include an existing diff, patch, or manual-change note."
+    condition: "ai_used == true and ai_human_modified_code == true and (ai_human_intervention_file_count == 0 or ai_human_intervention_file_missing_count > 0 or ai_human_intervention_file_trivial_count > 0)"
+    requirement: "A human code-intervention claim must include an existing non-empty diff, patch, or manual-change note."
     guidance: "Use `aesdk agent review-diff --ai-code <draft> --final-code <final> --output review/human_code_diff.patch`, or archive a manual-change note in `ai_use.human_intervention_files`."
     reference:
       authors: "AESDK"

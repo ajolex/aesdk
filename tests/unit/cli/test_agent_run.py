@@ -191,6 +191,47 @@ def test_validate_uses_pap_and_proposal_directories_for_ai_evidence(valid_pap_di
     assert "AI-REP-022" not in result.output
 
 
+def test_validate_exits_nonzero_when_blocked(valid_pap_dict, tmp_path) -> None:
+    import yaml
+
+    pap_path = tmp_path / "pap.yaml"
+    proposal_path = tmp_path / "proposal.json"
+    pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+    proposal_path.write_text(
+        json.dumps(
+            {
+                "estimator": "DiD",
+                "standard_errors": "cluster",
+                "clustering": "state",
+                "ai_use": {
+                    "used": True,
+                    "role": "code_generation",
+                    "languages": ["stata"],
+                    "model": "gpt-example",
+                    "model_metadata_source": "api_response",
+                    "prompts_archived": True,
+                    "raw_outputs_archived": True,
+                    "human_in_loop": True,
+                    "human_interaction_files": ["missing_transcript.md"],
+                    "human_reviewed": False,
+                    "reproducible_without_ai": True,
+                    "live_model_required": False,
+                    "prompt_files": ["prompt.md"],
+                    "output_files": ["output.md"],
+                    "code_files": ["analysis.do"],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(app, ["validate", "--pap", str(pap_path), "--proposal", str(proposal_path)])
+
+    assert result.exit_code == 1
+    assert "status=block" in result.output
+    assert "AI-REP-022" in result.output
+
+
 def test_agent_run_prints_sandbox_diagnostics_for_missing_r_runtime(valid_pap_file, tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AESDK_R", "definitely-not-rscript")
     proposal_path = tmp_path / "proposal.json"
@@ -295,7 +336,9 @@ def test_agent_run_accepts_timeout_and_agent_report(valid_pap_file, tmp_path) ->
     assert "status=pass blocked=False" in run_result.output
     assert report_result.exit_code == 0
     assert report_path.exists()
-    assert "Workflow Events" in report_path.read_text(encoding="utf-8")
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "Review Summary" in report_text
+    assert "Workflow Timeline" in report_text
 
 
 def test_agent_intake_writes_scaffold_files(tmp_path) -> None:

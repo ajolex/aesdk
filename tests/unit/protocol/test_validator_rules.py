@@ -1236,6 +1236,38 @@ def test_ai_human_in_loop_requires_existing_interaction_evidence(valid_pap_dict:
     assert result.status == "block"
 
 
+def test_ai_human_in_loop_requires_nonblank_interaction_evidence(valid_pap_dict: dict, tmp_path) -> None:
+    (tmp_path / "followup_transcript.md").write_text("   \n", encoding="utf-8")
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_in_loop": True,
+            "human_interaction_files": ["followup_transcript.md"],
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-022" in ids
+    assert result.status == "block"
+
+
 def test_ai_human_modified_code_requires_intervention_evidence(valid_pap_dict: dict, tmp_path) -> None:
     proposal = {
         "estimator": "DiD",

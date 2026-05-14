@@ -561,6 +561,7 @@ def init_cmd(
 ) -> None:
     project = Project.create(
         pap_path=pap,
+        proposal_path=proposal,
         blob_path=blob,
         context=context,
         conformance=conformance,
@@ -601,6 +602,8 @@ def validate_cmd(
             f"- {violation.rule_id} severity={violation.severity.value} citation={violation.citation}\n"
             f"  message={violation.message}"
         )
+    if result.blocked:
+        raise typer.Exit(code=1)
 
 
 @app.command("execute")

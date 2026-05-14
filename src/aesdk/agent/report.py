@@ -35,8 +35,11 @@ def write_workflow_report(
     artifacts = execution_payload.get("artifacts", {})
     ai_use = _ai_use_from_events(events)
     passport = _load_ai_passport(blob_target.parent, ai_use)
+    passport_status = passport.get("status", "not recorded") if passport else "not recorded"
+    review_message = _review_message(validation_status, execution_status, passport_status)
 
     rows = "\n".join(_event_row(index, event) for index, event in enumerate(events, start=1))
+    validation_rows = _validation_rows(validate_event)
     diagnostics_rows = "\n".join(
         f"<tr><td>{_esc(item.get('code', ''))}</td><td>{_esc(item.get('severity', ''))}</td>"
         f"<td>{_esc(item.get('message', ''))}</td></tr>"
@@ -47,6 +50,7 @@ def write_workflow_report(
         artifact_rows = "<tr><td colspan=\"2\">No execution artifacts recorded.</td></tr>"
 
     ai_rows = _ai_use_rows(root, ai_use, passport)
+    evidence_rows = _ai_evidence_rows(root, passport)
     sibling_links = _sibling_artifacts(blob_target.parent, output)
     document = f"""<!doctype html>
 <html lang="en">
@@ -55,82 +59,160 @@ def write_workflow_report(
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{_esc(title)}</title>
   <style>
-    body {{ margin: 0; font-family: Arial, Helvetica, sans-serif; background: #f6f7f9; color: #20242a; }}
-    main {{ max-width: 1120px; margin: 0 auto; padding: 32px 20px 56px; }}
-    h1 {{ margin: 0 0 8px; font-size: 30px; }}
-    h2 {{ margin: 0 0 14px; font-size: 20px; }}
-    h3 {{ margin: 0 0 8px; font-size: 16px; }}
+    :root {{
+      --ink: #1f2933;
+      --muted: #5f6b7a;
+      --line: #d8dee7;
+      --soft: #f5f7fa;
+      --paper: #ffffff;
+      --blue: #1f5f99;
+      --green-bg: #eaf6ef;
+      --green: #166534;
+      --amber-bg: #fff5d6;
+      --amber: #7c4a03;
+      --red-bg: #fdeeee;
+      --red: #9f1d1d;
+    }}
+    * {{ box-sizing: border-box; }}
+    body {{ margin: 0; font-family: Arial, Helvetica, sans-serif; background: var(--paper); color: var(--ink); line-height: 1.45; }}
+    header {{ border-bottom: 1px solid var(--line); background: #f8fafc; }}
+    main, .header-inner {{ max-width: 1180px; margin: 0 auto; padding: 0 24px; }}
+    .header-inner {{ padding-top: 28px; padding-bottom: 22px; }}
+    h1 {{ margin: 0 0 8px; font-size: 30px; line-height: 1.15; }}
+    h2 {{ margin: 0 0 10px; font-size: 19px; line-height: 1.25; }}
+    h3 {{ margin: 0 0 8px; font-size: 15px; }}
     p {{ margin: 0 0 10px; }}
-    a {{ color: #1d4ed8; text-decoration: none; }}
+    a {{ color: var(--blue); text-decoration: none; }}
     a:hover {{ text-decoration: underline; }}
-    .muted {{ color: #647184; }}
-    .grid {{ display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }}
-    .card, section {{ background: #fff; border: 1px solid #d8dee7; border-radius: 8px; box-shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.06); }}
-    .card {{ padding: 16px; }}
-    section {{ padding: 20px; margin-top: 18px; }}
-    .metric {{ font-size: 24px; font-weight: 800; }}
-    .label {{ color: #647184; font-size: 13px; }}
-    .pass {{ color: #166534; background: #e9f7ee; border: 1px solid #b7dfc2; }}
-    .warn {{ color: #854d0e; background: #fff7df; border: 1px solid #f1d48a; }}
-    .block {{ color: #991b1b; background: #feecec; border: 1px solid #f4b4b4; }}
+    code {{ word-break: break-all; font-family: Consolas, Menlo, monospace; font-size: .94em; }}
+    .muted {{ color: var(--muted); }}
+    .summary {{ display: grid; grid-template-columns: minmax(0, 1.5fr) repeat(4, minmax(130px, 1fr)); gap: 12px; margin: 22px 0 26px; }}
+    .summary-note, .metric-card, .file-card {{ border: 1px solid var(--line); border-radius: 8px; background: #fff; padding: 14px; }}
+    .summary-note {{ background: #fbfcfe; }}
+    .metric-value {{ margin-top: 8px; font-size: 18px; font-weight: 700; }}
+    .label {{ color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
+    section {{ padding: 24px 0; border-top: 1px solid var(--line); }}
+    .section-head {{ display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 12px; }}
+    .section-note {{ color: var(--muted); font-size: 14px; max-width: 720px; }}
+    .pass {{ color: var(--green); background: var(--green-bg); border: 1px solid #b8dec4; }}
+    .warn {{ color: var(--amber); background: var(--amber-bg); border: 1px solid #edd38a; }}
+    .block {{ color: var(--red); background: var(--red-bg); border: 1px solid #efb8b8; }}
     .recorded {{ color: #334155; background: #eef2f7; border: 1px solid #cbd5e1; }}
-    .pill {{ display: inline-flex; padding: 5px 10px; border-radius: 999px; font-size: 12px; font-weight: 800; text-transform: uppercase; }}
-    table {{ width: 100%; border-collapse: collapse; font-size: 14px; }}
-    th, td {{ border-bottom: 1px solid #d8dee7; padding: 9px 8px; text-align: left; vertical-align: top; }}
-    th {{ color: #647184; background: #f9fafc; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
-    code {{ word-break: break-all; }}
-    .artifacts {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }}
-    .artifact {{ padding: 12px; border: 1px solid #d8dee7; border-radius: 8px; background: #fbfcfe; }}
-    @media (max-width: 850px) {{ .grid, .artifacts {{ grid-template-columns: 1fr 1fr; }} }}
-    @media (max-width: 560px) {{ .grid, .artifacts {{ grid-template-columns: 1fr; }} }}
+    .pill {{ display: inline-flex; align-items: center; min-height: 24px; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; text-transform: uppercase; }}
+    .table-wrap {{ overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }}
+    table {{ width: 100%; border-collapse: collapse; font-size: 14px; background: #fff; }}
+    th, td {{ border-bottom: 1px solid var(--line); padding: 10px 11px; text-align: left; vertical-align: top; }}
+    tr:last-child td {{ border-bottom: 0; }}
+    th {{ color: var(--muted); background: var(--soft); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }}
+    td:first-child {{ font-weight: 600; }}
+    .evidence-grid {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }}
+    .file-card h3 {{ overflow-wrap: anywhere; }}
+    .hash {{ color: var(--muted); font-size: 12px; }}
+    @media (max-width: 960px) {{ .summary {{ grid-template-columns: 1fr 1fr; }} .summary-note {{ grid-column: 1 / -1; }} .evidence-grid {{ grid-template-columns: 1fr 1fr; }} }}
+    @media (max-width: 640px) {{ main, .header-inner {{ padding-left: 16px; padding-right: 16px; }} .summary, .evidence-grid {{ grid-template-columns: 1fr; }} .section-head {{ display: block; }} }}
   </style>
 </head>
 <body>
+<header>
+  <div class="header-inner">
+    <h1>{_esc(title)}</h1>
+    <p class="muted">Project <strong>{_esc(data.get("project_id", ""))}</strong> generated from <code>{_esc(str(blob_target))}</code>.</p>
+  </div>
+</header>
 <main>
-  <h1>{_esc(title)}</h1>
-  <p class="muted">Project <strong>{_esc(data.get("project_id", ""))}</strong>, generated from <code>{_esc(str(blob_target))}</code>.</p>
-  <div class="grid">
-    <div class="card"><div class="metric">{_esc(validation_status)}</div><div class="label">Validation status</div></div>
-    <div class="card"><div class="metric">{_esc(execution_status)}</div><div class="label">Execution status</div></div>
-    <div class="card"><div class="metric">{_esc(language or "n/a")}</div><div class="label">Execution language</div></div>
-    <div class="card"><div class="metric">{len(events)}</div><div class="label">Audit events</div></div>
+  <div class="summary" aria-label="Review Summary">
+    <div class="summary-note">
+      <div class="label">Review Summary</div>
+      <p>{_esc(review_message)}</p>
+      <p class="muted">This report is intended for research review: it records what AESDK checked, what ran, and which files support replication.</p>
+    </div>
+    <div class="metric-card"><div class="label">Validation</div><div class="metric-value">{_status_pill(validation_status)}</div></div>
+    <div class="metric-card"><div class="label">Execution</div><div class="metric-value">{_status_pill(execution_status)}</div></div>
+    <div class="metric-card"><div class="label">AI Passport</div><div class="metric-value">{_status_pill(passport_status)}</div></div>
+    <div class="metric-card"><div class="label">Language</div><div class="metric-value">{_esc(language or "n/a")}</div></div>
   </div>
 
   <section>
-    <h2>Workflow Events</h2>
-    <table>
-      <thead><tr><th>#</th><th>Event</th><th>Status</th><th>Timestamp</th><th>Hash</th></tr></thead>
-      <tbody>{rows}</tbody>
-    </table>
+    <div class="section-head">
+      <h2>Econometric Gatekeeping</h2>
+      <p class="section-note">Rules that blocked or warned before analysis code ran.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Rule</th><th>Severity</th><th>Message</th><th>Guidance</th></tr></thead>
+        <tbody>{validation_rows}</tbody>
+      </table>
+    </div>
   </section>
 
   <section>
-    <h2>Execution Diagnostics</h2>
-    <table>
-      <thead><tr><th>Code</th><th>Severity</th><th>Message</th></tr></thead>
-      <tbody>{diagnostics_rows}</tbody>
-    </table>
+    <div class="section-head">
+      <h2>AI Use And Human Review</h2>
+      <p class="section-note">Model, agent, human-in-loop, intervention, and review evidence recorded for this workflow.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th>Value</th></tr></thead>
+        <tbody>{ai_rows}</tbody>
+      </table>
+    </div>
   </section>
 
   <section>
-    <h2>AI Use</h2>
-    <table>
-      <thead><tr><th>Field</th><th>Value</th></tr></thead>
-      <tbody>{ai_rows}</tbody>
-    </table>
+    <div class="section-head">
+      <h2>AI Evidence Archive</h2>
+      <p class="section-note">Files hashed by the AI passport, including prompts, outputs, code, transcripts, patches, review notes, and runtime metadata.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Evidence Type</th><th>File</th><th>Status</th><th>Hash</th></tr></thead>
+        <tbody>{evidence_rows}</tbody>
+      </table>
+    </div>
   </section>
 
   <section>
-    <h2>Recorded Execution Artifacts</h2>
-    <table>
-      <thead><tr><th>Artifact</th><th>Path</th></tr></thead>
-      <tbody>{artifact_rows}</tbody>
-    </table>
+    <div class="section-head">
+      <h2>Execution Diagnostics</h2>
+      <p class="section-note">Runtime issues from Python, Stata, or R execution.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Code</th><th>Severity</th><th>Message</th></tr></thead>
+        <tbody>{diagnostics_rows}</tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Recorded Execution Artifacts</h2>
+      <p class="section-note">Files created or captured during governed execution.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Artifact</th><th>Path</th></tr></thead>
+        <tbody>{artifact_rows}</tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head">
+      <h2>Workflow Timeline</h2>
+      <p class="section-note">Audit events recorded in the AESDK replication blob.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Event</th><th>Status</th><th>Timestamp</th><th>Hash</th></tr></thead>
+        <tbody>{rows}</tbody>
+      </table>
+    </div>
   </section>
 
   <section>
     <h2>Nearby Files</h2>
-    <div class="artifacts">{sibling_links}</div>
+    <div class="evidence-grid">{sibling_links}</div>
   </section>
 </main>
 </body>
@@ -199,18 +281,25 @@ def _event_row(index: int, event: dict[str, Any]) -> str:
     )
 
 
+def _validation_rows(validate_event: dict[str, Any] | None) -> str:
+    violations = (validate_event or {}).get("payload", {}).get("violations", [])
+    if not violations:
+        return "<tr><td colspan=\"4\">No rule violations recorded.</td></tr>"
+    rows = []
+    for item in violations:
+        rows.append(
+            "<tr>"
+            f"<td>{_esc(item.get('rule_id', ''))}</td>"
+            f"<td>{_status_pill(item.get('severity', 'recorded'))}</td>"
+            f"<td>{_esc(item.get('message', ''))}</td>"
+            f"<td>{_esc(item.get('guidance', ''))}</td>"
+            "</tr>"
+        )
+    return "\n".join(rows)
+
+
 def _artifact_row(root: Path, key: str, value: Any) -> str:
-    text = str(value)
-    path = Path(text)
-    if path.exists():
-        try:
-            href = path.relative_to(root).as_posix()
-        except ValueError:
-            href = path.as_posix()
-        rendered = f"<a href=\"{_esc(href)}\">{_esc(text)}</a>"
-    else:
-        rendered = _esc(text)
-    return f"<tr><td>{_esc(key)}</td><td>{rendered}</td></tr>"
+    return f"<tr><td>{_esc(_field_label(key))}</td><td>{_artifact_link(root, value)}</td></tr>"
 
 
 def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -> str:
@@ -250,29 +339,63 @@ def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -
     for key, value in fields:
         if value is None:
             continue
-        rows.append(f"<tr><td>{_esc(key)}</td><td>{_format_ai_value(root, key, value)}</td></tr>")
+        rows.append(f"<tr><td>{_esc(_field_label(key))}</td><td>{_format_ai_value(root, key, value)}</td></tr>")
     if passport:
-        rows.append(f"<tr><td>passport_status</td><td>{_esc(passport.get('status', 'unknown'))}</td></tr>")
-        rows.append(f"<tr><td>replication_statement</td><td>{_esc(passport.get('replication_statement', ''))}</td></tr>")
-        for group, records in (passport.get("artifact_hashes") or {}).items():
-            if isinstance(records, list):
-                for record in records:
-                    rows.append(
-                        "<tr>"
-                        f"<td>{_esc(group)}</td>"
-                        f"<td>{_esc(record.get('original_path'))}: exists={_esc(record.get('exists'))}, "
-                        f"sha256={_esc(record.get('sha256', 'missing'))}</td>"
-                        "</tr>"
-                    )
+        rows.append(f"<tr><td>passport_status</td><td>{_status_pill(passport.get('status', 'unknown'))}</td></tr>")
+        rows.append(f"<tr><td>Replication statement</td><td>{_esc(passport.get('replication_statement', ''))}</td></tr>")
     return "\n".join(rows) or "<tr><td colspan=\"2\">AI use metadata is empty.</td></tr>"
+
+
+def _ai_evidence_rows(root: Path, passport: dict[str, Any]) -> str:
+    artifact_hashes = passport.get("artifact_hashes") if isinstance(passport, dict) else None
+    if not isinstance(artifact_hashes, dict):
+        return "<tr><td colspan=\"4\">No AI evidence passport was found.</td></tr>"
+    rows = []
+    for group, records in artifact_hashes.items():
+        if not isinstance(records, list):
+            continue
+        for record in records:
+            exists = bool(record.get("exists"))
+            status = "recorded" if exists else "block"
+            sha = record.get("sha256")
+            rows.append(
+                "<tr>"
+                f"<td>{_esc(_field_label(group))}</td>"
+                f"<td>{_artifact_record_link(root, record)}</td>"
+                f"<td>{_status_pill(status, 'found' if exists else 'missing')}</td>"
+                f"<td><span class=\"hash\">sha256={_esc(sha or 'missing')}</span></td>"
+                "</tr>"
+            )
+    return "\n".join(rows) or "<tr><td colspan=\"4\">No AI evidence files were listed.</td></tr>"
 
 
 def _format_ai_value(root: Path, key: str, value: Any) -> str:
     if key == "ai_passport_path":
         return _artifact_row(root, key, value).split("<td>", 2)[-1].removesuffix("</td></tr>")
     if isinstance(value, (list, tuple)):
+        if key.endswith("_files") or key in {"code_files"}:
+            return ", ".join(_artifact_link(root, item) for item in value)
         return _esc(", ".join(str(item) for item in value))
     return _esc(value)
+
+
+def _artifact_record_link(root: Path, record: dict[str, Any]) -> str:
+    path_text = str(record.get("resolved_path") or record.get("original_path") or "")
+    label = str(record.get("original_path") or path_text)
+    return _artifact_link(root, path_text, label=label)
+
+
+def _artifact_link(root: Path, value: Any, *, label: str | None = None) -> str:
+    text = str(value)
+    path = Path(text)
+    resolved = path if path.is_absolute() else root / path
+    if resolved.exists():
+        try:
+            href = resolved.relative_to(root).as_posix()
+        except ValueError:
+            href = resolved.as_posix()
+        return f"<a href=\"{_esc(href)}\">{_esc(label or text)}</a>"
+    return _esc(label or text)
 
 
 def _sibling_artifacts(folder: Path, output: Path) -> str:
@@ -314,6 +437,28 @@ def _sibling_artifacts(folder: Path, output: Path) -> str:
 
 def _esc(value: Any) -> str:
     return html.escape(str(value), quote=True)
+
+
+def _field_label(value: Any) -> str:
+    text = str(value).strip().replace("_", " ")
+    acronyms = {"ai": "AI", "qa": "QA", "id": "ID"}
+    return " ".join(acronyms.get(part, part.capitalize()) for part in text.split())
+
+
+def _review_message(validation_status: Any, execution_status: Any, passport_status: Any) -> str:
+    statuses = {str(validation_status).lower(), str(execution_status).lower(), str(passport_status).lower()}
+    if "block" in statuses:
+        return "This workflow has a blocked item. Resolve the listed issue before treating the analysis as replication-ready."
+    if "warn" in statuses:
+        return "This workflow passed with warnings. A researcher should review the warning before relying on the results."
+    if "pass" in statuses:
+        return "AESDK did not record blocking issues for the analysis run and archived evidence shown below."
+    return "This report records the available workflow evidence; some statuses were not recorded."
+
+
+def _status_pill(status: Any, label: str | None = None) -> str:
+    status_class = _status_class(status)
+    return f"<span class=\"pill {status_class}\">{_esc(label or status)}</span>"
 
 
 def _status_class(status: Any) -> str:

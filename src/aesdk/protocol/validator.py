@@ -386,6 +386,23 @@ def _file_text_match_count(values: Any, base_dirs: list[Path], marker: str) -> i
     return matches
 
 
+def _file_trivial_text_count(values: Any, base_dirs: list[Path]) -> int:
+    trivial = 0
+    for value in _as_list(values):
+        path = Path(str(value))
+        candidates = [path] if path.is_absolute() else [base / path for base in base_dirs]
+        resolved = next((candidate for candidate in candidates if candidate.exists() and candidate.is_file()), None)
+        if resolved is None:
+            continue
+        try:
+            text = resolved.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            text = resolved.read_text(encoding="cp1252")
+        if not text.strip():
+            trivial += 1
+    return trivial
+
+
 def _estimator_matches(active: Any, rule_estimators: list[Any]) -> bool:
     if not rule_estimators:
         return True
@@ -650,9 +667,17 @@ class ValidationContext:
                 ai_use.get("human_interaction_files", []),
                 self._field_base_dirs("human_interaction_files", ai_use_provenance),
             ),
+            "ai_human_interaction_file_trivial_count": _file_trivial_text_count(
+                ai_use.get("human_interaction_files", []),
+                self._field_base_dirs("human_interaction_files", ai_use_provenance),
+            ),
             "ai_human_modified_code": ai_use.get("human_modified_code", False),
             "ai_human_intervention_file_count": len(_as_list(ai_use.get("human_intervention_files", []))),
             "ai_human_intervention_file_missing_count": _file_missing_count(
+                ai_use.get("human_intervention_files", []),
+                self._field_base_dirs("human_intervention_files", ai_use_provenance),
+            ),
+            "ai_human_intervention_file_trivial_count": _file_trivial_text_count(
                 ai_use.get("human_intervention_files", []),
                 self._field_base_dirs("human_intervention_files", ai_use_provenance),
             ),
@@ -670,6 +695,10 @@ class ValidationContext:
             "ai_review_status": ai_use.get("review_status"),
             "ai_review_file_count": len(_as_list(ai_use.get("review_files", []))),
             "ai_review_file_missing_count": _file_missing_count(
+                ai_use.get("review_files", []),
+                self._field_base_dirs("review_files", ai_use_provenance),
+            ),
+            "ai_review_file_trivial_count": _file_trivial_text_count(
                 ai_use.get("review_files", []),
                 self._field_base_dirs("review_files", ai_use_provenance),
             ),

@@ -238,7 +238,7 @@ aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock
 
 The passport records model/tool metadata and hashes archived prompt/output/input/code files. `model` is for the underlying model id, while `agent_tool` is for the coding agent or editor, such as Codex, Claude Code, VS Code, or OpenCode. Every AI-use record must state `model_metadata_source`. If the coding agent does not expose the underlying model id, say so with `model_metadata_source: agent_unavailable`, name the tool in `agent_tool`, explain the limitation in `model_metadata_unavailable_reason`, and archive an existing runtime metadata file; do not put the tool name in `model`. AESDK can write runtime snapshots for Codex, Claude Code, and Copilot in VS Code. These commands record the local client or extension version when available, surface, repository name and commit SHA, session model and reasoning settings from explicit overrides or local config/settings, approval or permission policy, sandbox mode, config sources checked, and timestamp.
 
-If AI generated analysis code, declare the language and list the final reviewed code files in `code_files`; this applies equally to Python `.py`, R `.R`, and Stata `.do` workflows. AESDK checks that declared languages match the archived code extensions, so a passport cannot claim Stata while only hashing an R script. If a human asked follow-up questions or corrected the agent, set `human_in_loop: true` and archive the transcript or comment trail in `human_interaction_files`. If a human manually changed AI-generated code, set `human_modified_code: true`, archive the AI draft in `ai_code_draft_files`, and archive a patch or change note in `human_intervention_files`.
+If AI generated analysis code, declare the language and list the final reviewed code files in `code_files`; this applies equally to Python `.py`, R `.R`, and Stata `.do` workflows. AESDK checks that declared languages match the archived code extensions, so a passport cannot claim Stata while only hashing an R script. If a human asked follow-up questions or corrected the agent, set `human_in_loop: true` and archive a non-empty transcript or comment trail in `human_interaction_files`. If a human manually changed AI-generated code, set `human_modified_code: true`, archive the AI draft in `ai_code_draft_files`, and archive a non-empty patch or change note in `human_intervention_files`.
 
 AESDK can create the code-intervention patch:
 
@@ -247,7 +247,7 @@ aesdk agent interaction-log --output review/followup_transcript.md --speaker hum
 aesdk agent review-diff --ai-code ai_outputs/analysis_ai.do --final-code analysis.do --output review/human_code_diff.patch
 ```
 
-These fields do not automatically count as final human review. `human_reviewed: true` still requires review status and review evidence files; agent-only runs should leave it false until a researcher actually reviews the work. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived.
+These fields do not automatically count as final human review. `human_reviewed: true` still requires review status and non-empty review evidence files; agent-only runs should leave it false until a researcher actually reviews the work. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived.
 
 ## Method Protocols
 
