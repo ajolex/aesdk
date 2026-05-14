@@ -42,7 +42,7 @@ This makes AESDK easier for RAs and professors to audit: a method is not just a 
 
 Rule files and knowledge packs are method/topic organized rather than author organized. For example, DiD rules live under a DiD rule file, while Angrist-Pischke, Callaway-Sant'Anna, Wooldridge, or other sources appear as supporting references inside the rules and source metadata. That separation reduces the chance that an AI agent treats a source name as a method or invents source-specific rules.
 
-Executable rule coverage now exists for every bundled method pack. AESDK ships 95 runnable governance rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The expanded methods still carry maturity labels where human econometrician review is pending, but they are no longer guidance-only.
+Executable rule coverage now exists for every bundled method pack. AESDK ships 105 runnable governance rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, citation integrity, and AI replicability. The expanded methods still carry maturity labels where human econometrician review is pending, but they are no longer guidance-only.
 
 The second layer is the Real Knowledge Pack system. A knowledge pack is a self-contained, source-anchored method guide with:
 
@@ -114,6 +114,16 @@ aesdk agent intake --task Stata_Task.pdf --method did --output-dir .
 
 The intake command extracts task text when possible, infers or accepts a method, and writes a reviewable `pap.yaml` and `proposal.json`. It is intentionally a first draft, not a substitute for the researcher checking the design.
 
+### AI Replicability Passport
+
+AESDK can also govern how AI itself was used in the research workflow. The PAP or proposal may include an `ai_use` block documenting the AI role, provider, model, prompt/output archives, human review, and whether the final analysis can be reproduced without calling a live AI model.
+
+```bash
+aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json
+```
+
+The generated passport hashes archived prompt, raw-output, and input files. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived. This is meant for cases where AI writes code, classifies text, extracts data, scores documents, or creates variables that later enter an econometric analysis.
+
 ### Governed Execution
 
 AESDK can run Python, Stata, or R code only after the analysis passes preflight:
@@ -140,7 +150,7 @@ aesdk reproduce --blob .aesdk.json --replay
 aesdk agent report --blob .aesdk.json --output workflow.html
 ```
 
-This is useful for supervisors, coauthors, future RAs, and audit trails. The HTML report gives a plain workflow view of validation, execution, diagnostics, recorded run artifacts, and nearby task-folder outputs.
+This is useful for supervisors, coauthors, future RAs, and audit trails. The HTML report gives a plain workflow view of validation, execution, diagnostics, AI-use metadata, recorded run artifacts, and nearby task-folder outputs.
 
 ### Citation and Source Checks
 

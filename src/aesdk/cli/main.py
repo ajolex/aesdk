@@ -10,7 +10,15 @@ from pathlib import Path
 import typer
 import yaml
 
-from aesdk.agent import agent_context, draft_pap, intake_task, preflight, run_analysis, write_workflow_report
+from aesdk.agent import (
+    agent_context,
+    draft_pap,
+    intake_task,
+    preflight,
+    run_analysis,
+    write_ai_passport,
+    write_workflow_report,
+)
 from aesdk.config import config
 from aesdk.core.project import Project
 from aesdk.governance.checks.citation_validator import verify_text
@@ -175,6 +183,26 @@ def agent_report_cmd(
 ) -> None:
     target = write_workflow_report(blob_path=blob, output_path=output, title=title)
     typer.echo(f"report_written={target}")
+
+
+@agent_app.command("ai-passport")
+def agent_ai_passport_cmd(
+    pap: Path = typer.Option(..., exists=True, help="PAP path containing optional ai_use metadata."),
+    proposal: Path | None = typer.Option(None, exists=True, help="Optional proposal JSON path."),
+    output: Path | None = typer.Option(None, help="Output ai.lock.json path."),
+    allow_incomplete: bool = typer.Option(
+        False,
+        "--allow-incomplete",
+        help="Write the passport even if AI evidence is incomplete and would otherwise block.",
+    ),
+) -> None:
+    result = write_ai_passport(pap_path=pap, proposal_path=proposal, output_path=output)
+    typer.echo(f"ai_passport_written={result.path}")
+    typer.echo(f"status={result.status}")
+    if result.blocked and not allow_incomplete:
+        for finding in result.passport.get("findings", []):
+            typer.echo(f"- {finding.get('code')} severity={finding.get('severity')} message={finding.get('message')}")
+        raise typer.Exit(code=1)
 
 
 @agent_app.command("run")

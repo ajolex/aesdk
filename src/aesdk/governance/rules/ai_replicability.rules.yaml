@@ -1,0 +1,141 @@
+source:
+  id: "AI_REPLICABILITY_GOVERNANCE"
+  method_id: "cross_method"
+  topic: "ai_replicability"
+  rule_file_version: "1.0.0"
+  organization: "cross_cutting_topic"
+curriculum:
+  stage: "research_reproducibility"
+  topics:
+    - "ai_assisted_research"
+    - "replication"
+rules:
+  - id: AI-REP-001
+    name: "AI Use Requires Declared Role"
+    severity: "warning"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and text_missing(ai_role)"
+    requirement: "AI-assisted research should declare what the AI system was used for."
+    guidance: "State whether AI was used for code generation, text classification, data extraction, variable construction, literature summarization, or another role."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-002
+    name: "AI-Dependent Results Must Be Reproducible Without Live AI"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and (ai_reproducible_without_ai != true or ai_live_model_required == true)"
+    requirement: "The final analysis must be reproducible from archived code, data, prompts, outputs, and artifacts without requiring the same live AI model to be available later."
+    guidance: "Archive the AI-generated code or outputs used in analysis. Do not make replication depend on re-querying a current model endpoint."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-003
+    name: "AI Use Requires Prompt and Output Archives"
+    severity: "warning"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and (ai_prompts_archived == false or ai_raw_outputs_archived == false)"
+    requirement: "AI-assisted research should archive the prompts and raw model outputs that materially shaped the analysis."
+    guidance: "Save prompt templates, user prompts, system/developer instructions when available, and raw model outputs or transcripts in the project folder or a controlled archive."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-007
+    name: "Archived AI Prompts Require File Records"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_prompts_archived == true and ai_prompt_file_count == 0"
+    requirement: "Declaring prompts archived requires at least one prompt file in ai_use.prompt_files."
+    guidance: "Add the prompt template, prompt transcript, or archived conversation file to prompt_files so the passport can hash it."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-008
+    name: "Archived AI Outputs Require File Records"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_raw_outputs_archived == true and ai_output_file_count == 0"
+    requirement: "Declaring raw AI outputs archived requires at least one output file in ai_use.output_files."
+    guidance: "Add raw model responses, JSONL classifications, extracted labels, or generated-code transcripts to output_files so the passport can hash them."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-004
+    name: "AI-Derived Data Requires Raw Output Archive"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_output_used_as_data == true and ai_raw_outputs_archived == false"
+    requirement: "If AI output is used as data, the raw AI outputs must be archived."
+    guidance: "Archive the unedited AI classifications, extracted labels, text scores, or generated variables before downstream cleaning or analysis."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-005
+    name: "AI-Derived Variables Require Human QA Plan"
+    severity: "warning"
+    estimators: []
+    data_structures: []
+    condition: "len(ai_derived_variables) > 0 and (ai_human_reviewed == false or text_missing(ai_qa_sample_plan))"
+    requirement: "AI-derived variables should have human review or a documented quality-assurance sample plan."
+    guidance: "Record the reviewed sample size, review criteria, adjudication process, and how disagreements or uncertain model outputs are handled."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-006
+    name: "AI-Derived Data Requires Sensitivity Plan"
+    severity: "warning"
+    estimators: []
+    data_structures: []
+    condition: "ai_output_used_as_data == true and text_missing(ai_sensitivity_plan)"
+    requirement: "Analyses using AI-derived data should document a sensitivity plan."
+    guidance: "Check whether conclusions change under alternative classification thresholds, excluded uncertain cases, manually adjudicated labels, or a human-coded validation subset."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-009
+    name: "AI-Derived Data Requires Named Variables"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_output_used_as_data == true and len(ai_derived_variables) == 0"
+    requirement: "If AI output enters the analysis as data, the AI-derived variables must be named."
+    guidance: "List each AI-derived variable, label, score, classification, or extracted field used downstream."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-010
+    name: "AI-Derived Data Requires Input File Records"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_output_used_as_data == true and ai_input_file_count == 0"
+    requirement: "AI-derived data workflows must list the input files sent to or processed by the AI system."
+    guidance: "Add source text, documents, transcripts, images, or datasets to input_files so the passport can hash the AI input corpus."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026

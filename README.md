@@ -39,6 +39,7 @@ AESDK currently provides:
 - reproducibility records through an `.aesdk.json` audit file
 - task-folder intake helpers that draft a reviewable `pap.yaml` and `proposal.json`
 - HTML workflow reports that supervisors can inspect without reading raw JSON
+- AI Replicability Passports for archived prompts, raw outputs, model metadata, and AI-derived variables
 - replay checks for recorded execution
 - enforced online citation/source integrity checks for agent-generated research text
 
@@ -124,6 +125,7 @@ aesdk agent context --method did --depth full
 aesdk agent preflight --method did --pap pap.yaml --proposal proposal.json --conformance strict
 aesdk agent draft-pap --method did --goal "Estimate policy effects" --data panel.csv --outcome y --treatment treated --unit state --time year --output pap.yaml
 aesdk agent intake --task Stata_Task.pdf --method did --output-dir .
+aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.R --language r
@@ -145,6 +147,7 @@ For most users, the most useful setup is to tell the AI agent:
 Before writing econometric analysis code, use AESDK.
 Load method context with `aesdk agent context --method <method>`.
 Run intake when starting from a task document: `aesdk agent intake --task <task.pdf> --output-dir .`.
+If AI materially shaped the analysis, document `ai_use` and write `ai.lock.json` with `aesdk agent ai-passport --pap pap.yaml --proposal proposal.json`.
 Run preflight with `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`.
 If AESDK returns block, stop and explain the violated assumptions.
 Do not invent econometric assumptions, diagnostics, citations, or estimator requirements.
@@ -189,6 +192,35 @@ AESDK_R="C:\Program Files\R\R-4.5.0\bin\Rscript.exe"
 
 Python, Stata, and R execution record `language=...` in the `.aesdk.json` audit file. When code does not already declare a seed, AESDK uses a date seed (`yyyymmdd`) and records it in the execution artifacts: Python seeds `random` and NumPy when available, Stata prepends `set seed yyyymmdd`, and R prepends `set.seed(yyyymmdd)`. If the researcher already declared a seed, AESDK preserves it and records that it was not injected. Stata logs are captured as execution artifacts when available, so the HTML workflow report can point reviewers to the actual run log. The Stata guard blocks shell escapes and destructive commands such as `shell`, `!`, `erase`, `rm`, and package/network installs. The R guard blocks shell calls, file deletion helpers, package installs, network `source`/`url` helpers, and `library()`/`require()` calls outside the AESDK R package allowlist. Python and R recipe packages are checked against the sandbox allowlists, so bundled recipes and governed execution stay aligned.
 
+## AI Replicability Passport
+
+AESDK treats AI use as acceptable only when the work can be reproduced from archived artifacts without needing the same live AI model later. Add an `ai_use` block to the PAP or proposal when AI materially shapes the work:
+
+```yaml
+ai_use:
+  used: true
+  role: code_generation
+  provider: Anthropic
+  model: claude-sonnet-4.6
+  temperature: 0
+  prompts_archived: true
+  raw_outputs_archived: true
+  human_reviewed: true
+  reproducible_without_ai: true
+  live_model_required: false
+  ai_output_used_as_data: false
+  prompt_files: ["prompts/analysis_prompt.md"]
+  output_files: ["ai_outputs/code_response.md"]
+```
+
+Then write the passport:
+
+```bash
+aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json
+```
+
+The passport records model metadata and hashes archived prompt/output/input files. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived.
+
 ## Method Protocols
 
 To see what AESDK tells an agent about a method:
@@ -221,7 +253,7 @@ Each method protocol now declares its curriculum stage and topic tags, so an AI 
 
 Governance files and knowledge packs are organized by econometric topic or method, not by textbook author. Textbooks and papers remain registered as sources inside the rule or pack, but the file identity is the research decision being governed: `did`, `iv_2sls`, `panel_inference`, `citation_integrity`, and the method pack ids. This is deliberate: it helps AI agents treat sources as evidence rather than inventing author-specific doctrine.
 
-Every bundled method pack now has an executable governance rule file. AESDK currently ships 95 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and citation integrity. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
+Every bundled method pack now has an executable governance rule file. AESDK currently ships 105 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, citation integrity, and AI replicability. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
 
 The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Gujarati, Verbeek, Heiss, World Bank impact evaluation material, J-PAL randomized-evaluation resources, critical RCT scope sources, recent Wooldridge DiD sources, and package documentation. Public source registry entries must include an online locator such as a DOI, publisher page, journal page, author page, or official package page. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
 

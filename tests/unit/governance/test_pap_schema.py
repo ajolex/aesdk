@@ -35,3 +35,30 @@ def test_pap_schema_accepts_rct_tot_strategy(valid_pap_dict: dict) -> None:
     pap.pop("did_block")
 
     validate_pap_dict(pap)
+
+
+def test_pap_schema_accepts_ai_use_block(valid_pap_dict: dict) -> None:
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": ["code_generation", "text_classification"],
+            "provider": "Anthropic",
+            "model": "claude-sonnet-4.6",
+            "temperature": 0,
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "ai_output_used_as_data": True,
+            "ai_derived_variables": ["topic_code"],
+            "prompt_files": ["prompts/topic_code.md"],
+            "output_files": ["outputs/topic_code_raw.jsonl"],
+            "input_files": ["data/articles.csv"],
+            "qa_sample_plan": "Review 10 percent of coded texts.",
+            "sensitivity_plan": "Re-estimate excluding uncertain labels.",
+        },
+    }
+
+    validate_pap_dict(pap)

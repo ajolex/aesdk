@@ -142,7 +142,26 @@ def test_run_analysis_executes_when_preflight_passes(valid_pap_file, tmp_path) -
 def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_path) -> None:
     proposal_path = tmp_path / "proposal.json"
     proposal_path.write_text(
-        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        json.dumps(
+            {
+                "estimator": "DiD",
+                "standard_errors": "cluster",
+                "clustering": "state",
+                "ai_use": {
+                    "used": True,
+                    "role": "code_generation",
+                    "provider": "Anthropic",
+                    "model": "claude-sonnet-4.6",
+                    "prompts_archived": True,
+                    "raw_outputs_archived": True,
+                    "human_reviewed": True,
+                    "reproducible_without_ai": True,
+                    "live_model_required": False,
+                    "prompt_files": ["prompts/analysis_prompt.md"],
+                    "output_files": ["ai_outputs/code_response.md"],
+                },
+            }
+        ),
         encoding="utf-8",
     )
     code_path = tmp_path / "analysis.py"
@@ -164,7 +183,10 @@ def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_pa
     assert result.status == "pass"
     assert execute_payload["timeout_seconds"] == 77
     assert report_path.exists()
-    assert "AESDK Workflow Report" in report_path.read_text(encoding="utf-8")
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "AESDK Workflow Report" in report_text
+    assert "AI Use" in report_text
+    assert "claude-sonnet-4.6" in report_text
 
 
 def test_run_analysis_requires_acknowledgement_for_warnings(valid_pap_dict, tmp_path) -> None:
@@ -295,6 +317,106 @@ def test_intake_task_infers_randomized_did_design_origin(tmp_path) -> None:
     assert result.method == "did"
     assert pap["identification"]["design_origin"] == "experimental_rct"
     assert proposal["design_origin"] == "experimental_rct"
+
+
+def test_write_ai_passport_hashes_archived_files(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.jsonl"
+    prompt.write_text("Classify each comment.", encoding="utf-8")
+    output.write_text('{"id": 1, "label": "eligible"}\n', encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "text_classification",
+            "provider": "OpenAI",
+            "model": "gpt-example",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    passport_path = tmp_path / "ai.lock.json"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path, output_path=passport_path)
+    passport = json.loads(result.path.read_text(encoding="utf-8"))
+
+    assert result.status == "pass"
+    assert passport["schema"] == "aesdk.ai_passport.v1"
+    assert len(passport["source_documents"]["pap_sha256"]) == 64
+    assert passport["ai_use"]["model"] == "gpt-example"
+    assert passport["artifact_hashes"]["prompt_files"][0]["exists"] is True
+    assert len(passport["artifact_hashes"]["output_files"][0]["sha256"]) == 64
+
+
+def test_write_ai_passport_blocks_missing_artifact_files(valid_pap_dict, tmp_path) -> None:
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": ["missing_prompt.md"],
+            "output_files": ["missing_output.md"],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert result.status == "block"
+    codes = {item["code"] for item in result.passport["findings"]}
+    assert "ARTIFACT_NOT_HASHED" in codes
+
+
+def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    prompt.write_text("Write code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    valid_pap_dict["ai_use"] = {
+        "used": True,
+        "role": "code_generation",
+        "provider": "Anthropic",
+        "model": "claude-sonnet-4.6",
+        "prompts_archived": True,
+        "raw_outputs_archived": True,
+        "human_reviewed": True,
+        "reproducible_without_ai": True,
+        "live_model_required": False,
+        "prompt_files": [prompt.name],
+        "output_files": [output.name],
+    }
+    pap_path = tmp_path / "pap.yaml"
+    pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+    proposal_path = tmp_path / "proposal.json"
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+    code_path = tmp_path / "analysis.py"
+    code_path.write_text("print('ran')", encoding="utf-8")
+    blob_path = tmp_path / ".aesdk.json"
+
+    run = ae.run_analysis(method="did", pap_path=pap_path, proposal=proposal_path, code_path=code_path, blob_path=blob_path)
+    passport = ae.write_ai_passport(pap_path=pap_path, proposal_path=proposal_path, output_path=tmp_path / "ai.lock.json")
+    report = ae.write_workflow_report(blob_path=run.blob_path)
+    text = report.read_text(encoding="utf-8")
+
+    assert passport.status == "pass"
+    assert "claude-sonnet-4.6" in text
+    assert "passport_status" in text
+    assert "sha256=" in text
 
 
 def test_drafted_rct_pap_can_be_serialized_and_validated(tmp_path) -> None:

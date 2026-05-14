@@ -382,6 +382,7 @@ class ValidationContext:
         gmm = self._merged_block("gmm_block")
         limited = self._merged_block("limited_dependent_block")
         time_series = self._merged_block("time_series_block")
+        ai_use = self._merged_block("ai_use")
         robustness = self._pap.get("robustness", {})
         covariates = identification.get("covariates", {})
         outcome_variable = self._proposal.get("outcome_variable", identification.get("outcome_variable"))
@@ -403,6 +404,7 @@ class ValidationContext:
             "gmm_block": gmm,
             "limited_dependent_block": limited,
             "time_series_block": time_series,
+            "ai_use": ai_use,
             "robustness": robustness,
             "covariates": covariates,
             "data_structure": data.get("structure"),
@@ -539,6 +541,22 @@ class ValidationContext:
             "autocorrelation_diagnostic": time_series.get("autocorrelation_diagnostic"),
             "forecast_backtest": time_series.get("forecast_backtest"),
             "lookahead_bias": time_series.get("lookahead_bias", False),
+            "ai_used": ai_use.get("used", False),
+            "ai_role": ai_use.get("role"),
+            "ai_provider": ai_use.get("provider"),
+            "ai_model": ai_use.get("model"),
+            "ai_prompts_archived": ai_use.get("prompts_archived", False),
+            "ai_raw_outputs_archived": ai_use.get("raw_outputs_archived", False),
+            "ai_human_reviewed": ai_use.get("human_reviewed", False),
+            "ai_reproducible_without_ai": ai_use.get("reproducible_without_ai"),
+            "ai_live_model_required": ai_use.get("live_model_required", False),
+            "ai_output_used_as_data": ai_use.get("ai_output_used_as_data", False),
+            "ai_derived_variables": _as_list(ai_use.get("ai_derived_variables", [])),
+            "ai_prompt_file_count": len(_as_list(ai_use.get("prompt_files", []))),
+            "ai_output_file_count": len(_as_list(ai_use.get("output_files", []))),
+            "ai_input_file_count": len(_as_list(ai_use.get("input_files", []))),
+            "ai_qa_sample_plan": ai_use.get("qa_sample_plan"),
+            "ai_sensitivity_plan": ai_use.get("sensitivity_plan"),
         }
         return context
 

@@ -140,3 +140,71 @@ def test_agent_intake_writes_scaffold_files(tmp_path) -> None:
     assert "method=did" in result.output
     assert (tmp_path / "pap.yaml").exists()
     assert (tmp_path / "proposal.json").exists()
+
+
+def test_agent_ai_passport_writes_lockfile(valid_pap_dict, tmp_path) -> None:
+    import yaml
+
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    prompt.write_text("Write code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "provider": "Anthropic",
+            "model": "claude-sonnet-4.6",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    output_path = tmp_path / "ai.lock.json"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        ["agent", "ai-passport", "--pap", str(pap_path), "--output", str(output_path)],
+    )
+
+    assert result.exit_code == 0
+    assert "ai_passport_written=" in result.output
+    assert "status=pass" in result.output
+    assert output_path.exists()
+
+
+def test_agent_ai_passport_blocks_incomplete_evidence(valid_pap_dict, tmp_path) -> None:
+    import yaml
+
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": True,
+            "reproducible_without_ai": True,
+            "prompt_files": ["missing_prompt.md"],
+            "output_files": ["missing_output.md"],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    output_path = tmp_path / "ai.lock.json"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        ["agent", "ai-passport", "--pap", str(pap_path), "--output", str(output_path)],
+    )
+
+    assert result.exit_code == 1
+    assert "status=block" in result.output
+    assert "ARTIFACT_NOT_HASHED" in result.output
+    assert output_path.exists()

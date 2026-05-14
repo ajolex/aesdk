@@ -58,3 +58,9 @@
 - **Implications:** The committed changes span agent APIs, CLI commands, sandbox execution, trace replay, governance/schema/context, docs/templates, and regression coverage for the new agent-facing workflow.
 - **Difficulty:** Medium - The main work was ensuring the final commit represented one coherent researcher-facing workflow rather than scattered patches.
 - **Lessons:** Commit workflow features only after memory, independent audit, targeted fixes, full tests, and knowledge validation all agree on the same behavior.
+### 2026-05-14 - Feature - AI Replicability Passport
+- **Issue:** AI-assisted academic research can become non-replicable if results depend on re-querying a live model or if AI-derived variables lack archived prompts, raw outputs, inputs, QA, and sensitivity evidence.
+- **Resolution:** Added `ai_use` PAP/proposal metadata, `ai_replicability.rules.yaml`, validator context fields, `ae.write_ai_passport`/`aesdk agent ai-passport`, AI-use report rendering, stricter schema requirements, artifact hashing, PAP/proposal/rulepack binding, validation status in `ai.lock.json`, and audit-driven hardening against self-certified archives.
+- **Implications:** Changed AI passport/API/CLI/report code, PAP schema, governance rules, validator context, README/docs/templates, and tests; full suite passed with 150 tests, 105 executable rules, and `methods validate` ok.
+- **Difficulty:** Hard - Required turning a qualitative research-norm conversation into executable reproducibility rules without overclaiming that LLM outputs can be exactly regenerated.
+- **Lessons:** For AI-assisted research, the standard is not "rerun the model"; it is "replicate from archived artifacts." Treat prompt/output/input files, hashes, human QA, sensitivity plans, and live-model independence as first-class governance evidence.

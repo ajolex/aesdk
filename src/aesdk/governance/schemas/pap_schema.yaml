@@ -202,6 +202,47 @@ properties:
     required: [specification_curve]
     properties:
       specification_curve: {type: boolean}
+  ai_use:
+    type: object
+    additionalProperties: false
+    properties:
+      used: {type: boolean}
+      role:
+        oneOf:
+          - type: string
+            enum: [code_generation, text_classification, data_extraction, variable_construction, literature_summarization, translation, editing, other]
+          - type: array
+            items:
+              type: string
+              enum: [code_generation, text_classification, data_extraction, variable_construction, literature_summarization, translation, editing, other]
+      provider: {type: string}
+      model: {type: string}
+      model_version: {type: string}
+      temperature: {type: number, minimum: 0}
+      top_p: {type: number, minimum: 0, maximum: 1}
+      seed: {}
+      prompts_archived: {type: boolean}
+      raw_outputs_archived: {type: boolean}
+      human_reviewed: {type: boolean}
+      reproducible_without_ai: {type: boolean}
+      live_model_required: {type: boolean}
+      ai_output_used_as_data: {type: boolean}
+      ai_derived_variables:
+        type: array
+        items: {type: string}
+      prompt_files:
+        type: array
+        items: {type: string}
+      output_files:
+        type: array
+        items: {type: string}
+      input_files:
+        type: array
+        items: {type: string}
+      qa_sample_plan: {type: string}
+      sensitivity_plan: {type: string}
+      ai_passport_path: {type: string}
+      notes: {type: string}
 allOf:
   - if:
       properties:
@@ -227,3 +268,13 @@ allOf:
               enum: [RCT, RandomizedExperiment, RandomizedControlledTrial, ITT, ATE, ATT, ToT, LATE]
     then:
       required: [rct_block]
+  - if:
+      properties:
+        ai_use:
+          properties:
+            used:
+              const: true
+    then:
+      properties:
+        ai_use:
+          required: [role, reproducible_without_ai, live_model_required, prompts_archived, raw_outputs_archived, human_reviewed]

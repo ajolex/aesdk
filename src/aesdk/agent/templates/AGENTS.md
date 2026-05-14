@@ -7,16 +7,18 @@ For econometric analysis, always use AESDK before writing or running code.
    `aesdk agent context --method <method>`
 3. If the task starts from a folder or assignment document and `pap.yaml` / `proposal.json` do not exist, create reviewable starter files:
    `aesdk agent intake --task <task-file> --method <method> --output-dir .`
-4. Run preflight:
+4. If AI materially shaped code, classifications, extracted data, or variables, document `ai_use` in the PAP/proposal and write a passport:
+   `aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json`
+5. Run preflight:
    `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`
-5. If AESDK returns `block`, stop and explain the issue in plain research language.
-6. If AESDK returns `warn`, explain what needs researcher review.
-7. Do not run analysis code on `warn` unless the researcher explicitly acknowledges the warning; pass `--acknowledge-warnings` only after that acknowledgement is documented.
-8. Do not invent econometric assumptions, diagnostics, citations, or estimator requirements.
-9. Use governed execution when running analysis code:
+6. If AESDK returns `block`, stop and explain the issue in plain research language.
+7. If AESDK returns `warn`, explain what needs researcher review.
+8. Do not run analysis code on `warn` unless the researcher explicitly acknowledges the warning; pass `--acknowledge-warnings` only after that acknowledgement is documented.
+9. Do not invent econometric assumptions, diagnostics, citations, estimator requirements, or AI-use evidence.
+10. Use governed execution when running analysis code:
    `aesdk agent run --method <method> --pap pap.yaml --proposal proposal.json --code-file analysis.py`
    AESDK also gates Stata `.do` files and R scripts:
    `aesdk agent run --method <method> --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata`
    `aesdk agent run --method <method> --pap pap.yaml --proposal proposal.json --code-file analysis.R --language r`
-10. When a run should be reviewed visually, write an HTML workflow report:
+11. When a run should be reviewed visually, write an HTML workflow report:
    `aesdk agent report --blob .aesdk.json --output workflow.html`

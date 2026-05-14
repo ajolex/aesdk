@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+import yaml
+
 
 def write_workflow_report(
     *,
@@ -31,6 +33,8 @@ def write_workflow_report(
     language = execution_payload.get("language", "")
     diagnostics = execution_payload.get("diagnostics", [])
     artifacts = execution_payload.get("artifacts", {})
+    ai_use = _ai_use_from_events(events)
+    passport = _load_ai_passport(blob_target.parent, ai_use)
 
     rows = "\n".join(_event_row(index, event) for index, event in enumerate(events, start=1))
     diagnostics_rows = "\n".join(
@@ -42,6 +46,7 @@ def write_workflow_report(
     if not artifact_rows:
         artifact_rows = "<tr><td colspan=\"2\">No execution artifacts recorded.</td></tr>"
 
+    ai_rows = _ai_use_rows(root, ai_use, passport)
     sibling_links = _sibling_artifacts(blob_target.parent, output)
     document = f"""<!doctype html>
 <html lang="en">
@@ -108,6 +113,14 @@ def write_workflow_report(
   </section>
 
   <section>
+    <h2>AI Use</h2>
+    <table>
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>{ai_rows}</tbody>
+    </table>
+  </section>
+
+  <section>
     <h2>Recorded Execution Artifacts</h2>
     <table>
       <thead><tr><th>Artifact</th><th>Path</th></tr></thead>
@@ -134,6 +147,47 @@ def _last_event(events: list[dict[str, Any]], event_type: str) -> dict[str, Any]
     return None
 
 
+def _ai_use_from_events(events: list[dict[str, Any]]) -> dict[str, Any]:
+    ai_use: dict[str, Any] = {}
+    init_event = _last_event(events, "init")
+    pap_path = (init_event or {}).get("payload", {}).get("pap_path")
+    if pap_path:
+        pap = _load_structured(Path(str(pap_path)))
+        if isinstance(pap.get("ai_use"), dict):
+            ai_use.update(pap["ai_use"])
+    proposal_event = _last_event(events, "propose_model")
+    proposal = (proposal_event or {}).get("payload", {}).get("proposal", {})
+    if isinstance(proposal, dict) and isinstance(proposal.get("ai_use"), dict):
+        ai_use.update({key: value for key, value in proposal["ai_use"].items() if value is not None})
+    return ai_use
+
+
+def _load_structured(path: Path) -> dict[str, Any]:
+    if not path.exists() or not path.is_file():
+        return {}
+    text = path.read_text(encoding="utf-8-sig")
+    if path.suffix.lower() == ".json":
+        loaded = json.loads(text)
+    else:
+        loaded = yaml.safe_load(text) or {}
+    return loaded if isinstance(loaded, dict) else {}
+
+
+def _load_ai_passport(folder: Path, ai_use: dict[str, Any]) -> dict[str, Any]:
+    candidates = []
+    if ai_use.get("ai_passport_path"):
+        candidates.append(Path(str(ai_use["ai_passport_path"])))
+    candidates.append(folder / "ai.lock.json")
+    for candidate in candidates:
+        path = candidate if candidate.is_absolute() or candidate.exists() else folder / candidate
+        if path.exists() and path.is_file():
+            try:
+                return json.loads(path.read_text(encoding="utf-8-sig"))
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+
 def _event_row(index: int, event: dict[str, Any]) -> str:
     payload = event.get("payload", {})
     status = payload.get("status") or "recorded"
@@ -157,6 +211,54 @@ def _artifact_row(root: Path, key: str, value: Any) -> str:
     else:
         rendered = _esc(text)
     return f"<tr><td>{_esc(key)}</td><td>{rendered}</td></tr>"
+
+
+def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -> str:
+    if not ai_use:
+        return "<tr><td colspan=\"2\">No AI use metadata recorded in the proposal.</td></tr>"
+    fields = [
+        ("used", ai_use.get("used")),
+        ("role", ai_use.get("role")),
+        ("provider", ai_use.get("provider")),
+        ("model", ai_use.get("model")),
+        ("prompts_archived", ai_use.get("prompts_archived")),
+        ("raw_outputs_archived", ai_use.get("raw_outputs_archived")),
+        ("human_reviewed", ai_use.get("human_reviewed")),
+        ("reproducible_without_ai", ai_use.get("reproducible_without_ai")),
+        ("live_model_required", ai_use.get("live_model_required")),
+        ("ai_output_used_as_data", ai_use.get("ai_output_used_as_data")),
+        ("ai_derived_variables", ai_use.get("ai_derived_variables")),
+        ("qa_sample_plan", ai_use.get("qa_sample_plan")),
+        ("sensitivity_plan", ai_use.get("sensitivity_plan")),
+        ("ai_passport_path", ai_use.get("ai_passport_path")),
+    ]
+    rows = []
+    for key, value in fields:
+        if value is None:
+            continue
+        rows.append(f"<tr><td>{_esc(key)}</td><td>{_format_ai_value(root, key, value)}</td></tr>")
+    if passport:
+        rows.append(f"<tr><td>passport_status</td><td>{_esc(passport.get('status', 'unknown'))}</td></tr>")
+        rows.append(f"<tr><td>replication_statement</td><td>{_esc(passport.get('replication_statement', ''))}</td></tr>")
+        for group, records in (passport.get("artifact_hashes") or {}).items():
+            if isinstance(records, list):
+                for record in records:
+                    rows.append(
+                        "<tr>"
+                        f"<td>{_esc(group)}</td>"
+                        f"<td>{_esc(record.get('original_path'))}: exists={_esc(record.get('exists'))}, "
+                        f"sha256={_esc(record.get('sha256', 'missing'))}</td>"
+                        "</tr>"
+                    )
+    return "\n".join(rows) or "<tr><td colspan=\"2\">AI use metadata is empty.</td></tr>"
+
+
+def _format_ai_value(root: Path, key: str, value: Any) -> str:
+    if key == "ai_passport_path":
+        return _artifact_row(root, key, value).split("<td>", 2)[-1].removesuffix("</td></tr>")
+    if isinstance(value, (list, tuple)):
+        return _esc(", ".join(str(item) for item in value))
+    return _esc(value)
 
 
 def _sibling_artifacts(folder: Path, output: Path) -> str:
