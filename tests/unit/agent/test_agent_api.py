@@ -564,6 +564,28 @@ def test_intake_task_infers_randomized_did_design_origin(tmp_path) -> None:
     assert proposal["design_origin"] == "experimental_rct"
 
 
+def test_prepare_api_writes_replication_blob(tmp_path) -> None:
+    intake = ae.intake_prompt(
+        prompt="Estimate an OLS association between x and y.",
+        method="ols_cef",
+        outcome="y",
+        treatment="x",
+        output_dir=tmp_path,
+    )
+    blob_path = tmp_path / ".aesdk.json"
+
+    prepared = ae.prepare(
+        pap_path=intake.pap_path,
+        proposal=intake.proposal_path,
+        blob_path=blob_path,
+        conformance="basic",
+    )
+
+    assert prepared.status == "pass"
+    assert prepared.blob_path == blob_path
+    assert blob_path.exists()
+
+
 def test_write_ai_passport_hashes_archived_files(valid_pap_dict, tmp_path) -> None:
     prompt = tmp_path / "prompt.md"
     output = tmp_path / "output.jsonl"

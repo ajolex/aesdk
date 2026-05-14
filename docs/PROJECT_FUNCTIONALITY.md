@@ -109,10 +109,16 @@ The draft still needs researcher review.
 When a researcher starts from a task folder or assignment document, agents can use intake to create the starter files in the same folder:
 
 ```bash
-aesdk agent intake --task Stata_Task.pdf --method did --output-dir .
+aesdk agent intake --task <task-file.pdf> --method did --output-dir .
 ```
 
-The intake command extracts task text when possible, infers or accepts a method, and writes a reviewable `pap.yaml` and `proposal.json`. It is intentionally a first draft, not a substitute for the researcher checking the design.
+When there is no task document, agents can pass the user's prompt directly:
+
+```bash
+aesdk agent intake --prompt "Estimate the policy effect with a DiD event-study design." --method did --output-dir .
+```
+
+The intake command extracts task text when possible, infers or accepts a method, writes a reviewable `pap.yaml` and `proposal.json`, and creates the required `.aesdk.json` audit file. It is intentionally a first draft, not a substitute for the researcher checking the design. Agents can run `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .` again later to refresh the blob after edits.
 
 ### AI Replicability Passport
 

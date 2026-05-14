@@ -1,4 +1,7 @@
 import json
+import os
+import subprocess
+import sys
 
 from typer.testing import CliRunner
 
@@ -143,6 +146,47 @@ def test_agent_interaction_log_appends_entries(tmp_path) -> None:
     assert "entries=2" in second.output
     assert "Why cluster by state?" in text
     assert "AESDK requires the treatment-level cluster check." in text
+
+
+def test_python_module_entrypoint_lists_methods() -> None:
+    env = dict(os.environ)
+    env["PYTHONPATH"] = str((__import__("pathlib").Path(__file__).resolve().parents[3] / "src"))
+
+    result = subprocess.run(
+        [sys.executable, "-m", "aesdk", "methods", "list"],
+        check=False,
+        capture_output=True,
+        text=True,
+        env=env,
+        timeout=30,
+    )
+
+    assert result.returncode == 0
+    assert "did" in result.stdout
+
+
+def test_agent_doctor_runs() -> None:
+    result = CliRunner().invoke(app, ["agent", "doctor"])
+
+    assert result.exit_code == 0
+    assert "aesdk_version=" in result.output
+    assert "python_m_aesdk=" in result.output
+
+
+def test_agent_doctor_respects_configured_stata_and_r_paths(tmp_path, monkeypatch) -> None:
+    stata = tmp_path / "StataMP-64.exe"
+    rscript = tmp_path / "Rscript.exe"
+    stata.write_text("", encoding="utf-8")
+    rscript.write_text("", encoding="utf-8")
+    monkeypatch.setenv("AESDK_STATA", str(stata))
+    monkeypatch.setenv("AESDK_R", str(rscript))
+
+    result = CliRunner().invoke(app, ["agent", "doctor", "--format", "json"])
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["stata_executable"] == str(stata)
+    assert payload["rscript_executable"] == str(rscript)
 
 
 def test_validate_uses_pap_and_proposal_directories_for_ai_evidence(valid_pap_dict, tmp_path) -> None:
@@ -379,6 +423,135 @@ def test_agent_intake_writes_scaffold_files(tmp_path) -> None:
     assert "method=did" in result.output
     assert (tmp_path / "pap.yaml").exists()
     assert (tmp_path / "proposal.json").exists()
+    assert (tmp_path / ".aesdk.json").exists()
+
+
+def test_agent_intake_accepts_prompt_without_task_file(tmp_path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agent",
+            "intake",
+            "--prompt",
+            "Run an event study for a randomized staggered rollout across GVHs with not-yet-treated controls.",
+            "--outcome",
+            "uptake",
+            "--treatment",
+            "treated",
+            "--unit",
+            "gvh",
+            "--time",
+            "month",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "method=did" in result.output
+    assert "blob_written=" in result.output
+    assert (tmp_path / "prompt_extracted.txt").exists()
+    assert (tmp_path / ".aesdk.json").exists()
+    pap = __import__("yaml").safe_load((tmp_path / "pap.yaml").read_text(encoding="utf-8"))
+    proposal = json.loads((tmp_path / "proposal.json").read_text(encoding="utf-8"))
+    assert pap["identification"]["strategy"] == "EventStudy"
+    assert pap["identification"]["design_origin"] == "experimental_rct"
+    assert pap["did_block"]["staggered_adoption"] is True
+    assert pap["rct_block"]["randomization_unit"] == "gvh"
+    assert proposal["estimator"] == "EventStudy"
+
+
+def test_agent_intake_task_prescribed_twfe_warns_and_writes_blob(tmp_path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agent",
+            "intake",
+            "--prompt",
+            "You must use TWFE for this randomized staggered rollout across GVHs with not-yet-treated controls.",
+            "--outcome",
+            "uptake",
+            "--treatment",
+            "treated",
+            "--unit",
+            "gvh",
+            "--time",
+            "month",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "status=warn blocked=False" in result.output
+    assert "AP-DID-006" in result.output
+    assert (tmp_path / ".aesdk.json").exists()
+    proposal = json.loads((tmp_path / "proposal.json").read_text(encoding="utf-8"))
+    assert proposal["estimator"] == "TWFE"
+    assert proposal["task_required_estimator"] == "TWFE"
+
+
+def test_agent_intake_requires_blob_without_opt_out(tmp_path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agent",
+            "intake",
+            "--prompt",
+            "Run OLS.",
+            "--output-dir",
+            str(tmp_path),
+            "--no-write-blob",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert not (tmp_path / "pap.yaml").exists()
+
+
+def test_agent_intake_blocks_unreadable_pdf_without_prompt(tmp_path, monkeypatch) -> None:
+    task = tmp_path / "task.pdf"
+    task.write_text("not really a pdf", encoding="utf-8")
+    monkeypatch.setattr("aesdk.agent.intake.shutil.which", lambda command: None)
+
+    result = CliRunner().invoke(app, ["agent", "intake", "--task", str(task), "--output-dir", str(tmp_path)])
+
+    assert result.exit_code != 0
+    assert not (tmp_path / ".aesdk.json").exists()
+
+
+def test_agent_prepare_from_prompt_writes_required_blob(tmp_path) -> None:
+    result = CliRunner().invoke(
+        app,
+        [
+            "agent",
+            "prepare",
+            "--prompt",
+            "Run an event study for a randomized staggered rollout across GVHs with not-yet-treated controls.",
+            "--outcome",
+            "uptake",
+            "--treatment",
+            "treated",
+            "--unit",
+            "gvh",
+            "--time",
+            "month",
+            "--output-dir",
+            str(tmp_path),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "blob_written=" in result.output
+    assert (tmp_path / ".aesdk.json").exists()
+
+
+def test_agent_template_requires_prepare_blob() -> None:
+    result = CliRunner().invoke(app, ["agent", "template", "--target", "AGENTS.md"])
+
+    assert result.exit_code == 0
+    assert "agent prepare" in result.output
+    assert ".aesdk.json is required" in result.output
 
 
 def test_agent_ai_passport_writes_lockfile(valid_pap_dict, tmp_path) -> None:

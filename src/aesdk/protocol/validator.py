@@ -451,10 +451,18 @@ def _format_reference(ref: dict[str, Any] | str | None) -> str:
     return ", ".join(parts) if parts else "No citation provided"
 
 
-def _apply_conformance_to_severity(severity: Severity, conformance: ConformanceLevel) -> Severity:
+def _apply_conformance_to_severity(
+    severity: Severity,
+    conformance: ConformanceLevel,
+    rule: dict[str, Any] | None = None,
+) -> Severity:
     if conformance == ConformanceLevel.BASIC:
         return severity
-    if conformance == ConformanceLevel.STRICT and severity == Severity.WARNING:
+    if (
+        conformance == ConformanceLevel.STRICT
+        and severity == Severity.WARNING
+        and not (rule and rule.get("strict_escalates") is False)
+    ):
         return Severity.ERROR
     if conformance == ConformanceLevel.REGULATED and severity in {Severity.WARNING, Severity.INFO}:
         return Severity.ERROR
@@ -523,6 +531,25 @@ class ValidationContext:
             "design_origin": _first_present(self._proposal.get("design_origin"), identification.get("design_origin")),
             "design_note": _first_present(self._proposal.get("design_note"), identification.get("design_note")),
             "estimator": self._proposal.get("estimator", identification.get("strategy")),
+            "task_required_estimator": _first_present(
+                self._proposal.get("task_required_estimator"),
+                did.get("task_required_estimator"),
+            ),
+            "task_required_estimator_justification": _first_present(
+                self._proposal.get("task_required_estimator_justification"),
+                did.get("task_required_estimator_justification"),
+            ),
+            "twfe_prescribed_by_task": _first_present(
+                self._proposal.get("task_required_estimator"),
+                did.get("task_required_estimator"),
+            )
+            == "TWFE"
+            and not _text_missing(
+                _first_present(
+                    self._proposal.get("task_required_estimator_justification"),
+                    did.get("task_required_estimator_justification"),
+                )
+            ),
             "outcome_variable": outcome_variable,
             "treatment_variable": treatment_variable,
             "fixed_effects": _as_list(fixed_effects),
@@ -804,7 +831,7 @@ class Validator:
                 continue
             if triggered:
                 raw_severity = Severity(rule.get("severity", "warning"))
-                severity = _apply_conformance_to_severity(raw_severity, conformance)
+                severity = _apply_conformance_to_severity(raw_severity, conformance, rule)
                 violations.append(
                     RuleViolation(
                         rule_id=rule.get("id", "UNKNOWN"),

@@ -2,10 +2,14 @@
 
 When asked to write econometric analysis code, use AESDK first.
 
+- Check the installation with `aesdk agent doctor`; if the console command is unavailable, use `python -m aesdk agent doctor` after `python -m pip install aesdk`.
 - Load method guidance with `aesdk agent context --method <method>`.
 - Supported method ids include `ols_cef`, `iv_2sls`, `panel_fe`, `did`, `experimental_rct`, `rdd`, `matching`, `synthetic_control`, `nonlinear_did`, `gmm`, `limited_dependent`, and `time_series`; use `aesdk methods list` if unsure.
-- If a task file exists but `pap.yaml` and `proposal.json` do not, draft reviewable starter files with `aesdk agent intake --task <task-file> --method <method> --output-dir .`.
+- If a task file exists but `pap.yaml` and `proposal.json` do not, draft reviewable starter files with `aesdk agent intake --task <task-file> --method <method> --output-dir .`; intake also writes `.aesdk.json`.
+- If no task file exists, do not invent one. Use the actual user prompt with `aesdk agent intake --prompt "<research task>" --method <method> --output-dir .`.
+- Before writing analysis code, create or refresh the replication blob with `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .`; when starter files do not exist yet, use `aesdk agent prepare --prompt "<research task>" --method <method> --output-dir .`. The `.aesdk.json` blob is required even if the workflow later blocks.
 - If AI materially shaped code, classifications, extracted data, or variables, document `ai_use` and write `ai.lock.json` with `aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json`.
+- `ai.lock.json` is not a substitute for `.aesdk.json`; use `aesdk agent prepare` or `aesdk agent run` so the reproducibility blob exists.
 - For AI-written analysis code, declare `ai_use.languages` and list the final reviewed `.py`, `.R`, or `.do` scripts in `ai_use.code_files`; the declared languages must match the archived code extensions.
 - Record coding agents/editors such as Codex, Claude Code, VS Code, GitHub Copilot, or OpenCode in `ai_use.agent_tool`, not `ai_use.model`. Always set `model_metadata_source` to show where the model id came from. If the underlying model id is unavailable, set `model_metadata_source: agent_unavailable`, name the tool in `agent_tool`, explain why, run the matching runtime snapshot command (`aesdk agent codex-runtime`, `aesdk agent claude-runtime`, or `aesdk agent copilot-runtime`), and list it in `runtime_metadata_files`.
 - If the researcher asks follow-up questions or corrects the agent, record `human_in_loop: true` and archive the transcript in `human_interaction_files`; use `aesdk agent interaction-log` when creating that transcript.
@@ -15,7 +19,7 @@ When asked to write econometric analysis code, use AESDK first.
 - A `block` result is a hard stop.
 - A `warn` result requires researcher review.
 - Do not run analysis code on `warn` unless the researcher explicitly acknowledges the warning; use `--acknowledge-warnings` only after that acknowledgement is documented.
-- Do not invent assumptions, diagnostics, citations, or estimator requirements.
+- Do not invent assumptions, diagnostics, citations, estimator requirements, task files, or AI-use evidence.
 - Do not make replication depend on a live AI model; archive prompts, raw AI outputs, and AI-derived data used downstream.
 - Explain AESDK results in plain language for economics RAs and faculty.
 - Use governed execution for Python, Stata `.do`, and R scripts with `aesdk agent run`.

@@ -37,7 +37,7 @@ AESDK currently provides:
 - governed execution that refuses to run blocked analysis code
 - governed execution for Python scripts, Stata `.do` files, and R scripts
 - reproducibility records through an `.aesdk.json` audit file
-- task-folder intake helpers that draft a reviewable `pap.yaml` and `proposal.json`
+- task/prompt intake helpers that draft a reviewable `pap.yaml` and `proposal.json` and create the required `.aesdk.json` audit file
 - HTML workflow reports that supervisors can inspect without reading raw JSON
 - AI Replicability Passports for archived prompts, raw outputs, model metadata, AI-generated code, and AI-derived variables
 - replay checks for recorded execution
@@ -86,7 +86,7 @@ If your shell cannot find `aesdk` after installation, use the Python module entr
 
 ```bash
 python -m pip install aesdk
-python -m aesdk.cli.main methods list
+python -m aesdk methods list
 ```
 
 ## Use AESDK From Python
@@ -96,14 +96,20 @@ AI agents can use the top-level Python API:
 ```python
 import aesdk as ae
 
-intake = ae.intake_task(
-    task_path="Stata_Task.pdf",
+intake = ae.intake_prompt(
+    prompt="Estimate whether a randomized rollout affected county employment with an event-study design.",
     method="did",
     output_dir=".",
     outcome="employment",
     treatment="treated",
     unit="county",
     time="year",
+)
+
+prepared = ae.prepare(
+    pap_path=intake.pap_path,
+    proposal=intake.proposal_path,
+    blob_path=".aesdk.json",
 )
 
 gate = ae.preflight(
@@ -135,11 +141,15 @@ The important rule is: if `gate.blocked` is true, the agent should stop and expl
 These commands are useful in an AI-agent workflow:
 
 ```bash
+aesdk agent doctor
 aesdk agent context --method did
 aesdk agent context --method did --depth full
 aesdk agent preflight --method did --pap pap.yaml --proposal proposal.json --conformance strict
 aesdk agent draft-pap --method did --goal "Estimate policy effects" --data panel.csv --outcome y --treatment treated --unit state --time year --output pap.yaml
-aesdk agent intake --task Stata_Task.pdf --method did --output-dir .
+aesdk agent intake --task <task-file.pdf> --method did --output-dir .
+aesdk agent intake --prompt "Estimate the policy effect with a DiD event-study design." --method did --output-dir .
+aesdk agent prepare --prompt "Estimate the policy effect with a DiD event-study design." --method did --output-dir .
+aesdk agent prepare --method did --pap pap.yaml --proposal proposal.json --output-dir .
 aesdk agent ai-passport --pap pap.yaml --proposal proposal.json --output ai.lock.json
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.py
 aesdk agent run --method did --pap pap.yaml --proposal proposal.json --code-file analysis.do --language stata
@@ -159,14 +169,16 @@ aesdk agent template --target CLAUDE.md
 For most users, the most useful setup is to tell the AI agent:
 
 ```text
-First make sure AESDK is installed. Run `aesdk methods list`; if the command is missing, run `python -m pip install aesdk` and then retry.
+First make sure AESDK is installed. Run `aesdk agent doctor`; if the command is missing, run `python -m pip install aesdk` and then retry with `python -m aesdk agent doctor`.
 Before writing econometric analysis code, use AESDK.
 Load method context with `aesdk agent context --method <method>`.
-Run intake when starting from a task document: `aesdk agent intake --task <task.pdf> --output-dir .`.
+Run intake when starting from a task document: `aesdk agent intake --task <task.pdf> --method <method> --output-dir .`; this writes starter files and `.aesdk.json`.
+If there is no task file, use the actual prompt: `aesdk agent intake --prompt "<research task>" --method <method> --output-dir .`.
+Before writing code, create the required `.aesdk.json` blob with `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .`.
 If AI materially shaped the analysis, document `ai_use` and write `ai.lock.json` with `aesdk agent ai-passport --pap pap.yaml --proposal proposal.json`.
 Run preflight with `aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`.
 If AESDK returns block, stop and explain the violated assumptions.
-Do not invent econometric assumptions, diagnostics, citations, or estimator requirements.
+Do not invent econometric assumptions, diagnostics, citations, estimator requirements, task files, or AI-use evidence.
 ```
 
 This keeps AESDK in the background as part of the automated workflow.

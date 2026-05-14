@@ -42,9 +42,23 @@ rules:
     severity: "error"
     estimators: ["TWFE", "DiD", "EventStudy"]
     data_structures: ["panel"]
-    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and staggered_adoption == true and estimator == 'TWFE'"
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and staggered_adoption == true and estimator == 'TWFE' and twfe_prescribed_by_task != true"
     requirement: "Staggered adoption with TWFE is blocked due to known weighting bias."
     guidance: "Use Callaway-Sant'Anna, Sun-Abraham interactions, or stacked DiD."
+    reference:
+      authors: "Callaway & Sant'Anna"
+      journal: "Journal of Econometrics"
+      year: 2021
+      title: "Difference-in-Differences with Multiple Time Periods"
+  - id: AP-DID-006
+    name: "Task-Prescribed TWFE Must Be Labeled As Pedagogical Or Descriptive"
+    severity: "warning"
+    strict_escalates: false
+    estimators: ["TWFE"]
+    data_structures: ["panel"]
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and staggered_adoption == true and estimator == 'TWFE' and twfe_prescribed_by_task == true"
+    requirement: "If a task explicitly requires TWFE for staggered adoption, AESDK allows the run only as a task-prescribed specification, not as an unqualified modern causal estimator."
+    guidance: "State that TWFE is required by the assignment or researcher instruction, preserve the task instruction in the archive, and avoid claiming it resolves staggered-treatment weighting concerns unless a modern DiD robustness design is also registered."
     reference:
       authors: "Callaway & Sant'Anna"
       journal: "Journal of Econometrics"

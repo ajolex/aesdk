@@ -47,7 +47,7 @@ def _rct_pap(
 
 def test_rule_engine_triggers_w_panel_001(valid_pap_dict: dict) -> None:
     proposal = {"estimator": "TWFE", "standard_errors": "HC3", "clustering": "state"}
-    result = Validator().validate(valid_pap_dict, proposal)
+    result = Validator().validate(valid_pap_dict, proposal, conformance=ConformanceLevel.STRICT)
     ids = {violation.rule_id for violation in result.violations}
     assert "W-PANEL-001" in ids
     assert result.status == "block"
@@ -55,10 +55,27 @@ def test_rule_engine_triggers_w_panel_001(valid_pap_dict: dict) -> None:
 
 def test_rule_engine_triggers_ap_did_003(valid_pap_dict: dict) -> None:
     proposal = {"estimator": "TWFE", "standard_errors": "cluster", "clustering": "state"}
-    result = Validator().validate(valid_pap_dict, proposal)
+    result = Validator().validate(valid_pap_dict, proposal, conformance=ConformanceLevel.STRICT)
     ids = {violation.rule_id for violation in result.violations}
     assert "AP-DID-003" in ids
     assert result.status == "block"
+
+
+def test_task_prescribed_twfe_warns_instead_of_blocks(valid_pap_dict: dict) -> None:
+    proposal = {
+        "estimator": "TWFE",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "task_required_estimator": "TWFE",
+        "task_required_estimator_justification": "The assignment explicitly asks for a two-way fixed effects model.",
+    }
+
+    result = Validator().validate(valid_pap_dict, proposal, conformance=ConformanceLevel.STRICT)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AP-DID-003" not in ids
+    assert "AP-DID-006" in ids
+    assert result.status == "warn"
 
 
 def test_did_design_origin_falls_back_to_pap_when_proposal_null(valid_pap_dict: dict) -> None:

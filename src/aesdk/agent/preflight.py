@@ -131,6 +131,21 @@ def _method_strategy_violation(method: str, pap: dict[str, Any], proposal: dict[
     estimator = proposal.get("estimator")
     if not estimator or estimator in allowed:
         return None
+    did = pap.get("did_block", {})
+    if method == "panel_fe" and estimator in _METHOD_STRATEGY_ALIASES["did"] and did:
+        return RuleViolation(
+            rule_id="AGENT-METHOD-001",
+            rule_name="Requested Method Must Match Proposed Estimator",
+            severity=Severity.ERROR,
+            message=(
+                f"Agent requested method '{method}', but the proposal estimator is '{estimator}' and the PAP "
+                "contains a DiD block. This looks like a treatment-timing/event-study design, not a generic "
+                "panel fixed-effects exercise."
+            ),
+            guidance="Use --method did for DiD, event-study, or staggered rollout tasks unless a researcher documents a non-causal panel FE objective.",
+            citation="AESDK agent preflight protocol",
+            source_file="aesdk.agent.preflight",
+        )
     return RuleViolation(
         rule_id="AGENT-METHOD-001",
         rule_name="Requested Method Must Match Proposed Estimator",

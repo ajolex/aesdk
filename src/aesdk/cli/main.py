@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import json
+import os
+import platform
+import shutil
+import subprocess
 import sys
+from importlib.metadata import PackageNotFoundError, version
 from importlib.resources import files
 from pathlib import Path
+from typing import Any
 
 import typer
 import yaml
@@ -14,6 +20,7 @@ from aesdk.agent import (
     agent_context,
     append_interaction_log,
     draft_pap,
+    intake_prompt,
     intake_task,
     preflight,
     run_analysis,
@@ -43,6 +50,12 @@ from aesdk.knowledge import (
 )
 from aesdk.protocol.validator import RuleRegistry, Validator
 from aesdk.sandbox.runner import SandboxRunner, infer_language_from_path, normalize_language
+from aesdk.sandbox.runner import (
+    _R_EXECUTABLE_CANDIDATES,
+    _R_EXECUTABLE_ENV,
+    _STATA_EXECUTABLE_CANDIDATES,
+    _STATA_EXECUTABLE_ENV,
+)
 from aesdk.trace import replay_execute_events
 from aesdk.trace.blob import ReplicationBlob, sign_blob, verify_blob_signature
 
@@ -64,6 +77,91 @@ app.add_typer(rules_app, name="rules")
 def _load_json(path: str | Path) -> dict:
     with Path(path).open("r", encoding="utf-8-sig") as handle:
         return json.load(handle)
+
+
+def _read_prompt_value(prompt: str | None, prompt_file: Path | None) -> str | None:
+    if prompt and prompt_file:
+        raise typer.BadParameter("Use either --prompt or --prompt-file, not both.")
+    if prompt_file:
+        return prompt_file.read_text(encoding="utf-8-sig")
+    return prompt
+
+
+def _package_version() -> str:
+    try:
+        return version("aesdk")
+    except PackageNotFoundError:
+        try:
+            from aesdk._version import __version__
+        except Exception:
+            return "unknown"
+        return __version__
+
+
+def _resolve_executable(configured: str | None, candidates: tuple[str, ...]) -> str | None:
+    if configured:
+        configured_path = Path(configured)
+        if configured_path.exists():
+            return str(configured_path)
+        discovered = shutil.which(configured)
+        if discovered:
+            return discovered
+    for candidate in candidates:
+        discovered = shutil.which(candidate)
+        if discovered:
+            return discovered
+    return None
+
+
+def _method_from_pap_strategy(pap_path: Path) -> str:
+    from aesdk.governance.pap import validate_pap_file
+
+    pap = validate_pap_file(pap_path)
+    strategy = str(pap.get("identification", {}).get("strategy", "")).strip()
+    mapping = {
+        "OLS": "ols_cef",
+        "IV": "iv_2sls",
+        "2SLS": "iv_2sls",
+        "FE": "panel_fe",
+        "POLS": "panel_fe",
+        "RE": "panel_fe",
+        "DiD": "did",
+        "TWFE": "did" if pap.get("did_block") else "panel_fe",
+        "EventStudy": "did",
+        "RCT": "experimental_rct",
+        "RandomizedExperiment": "experimental_rct",
+        "RDD": "rdd",
+        "Matching": "matching",
+        "SyntheticControl": "synthetic_control",
+        "NonlinearDiD": "nonlinear_did",
+        "GMM": "gmm",
+        "Logit": "limited_dependent",
+        "Probit": "limited_dependent",
+        "ARIMA": "time_series",
+    }
+    return mapping.get(strategy, "ols_cef")
+
+
+def _save_preparation_blob(
+    *,
+    pap: Path,
+    proposal: Path,
+    blob: Path | None,
+    context: str,
+    conformance: str,
+    policy_version: str,
+) -> tuple[Project, Any]:
+    project = Project.create(
+        pap_path=pap,
+        proposal_path=proposal,
+        blob_path=blob,
+        context=context,
+        conformance=conformance,
+        policy_version=policy_version,
+    )
+    project.propose_model(_load_json(proposal))
+    validation = project.validate()
+    return project, validation
 
 
 @agent_app.command("context")
@@ -147,7 +245,9 @@ def agent_draft_pap_cmd(
 
 @agent_app.command("intake")
 def agent_intake_cmd(
-    task: Path = typer.Option(..., exists=True, help="Task document path. PDF, TXT, and MD are supported."),
+    task: Path | None = typer.Option(None, exists=True, help="Task document path. PDF, TXT, and MD are supported."),
+    prompt: str | None = typer.Option(None, help="Raw task prompt when no task document exists."),
+    prompt_file: Path | None = typer.Option(None, exists=True, help="Text file containing the raw task prompt."),
     data: Path | None = typer.Option(None, exists=True, help="Optional analysis data path."),
     method: str | None = typer.Option(None, help="Optional method id. If omitted, AESDK infers a first draft."),
     output_dir: Path | None = typer.Option(None, help="Folder for pap.yaml, proposal.json, and extracted task text."),
@@ -160,24 +260,158 @@ def agent_intake_cmd(
         help="Optional design provenance: experimental_rct|observational|natural_experiment|administrative_rollout|unknown.",
     ),
     title: str | None = typer.Option(None, help="Optional PAP title."),
+    blob: Path | None = typer.Option(None, help="Output .aesdk.json path. Defaults to output-dir/.aesdk.json."),
+    context: str = typer.Option("research", help="Execution context for the replication blob."),
+    conformance: str = typer.Option("strict", help="Conformance level for the replication blob."),
+    policy_version: str = typer.Option("1.0.0", help="Policy version tag for governance passport."),
 ) -> None:
-    result = intake_task(
-        task_path=task,
-        data_path=data,
-        method=method,
-        output_dir=output_dir,
-        outcome=outcome,
-        treatment=treatment,
-        unit=unit,
-        time=time,
-        design_origin=design_origin,
-        title=title,
-    )
+    prompt_text = _read_prompt_value(prompt, prompt_file)
+    if task is None and prompt_text is None:
+        raise typer.BadParameter("Provide --task, --prompt, or --prompt-file.")
+    if task is not None and prompt_text is not None:
+        raise typer.BadParameter("Use task input or prompt input, not both.")
+    if prompt_text is not None:
+        result = intake_prompt(
+            prompt=prompt_text,
+            data_path=data,
+            method=method,
+            output_dir=output_dir,
+            outcome=outcome,
+            treatment=treatment,
+            unit=unit,
+            time=time,
+            design_origin=design_origin,
+            title=title,
+        )
+    else:
+        assert task is not None
+        result = intake_task(
+            task_path=task,
+            data_path=data,
+            method=method,
+            output_dir=output_dir,
+            outcome=outcome,
+            treatment=treatment,
+            unit=unit,
+            time=time,
+            design_origin=design_origin,
+            title=title,
+        )
     typer.echo(f"method={result.method}")
     typer.echo(f"pap_written={result.pap_path}")
     typer.echo(f"proposal_written={result.proposal_path}")
     if result.task_text_path:
         typer.echo(f"task_text_written={result.task_text_path}")
+    blob_path = blob or result.pap_path.parent / ".aesdk.json"
+    project, validation = _save_preparation_blob(
+        pap=result.pap_path,
+        proposal=result.proposal_path,
+        blob=blob_path,
+        context=context,
+        conformance=conformance,
+        policy_version=policy_version,
+    )
+    typer.echo(f"blob_written={project.blob_path}")
+    typer.echo(f"status={validation.status} blocked={validation.blocked}")
+    for violation in validation.violations:
+        typer.echo(f"- {violation.rule_id} severity={violation.severity.value} message={violation.message}")
+    if validation.blocked:
+        raise typer.Exit(code=1)
+
+
+@agent_app.command("prepare")
+def agent_prepare_cmd(
+    task: Path | None = typer.Option(None, exists=True, help="Optional task document path."),
+    prompt: str | None = typer.Option(None, help="Raw task prompt when no task document exists."),
+    prompt_file: Path | None = typer.Option(None, exists=True, help="Text file containing the raw task prompt."),
+    data: Path | None = typer.Option(None, exists=True, help="Optional analysis data path."),
+    method: str | None = typer.Option(None, help="Method id. If omitted, AESDK infers from intake or PAP."),
+    pap: Path = typer.Option(Path("pap.yaml"), help="PAP path to create or validate."),
+    proposal: Path = typer.Option(Path("proposal.json"), help="Proposal path to create or validate."),
+    output_dir: Path = typer.Option(Path("."), help="Folder for starter files and the AESDK replication blob."),
+    outcome: str = typer.Option("outcome", help="Outcome variable."),
+    treatment: str = typer.Option("treatment", help="Treatment variable."),
+    unit: str | None = typer.Option(None, help="Panel/group unit variable."),
+    time: str | None = typer.Option(None, help="Time variable."),
+    design_origin: str | None = typer.Option(
+        None,
+        help="Optional design provenance: experimental_rct|observational|natural_experiment|administrative_rollout|unknown.",
+    ),
+    title: str | None = typer.Option(None, help="Optional PAP title."),
+    blob: Path | None = typer.Option(None, help="Output .aesdk.json path. Defaults to output-dir/.aesdk.json."),
+    context: str = typer.Option("research", help="Execution context: research|production|regulated"),
+    conformance: str = typer.Option("strict", help="Conformance level: basic|strict|regulated"),
+    policy_version: str = typer.Option("1.0.0", help="Policy version tag for governance passport."),
+) -> None:
+    prompt_text = _read_prompt_value(prompt, prompt_file)
+    active_output_dir = output_dir
+    active_output_dir.mkdir(parents=True, exist_ok=True)
+    pap_path = pap if pap.is_absolute() else active_output_dir / pap
+    proposal_path = proposal if proposal.is_absolute() else active_output_dir / proposal
+
+    if not pap_path.exists() or not proposal_path.exists():
+        if task is None and prompt_text is None:
+            raise typer.BadParameter(
+                "pap/proposal do not exist yet. Provide --task, --prompt, or --prompt-file so AESDK can scaffold them."
+            )
+        if task is not None and prompt_text is not None:
+            raise typer.BadParameter("Use task input or prompt input, not both.")
+        if prompt_text is not None:
+            intake = intake_prompt(
+                prompt=prompt_text,
+                data_path=data,
+                method=method,
+                output_dir=active_output_dir,
+                outcome=outcome,
+                treatment=treatment,
+                unit=unit,
+                time=time,
+                design_origin=design_origin,
+                title=title,
+            )
+        else:
+            assert task is not None
+            intake = intake_task(
+                task_path=task,
+                data_path=data,
+                method=method,
+                output_dir=active_output_dir,
+                outcome=outcome,
+                treatment=treatment,
+                unit=unit,
+                time=time,
+                design_origin=design_origin,
+                title=title,
+            )
+        pap_path = intake.pap_path
+        proposal_path = intake.proposal_path
+        active_method = intake.method
+        typer.echo(f"method={active_method}")
+        typer.echo(f"pap_written={pap_path}")
+        typer.echo(f"proposal_written={proposal_path}")
+        if intake.task_text_path:
+            typer.echo(f"task_text_written={intake.task_text_path}")
+    else:
+        active_method = method or _method_from_pap_strategy(pap_path)
+        typer.echo(f"method={active_method}")
+        typer.echo(f"pap_existing={pap_path}")
+        typer.echo(f"proposal_existing={proposal_path}")
+
+    blob_path = blob or active_output_dir / ".aesdk.json"
+    project, validation = _save_preparation_blob(
+        pap=pap_path,
+        proposal=proposal_path,
+        blob=blob_path,
+        context=context,
+        conformance=conformance,
+        policy_version=policy_version,
+    )
+    typer.echo(f"blob_written={project.blob_path}")
+    typer.echo(f"status={validation.status} blocked={validation.blocked}")
+    for violation in validation.violations:
+        typer.echo(f"- {violation.rule_id} severity={violation.severity.value} message={violation.message}")
+    if validation.blocked:
+        raise typer.Exit(code=1)
 
 
 @agent_app.command("report")
@@ -334,6 +568,70 @@ def agent_copilot_runtime_cmd(
     )
     typer.echo(f"runtime_metadata_written={result.path}")
     typer.echo(result.metadata.get("metadata_block", ""))
+
+
+@agent_app.command("doctor")
+def agent_doctor_cmd(
+    output_format: str = typer.Option("text", "--format", help="Output format: text|json"),
+) -> None:
+    """Report installation, PATH, and runtime readiness for research agents."""
+
+    checks: dict[str, Any] = {
+        "aesdk_version": _package_version(),
+        "python_executable": sys.executable,
+        "python_version": platform.python_version(),
+        "platform": platform.platform(),
+        "cwd": str(Path.cwd()),
+        "aesdk_console_script": shutil.which("aesdk"),
+        "python_m_aesdk": False,
+        "stata_executable": _resolve_executable(os.getenv(_STATA_EXECUTABLE_ENV), _STATA_EXECUTABLE_CANDIDATES),
+        "rscript_executable": _resolve_executable(os.getenv(_R_EXECUTABLE_ENV), _R_EXECUTABLE_CANDIDATES),
+        "cwd_writable": False,
+        "method_registry_ok": False,
+        "recommendations": [],
+    }
+    probe = subprocess.run(
+        [sys.executable, "-m", "aesdk", "methods", "list"],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=20,
+    )
+    checks["python_m_aesdk"] = probe.returncode == 0
+    try:
+        probe_file = Path.cwd() / ".aesdk_doctor_write_test"
+        probe_file.write_text("ok", encoding="utf-8")
+        probe_file.unlink(missing_ok=True)
+        checks["cwd_writable"] = True
+    except OSError:
+        checks["cwd_writable"] = False
+    try:
+        checks["method_registry_ok"] = bool(list_method_ids())
+    except Exception:
+        checks["method_registry_ok"] = False
+    if checks["aesdk_console_script"] is None:
+        checks["recommendations"].append("The aesdk console command is not on PATH; use python -m aesdk or reinstall with pip.")
+    if not checks["python_m_aesdk"]:
+        checks["recommendations"].append("python -m aesdk is not working in this environment; verify the active Python environment.")
+    if checks["stata_executable"] is None:
+        checks["recommendations"].append("Stata was not found on PATH; Stata .do files will be gated but cannot execute here.")
+    if checks["rscript_executable"] is None:
+        checks["recommendations"].append("Rscript was not found on PATH; R scripts will be gated but cannot execute here.")
+    if not checks["cwd_writable"]:
+        checks["recommendations"].append("The current directory is not writable; .aesdk.json cannot be saved here.")
+    if output_format.lower() == "json":
+        typer.echo(json.dumps(checks, indent=2))
+        return
+    if output_format.lower() != "text":
+        raise typer.BadParameter("format must be text or json")
+    for key, value in checks.items():
+        if key == "recommendations":
+            continue
+        typer.echo(f"{key}={value}")
+    if checks["recommendations"]:
+        typer.echo("recommendations:")
+        for item in checks["recommendations"]:
+            typer.echo(f"- {item}")
 
 
 @agent_app.command("run")
