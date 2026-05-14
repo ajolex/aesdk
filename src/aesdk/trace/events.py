@@ -42,6 +42,15 @@ def validation_payload(result: ValidationResult) -> dict[str, Any]:
     }
 
 
+def ai_lock_payload(passport: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema": passport.get("schema"),
+        "status": passport.get("status"),
+        "generated_at": passport.get("generated_at"),
+        "ai_lock": passport,
+    }
+
+
 def execute_payload(
     *,
     code: str,

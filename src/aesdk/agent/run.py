@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from aesdk.agent.ai_passport import build_ai_passport
 from aesdk.agent.preflight import PreflightResult, preflight
 from aesdk.config import config
 from aesdk.core.project import Project
@@ -19,11 +21,13 @@ class AnalysisRunResult:
     sandbox: SandboxResult | None
     blob_path: str | None
     warning_acknowledgement_required: bool = False
+    ai_lock: dict[str, Any] | None = None
 
     @property
     def blocked(self) -> bool:
         sandbox_blocked = bool(self.sandbox and self.sandbox.status == "block")
-        return self.preflight.blocked or self.warning_acknowledgement_required or sandbox_blocked
+        ai_lock_blocked = bool(self.ai_lock and self.ai_lock.get("status") == "block")
+        return self.preflight.blocked or self.warning_acknowledgement_required or sandbox_blocked or ai_lock_blocked
 
     @property
     def status(self) -> str:
@@ -95,5 +99,77 @@ def run_analysis(
             sandbox=None,
             blob_path=str(project.blob_path),
         )
+    if _has_ai_use_metadata(project.pap, gate.proposal or {}):
+        ai_lock = build_ai_passport(
+            pap=project.pap,
+            pap_path=pap_path,
+            proposal=gate.proposal or {},
+            proposal_path=proposal if isinstance(proposal, (str, Path)) else None,
+        )
+        _attach_execution_code_check(ai_lock, code=active_code, code_path=code_path)
+        project.record_ai_lock(ai_lock)
+        if ai_lock.get("status") == "block":
+            return AnalysisRunResult(preflight=gate, sandbox=None, blob_path=str(project.blob_path), ai_lock=ai_lock)
+        if ai_lock.get("status") == "warn" and not acknowledge_warnings:
+            return AnalysisRunResult(
+                preflight=gate,
+                sandbox=None,
+                blob_path=str(project.blob_path),
+                warning_acknowledgement_required=True,
+                ai_lock=ai_lock,
+            )
     sandbox = project.execute(active_code, language=active_language, timeout_seconds=timeout_seconds)
-    return AnalysisRunResult(preflight=gate, sandbox=sandbox, blob_path=str(project.blob_path))
+    return AnalysisRunResult(
+        preflight=gate,
+        sandbox=sandbox,
+        blob_path=str(project.blob_path),
+        ai_lock=ai_lock if _has_ai_use_metadata(project.pap, gate.proposal or {}) else None,
+    )
+
+
+def _has_ai_use_metadata(pap: dict[str, Any], proposal: dict[str, Any]) -> bool:
+    return isinstance(pap.get("ai_use"), dict) or isinstance(proposal.get("ai_use"), dict)
+
+
+def _attach_execution_code_check(
+    ai_lock: dict[str, Any],
+    *,
+    code: str,
+    code_path: str | Path | None,
+) -> None:
+    ai_use = ai_lock.get("ai_use", {})
+    roles = ai_use.get("role", [])
+    if isinstance(roles, str):
+        roles = [roles]
+    if "code_generation" not in roles:
+        return
+    code_hash = hashlib.sha256(code.encode("utf-8")).hexdigest()
+    records = ai_lock.get("artifact_hashes", {}).get("code_files", [])
+    archived_hashes = {str(record.get("sha256")) for record in records if record.get("sha256")}
+    archived_paths = {Path(str(record.get("resolved_path"))).resolve() for record in records if record.get("resolved_path")}
+    path_matches = False
+    if code_path is not None:
+        try:
+            path_matches = Path(code_path).resolve() in archived_paths
+        except OSError:
+            path_matches = False
+    if code_hash in archived_hashes or path_matches:
+        ai_lock["executed_code"] = {
+            "code_sha256": code_hash,
+            "code_path": str(code_path) if code_path else None,
+            "matches_archived_code": True,
+        }
+        return
+    ai_lock["executed_code"] = {
+        "code_sha256": code_hash,
+        "code_path": str(code_path) if code_path else None,
+        "matches_archived_code": False,
+    }
+    ai_lock.setdefault("findings", []).append(
+        {
+            "severity": "error",
+            "code": "EXECUTED_CODE_NOT_ARCHIVED",
+            "message": "The executed code does not match any hashed ai_use.code_files artifact.",
+        }
+    )
+    ai_lock["status"] = "block"

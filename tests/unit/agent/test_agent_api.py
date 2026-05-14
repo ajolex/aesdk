@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 import aesdk as ae
+from aesdk.trace.blob import ReplicationBlob
 
 
 def test_agent_context_markdown_contains_binding_instructions() -> None:
@@ -147,6 +148,8 @@ def test_run_analysis_uses_proposal_directory_for_human_evidence(valid_pap_file,
     pap_path = pap_dir / "pap.yaml"
     pap_path.write_text(valid_pap_file.read_text(encoding="utf-8"), encoding="utf-8")
     (proposal_dir / "followup_transcript.md").write_text("Human asked a clarification question.", encoding="utf-8")
+    (proposal_dir / "prompt.md").write_text("Write Python analysis code.", encoding="utf-8")
+    (proposal_dir / "output.md").write_text("Generated Python analysis code.", encoding="utf-8")
     proposal_path = proposal_dir / "proposal.json"
     proposal_path.write_text(
         json.dumps(
@@ -192,6 +195,10 @@ def test_run_analysis_uses_proposal_directory_for_human_evidence(valid_pap_file,
 
 
 def test_run_analysis_records_timeout_and_workflow_report(valid_pap_file, tmp_path) -> None:
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "ai_outputs").mkdir()
+    (tmp_path / "prompts" / "analysis_prompt.md").write_text("Write Python analysis code.", encoding="utf-8")
+    (tmp_path / "ai_outputs" / "code_response.md").write_text("Generated Python analysis code.", encoding="utf-8")
     proposal_path = tmp_path / "proposal.json"
     proposal_path.write_text(
         json.dumps(
@@ -320,6 +327,185 @@ def test_run_analysis_infers_r_from_r_file(valid_pap_file, tmp_path, monkeypatch
     assert result.blocked
     assert result.sandbox is not None
     assert result.sandbox.diagnostics[0].code == "MISSING_RUNTIME"
+
+
+def test_run_analysis_embeds_ai_lock_and_runtime_metadata(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    runtime = tmp_path / "codex_runtime.json"
+    code_path = tmp_path / "analysis.py"
+    pap_path = tmp_path / "pap.yaml"
+    proposal_path = tmp_path / "proposal.json"
+    blob_path = tmp_path / ".aesdk.json"
+
+    prompt.write_text("Write analysis code.", encoding="utf-8")
+    output.write_text("Generated Python analysis code.", encoding="utf-8")
+    runtime.write_text(
+        json.dumps(
+            {
+                "schema": "aesdk.codex_runtime.v1",
+                "session": {"model": "gpt-test", "reasoning_effort": "high"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    code_path.write_text("print('ran')", encoding="utf-8")
+    valid_pap_dict["ai_use"] = {
+        "used": True,
+        "role": "code_generation",
+        "languages": ["python"],
+        "provider": "OpenAI",
+        "model": "gpt-test",
+        "model_metadata_source": "agent_reported",
+        "prompts_archived": True,
+        "raw_outputs_archived": True,
+        "human_reviewed": False,
+        "reproducible_without_ai": True,
+        "live_model_required": False,
+        "prompt_files": [prompt.name],
+        "output_files": [output.name],
+        "runtime_metadata_files": [runtime.name],
+        "code_files": [code_path.name],
+    }
+    pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+
+    result = ae.run_analysis(
+        method="did",
+        pap_path=pap_path,
+        proposal=proposal_path,
+        code_path=code_path,
+        blob_path=blob_path,
+    )
+
+    assert result.status == "pass"
+    blob = json.loads(blob_path.read_text(encoding="utf-8"))
+    ai_lock = blob["metadata"]["ai_lock"]
+    assert ai_lock["status"] == "pass"
+    assert ai_lock["runtime_metadata"][0]["metadata"]["session"]["reasoning_effort"] == "high"
+    assert ai_lock["executed_code"]["matches_archived_code"] is True
+    event_types = [event["event_type"] for event in blob["events"]]
+    assert event_types == ["init", "propose_model", "validate", "ai_lock", "execute"]
+    ai_lock_event = next(event for event in blob["events"] if event["event_type"] == "ai_lock")
+    assert ai_lock_event["payload"]["ai_lock"] == ai_lock
+    assert ReplicationBlob.load(blob_path).verify_integrity()[0] is True
+
+
+def test_run_analysis_blocks_when_ai_lock_code_file_does_not_match(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    archived_code = tmp_path / "reviewed.py"
+    executed_code = tmp_path / "scratch.py"
+    pap_path = tmp_path / "pap.yaml"
+    proposal_path = tmp_path / "proposal.json"
+    blob_path = tmp_path / ".aesdk.json"
+
+    prompt.write_text("Write analysis code.", encoding="utf-8")
+    output.write_text("Generated Python analysis code.", encoding="utf-8")
+    archived_code.write_text("print('reviewed')", encoding="utf-8")
+    executed_code.write_text("print('scratch')", encoding="utf-8")
+    valid_pap_dict["ai_use"] = {
+        "used": True,
+        "role": "code_generation",
+        "languages": ["python"],
+        "provider": "OpenAI",
+        "model": "gpt-test",
+        "model_metadata_source": "agent_reported",
+        "prompts_archived": True,
+        "raw_outputs_archived": True,
+        "human_reviewed": False,
+        "reproducible_without_ai": True,
+        "live_model_required": False,
+        "prompt_files": [prompt.name],
+        "output_files": [output.name],
+        "code_files": [archived_code.name],
+    }
+    pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+
+    result = ae.run_analysis(
+        method="did",
+        pap_path=pap_path,
+        proposal=proposal_path,
+        code_path=executed_code,
+        blob_path=blob_path,
+    )
+
+    assert result.status == "block"
+    assert result.sandbox is None
+    blob = json.loads(blob_path.read_text(encoding="utf-8"))
+    assert [event["event_type"] for event in blob["events"]] == ["init", "propose_model", "validate", "ai_lock"]
+    assert blob["metadata"]["ai_lock"]["executed_code"]["matches_archived_code"] is False
+    codes = {item["code"] for item in blob["metadata"]["ai_lock"]["findings"]}
+    assert "EXECUTED_CODE_NOT_ARCHIVED" in codes
+
+
+def test_ai_passport_blocks_malformed_agent_unavailable_runtime_metadata(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    code = tmp_path / "analysis.py"
+    runtime = tmp_path / "codex_runtime.json"
+    pap_path = tmp_path / "pap.yaml"
+
+    prompt.write_text("Write analysis code.", encoding="utf-8")
+    output.write_text("Generated Python analysis code.", encoding="utf-8")
+    code.write_text("print('ran')", encoding="utf-8")
+    runtime.write_text("{not json", encoding="utf-8")
+    valid_pap_dict["ai_use"] = {
+        "used": True,
+        "role": "code_generation",
+        "languages": ["python"],
+        "provider": "OpenAI",
+        "agent_tool": "Codex",
+        "model_metadata_source": "agent_unavailable",
+        "model_metadata_unavailable_reason": "The coding-agent surface did not expose the exact model id.",
+        "prompts_archived": True,
+        "raw_outputs_archived": True,
+        "human_reviewed": False,
+        "reproducible_without_ai": True,
+        "live_model_required": False,
+        "prompt_files": [prompt.name],
+        "output_files": [output.name],
+        "runtime_metadata_files": [runtime.name],
+        "code_files": [code.name],
+    }
+    pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path)
+
+    assert result.status == "block"
+    codes = {item["code"] for item in result.passport["findings"]}
+    assert "RUNTIME_METADATA_INVALID" in codes
+
+
+def test_run_analysis_does_not_embed_blocking_ai_lock_for_non_ai_run(valid_pap_file, tmp_path) -> None:
+    proposal_path = tmp_path / "proposal.json"
+    code_path = tmp_path / "analysis.py"
+    blob_path = tmp_path / ".aesdk.json"
+    proposal_path.write_text(
+        json.dumps({"estimator": "DiD", "standard_errors": "cluster", "clustering": "state"}),
+        encoding="utf-8",
+    )
+    code_path.write_text("print('ran')", encoding="utf-8")
+
+    result = ae.run_analysis(
+        method="did",
+        pap_path=valid_pap_file,
+        proposal=proposal_path,
+        code_path=code_path,
+        blob_path=blob_path,
+    )
+
+    assert result.status == "pass"
+    blob = json.loads(blob_path.read_text(encoding="utf-8"))
+    assert "ai_lock" not in blob["metadata"]
+    assert "ai_lock" not in {event["event_type"] for event in blob["events"]}
 
 
 def test_drafted_pap_can_be_serialized_and_validated(tmp_path) -> None:
@@ -536,7 +722,16 @@ def test_write_ai_passport_hashes_runtime_metadata(valid_pap_dict, tmp_path) -> 
     prompt.write_text("Write Stata code.", encoding="utf-8")
     output.write_text("Generated code.", encoding="utf-8")
     code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
-    runtime.write_text('{"schema":"aesdk.codex_runtime.v1","codex_client":"codex-cli test"}', encoding="utf-8")
+    runtime.write_text(
+        json.dumps(
+            {
+                "schema": "aesdk.codex_runtime.v1",
+                "codex_client": "codex-cli test",
+                "session": {"model": None, "reasoning_effort": None},
+            }
+        ),
+        encoding="utf-8",
+    )
     pap = {
         **valid_pap_dict,
         "ai_use": {
@@ -923,11 +1118,11 @@ def test_workflow_report_reads_pap_level_ai_use_and_passport(valid_pap_file, val
     blob_path = tmp_path / ".aesdk.json"
 
     run = ae.run_analysis(method="did", pap_path=pap_path, proposal=proposal_path, code_path=code_path, blob_path=blob_path)
-    passport = ae.write_ai_passport(pap_path=pap_path, proposal_path=proposal_path, output_path=tmp_path / "ai.lock.json")
     report = ae.write_workflow_report(blob_path=run.blob_path)
     text = report.read_text(encoding="utf-8")
+    blob = json.loads(blob_path.read_text(encoding="utf-8"))
 
-    assert passport.status == "pass"
+    assert blob["metadata"]["ai_lock"]["status"] == "pass"
     assert "claude-sonnet-4.6" in text
     assert "passport_status" in text
     assert "sha256=" in text

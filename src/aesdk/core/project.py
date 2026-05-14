@@ -173,6 +173,11 @@ class Project:
         self._flush()
         return result
 
+    def record_ai_lock(self, passport: dict[str, Any]) -> None:
+        self.blob.metadata["ai_lock"] = passport
+        self.blob.record("ai_lock", trace_events.ai_lock_payload(passport))
+        self._flush()
+
     def execute(
         self,
         code: str,

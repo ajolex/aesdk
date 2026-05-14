@@ -97,6 +97,7 @@ def build_ai_passport(
         _base_for("runtime_metadata_files", provenance, base_dirs),
         merged.get("runtime_metadata_files", []),
     )
+    runtime_metadata = _runtime_metadata_records(runtime_metadata_files)
     findings = _passport_findings(
         merged,
         prompt_files,
@@ -108,6 +109,7 @@ def build_ai_passport(
         human_intervention_files,
         review_files,
         runtime_metadata_files,
+        runtime_metadata,
     )
     validation_base_dirs = [Path.cwd(), *base_dirs.values()]
     validation = _validation_summary(active_pap, active_proposal, validation_base_dirs, base_dirs) if active_pap else None
@@ -148,6 +150,7 @@ def build_ai_passport(
             "review_files": review_files,
             "runtime_metadata_files": runtime_metadata_files,
         },
+        "runtime_metadata": runtime_metadata,
         "validation": validation,
         "findings": findings,
         "replication_statement": _replication_statement(merged, status),
@@ -259,6 +262,95 @@ def _file_records(base_dir: Path, values: Any) -> list[dict[str, Any]]:
     return records
 
 
+_RUNTIME_METADATA_EMBED_LIMIT_BYTES = 128_000
+_SENSITIVE_KEY_PARTS = ("token", "secret", "password", "credential", "api_key", "private_key")
+
+
+def _runtime_metadata_records(records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    embedded: list[dict[str, Any]] = []
+    for record in records:
+        item: dict[str, Any] = {
+            "original_path": record.get("original_path"),
+            "resolved_path": record.get("resolved_path"),
+            "exists": record.get("exists", False),
+            "sha256": record.get("sha256"),
+        }
+        path = Path(str(record.get("resolved_path", "")))
+        if record.get("exists") and path.is_file():
+            size_bytes = path.stat().st_size
+            if size_bytes > _RUNTIME_METADATA_EMBED_LIMIT_BYTES:
+                item["parse_error"] = f"runtime metadata file exceeds embed limit ({size_bytes} bytes)"
+                item["embedded"] = False
+                embedded.append(item)
+                continue
+            try:
+                loaded = json.loads(path.read_text(encoding="utf-8-sig"))
+            except Exception as exc:
+                item["parse_error"] = str(exc)
+            else:
+                if not isinstance(loaded, dict):
+                    item["parse_error"] = "runtime metadata JSON must be an object"
+                else:
+                    item["metadata"] = _curated_runtime_metadata(loaded)
+                    item["embedded"] = True
+        embedded.append(item)
+    return embedded
+
+
+def _curated_runtime_metadata(metadata: dict[str, Any]) -> dict[str, Any]:
+    """Embed reviewer-useful runtime fields without copying arbitrary settings wholesale."""
+
+    curated: dict[str, Any] = {}
+    for key in [
+        "schema",
+        "codex_client",
+        "claude_client",
+        "vscode_version",
+        "copilot_extensions",
+        "surface",
+        "date_time",
+        "timezone",
+        "metadata_block",
+        "limitations",
+    ]:
+        if key in metadata:
+            curated[key] = _redact_runtime_value(metadata[key])
+    workspace = metadata.get("workspace")
+    if isinstance(workspace, dict):
+        curated["workspace"] = {
+            key: _redact_runtime_value(workspace.get(key))
+            for key in ["repo_name", "commit_sha"]
+            if workspace.get(key) is not None
+        }
+    session = metadata.get("session")
+    if isinstance(session, dict):
+        curated["session"] = {
+            key: _redact_runtime_value(session.get(key))
+            for key in [
+                "model",
+                "reasoning_effort",
+                "reasoning_summary",
+                "verbosity",
+                "approval_policy",
+                "sandbox_mode",
+                "metadata_sources",
+            ]
+            if key in session
+        }
+    return curated
+
+
+def _redact_runtime_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: ("[redacted]" if any(part in str(key).lower() for part in _SENSITIVE_KEY_PARTS) else _redact_runtime_value(item))
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_redact_runtime_value(item) for item in value]
+    return value
+
+
 def _passport_findings(
     ai_use: dict[str, Any],
     prompt_files: list[dict[str, Any]],
@@ -270,6 +362,7 @@ def _passport_findings(
     human_intervention_files: list[dict[str, Any]],
     review_files: list[dict[str, Any]],
     runtime_metadata_files: list[dict[str, Any]],
+    runtime_metadata: list[dict[str, Any]],
 ) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
     if not ai_use:
@@ -390,6 +483,27 @@ def _passport_findings(
                 "message": "model metadata is marked unavailable but runtime_metadata_files is empty.",
             }
         )
+    if runtime_metadata and any(item.get("parse_error") for item in runtime_metadata):
+        severity = "error" if ai_use.get("model_metadata_source") == "agent_unavailable" else "warning"
+        findings.append(
+            {
+                "severity": severity,
+                "code": "RUNTIME_METADATA_INVALID",
+                "message": "A runtime metadata file could not be parsed or safely embedded.",
+            }
+        )
+    if ai_use.get("model_metadata_source") == "agent_unavailable" and runtime_metadata:
+        for item in runtime_metadata:
+            metadata = item.get("metadata")
+            if not isinstance(metadata, dict) or not metadata.get("schema") or not isinstance(metadata.get("session"), dict):
+                findings.append(
+                    {
+                        "severity": "error",
+                        "code": "RUNTIME_METADATA_INCOMPLETE",
+                        "message": "Unavailable model metadata requires a parsed runtime metadata object with schema and session fields.",
+                    }
+                )
+                break
     if ai_use.get("human_reviewed") is True:
         if ai_use.get("review_status") in {None, "not_reviewed"} or not review_files:
             findings.append(

@@ -34,7 +34,7 @@ def write_workflow_report(
     diagnostics = execution_payload.get("diagnostics", [])
     artifacts = execution_payload.get("artifacts", {})
     ai_use = _ai_use_from_events(events)
-    passport = _load_ai_passport(blob_target.parent, ai_use)
+    passport = _load_ai_passport(data, blob_target.parent, ai_use)
     passport_status = passport.get("status", "not recorded") if passport else "not recorded"
     review_message = _review_message(validation_status, execution_status, passport_status)
 
@@ -255,7 +255,14 @@ def _load_structured(path: Path) -> dict[str, Any]:
     return loaded if isinstance(loaded, dict) else {}
 
 
-def _load_ai_passport(folder: Path, ai_use: dict[str, Any]) -> dict[str, Any]:
+def _load_ai_passport(blob_data: dict[str, Any], folder: Path, ai_use: dict[str, Any]) -> dict[str, Any]:
+    metadata_passport = blob_data.get("metadata", {}).get("ai_lock")
+    if isinstance(metadata_passport, dict):
+        return metadata_passport
+    ai_lock_event = _last_event(blob_data.get("events", []), "ai_lock")
+    event_passport = (ai_lock_event or {}).get("payload", {}).get("ai_lock")
+    if isinstance(event_passport, dict):
+        return event_passport
     candidates = []
     if ai_use.get("ai_passport_path"):
         candidates.append(Path(str(ai_use["ai_passport_path"])))
