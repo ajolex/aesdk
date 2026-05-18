@@ -115,20 +115,20 @@ def draft_pap(
         }
     if method == "iv_2sls":
         pap["iv_block"] = {"instruments": ["TBD"], "first_stage_f_threshold": 10}
-    if method == "experimental_rct":
+    if method == "experimental_rct" or design_origin == "experimental_rct":
         pap["rct_block"] = {
             "randomization_unit": unit or "unit",
             "assignment_variable": treatment,
             "treatment_arms": [treatment],
             "control_group": "control",
             "assignment_probability": 0.5,
-            "randomization_method": "TBD",
+            "randomization_method": "researcher_review_required",
             "estimand": "ITT",
-            "baseline_balance_check": True,
+            "baseline_balance_check": False,
             "attrition_check": False,
-            "spillover_plan": "TBD",
+            "spillover_plan": "researcher_review_required",
             "spillover_risk": False,
-            "sutva_rationale": "TBD",
+            "sutva_rationale": "researcher_review_required",
             "power_calculation": False,
             "trial_registration": False,
             "pap_registered": True,

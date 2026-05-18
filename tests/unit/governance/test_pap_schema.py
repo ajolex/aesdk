@@ -37,6 +37,48 @@ def test_pap_schema_accepts_rct_tot_strategy(valid_pap_dict: dict) -> None:
     validate_pap_dict(pap)
 
 
+def test_pap_schema_requires_rct_block_for_experimental_design_origin(valid_pap_dict: dict) -> None:
+    pap = {
+        **valid_pap_dict,
+        "data": {**valid_pap_dict["data"], "structure": "panel"},
+        "identification": {
+            **valid_pap_dict["identification"],
+            "strategy": "Logit",
+            "design_origin": "experimental_rct",
+            "standard_errors": "cluster",
+            "clustering": "respondent",
+        },
+    }
+    pap.pop("did_block")
+
+    with pytest.raises(PAPValidationError):
+        validate_pap_dict(pap)
+
+
+def test_pap_schema_accepts_conditional_and_mixed_logit(valid_pap_dict: dict) -> None:
+    for strategy in ["ConditionalLogit", "MixedLogit"]:
+        pap = {
+            **valid_pap_dict,
+            "data": {**valid_pap_dict["data"], "structure": "panel"},
+            "identification": {
+                **valid_pap_dict["identification"],
+                "strategy": strategy,
+                "standard_errors": "cluster",
+                "clustering": "respondent",
+            },
+            "limited_dependent_block": {
+                "outcome_type": "binary",
+                "link_or_family": strategy,
+                "target_effect": "average marginal effects",
+                "marginal_effect_plan": "predicted-probability contrasts",
+                "convergence_check": True,
+            },
+        }
+        pap.pop("did_block")
+
+        validate_pap_dict(pap)
+
+
 def test_pap_schema_accepts_ai_use_block(valid_pap_dict: dict) -> None:
     pap = {
         **valid_pap_dict,

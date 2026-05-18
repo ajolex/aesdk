@@ -367,7 +367,7 @@ methods:
         - "limited_dependent"
         - "binary_dummy_variables"
     data_structures: ["cross-section", "pooled", "panel"]
-    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    estimators: ["Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     purpose: "Model binary, censored, truncated, ordered, multinomial, or count outcomes with estimators and interpretations suited to the outcome support."
     assumptions:
       - "The outcome type and support are declared before choosing the estimator."

@@ -24,7 +24,7 @@ def test_agent_codex_runtime_writes_metadata(tmp_path, monkeypatch) -> None:
         ["agent", "codex-runtime", "--workspace", str(workspace), "--output", str(output)],
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert "runtime_metadata_written=" in result.output
     assert "Codex client: codex-cli test" in result.output
     assert output.exists()
@@ -46,7 +46,7 @@ def test_agent_claude_runtime_writes_metadata(tmp_path, monkeypatch) -> None:
         ["agent", "claude-runtime", "--workspace", str(workspace), "--output", str(output)],
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert "runtime_metadata_written=" in result.output
     assert "Claude Code client: claude test" in result.output
     assert output.exists()
@@ -198,7 +198,10 @@ def test_validate_uses_pap_and_proposal_directories_for_ai_evidence(valid_pap_di
     proposal_dir.mkdir()
     pap_path = pap_dir / "pap.yaml"
     pap_path.write_text(yaml.safe_dump(valid_pap_dict, sort_keys=False), encoding="utf-8")
+    (proposal_dir / "prompt.md").write_text("Write Stata code.", encoding="utf-8")
+    (proposal_dir / "output.md").write_text("Generated Stata code.", encoding="utf-8")
     (proposal_dir / "followup_transcript.md").write_text("Human asked a clarification question.", encoding="utf-8")
+    (proposal_dir / "analysis.do").write_text("display 1\n", encoding="utf-8")
     proposal_path = proposal_dir / "proposal.json"
     proposal_path.write_text(
         json.dumps(
@@ -419,7 +422,7 @@ def test_agent_intake_writes_scaffold_files(tmp_path) -> None:
         ],
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.output
     assert "method=did" in result.output
     assert (tmp_path / "pap.yaml").exists()
     assert (tmp_path / "proposal.json").exists()
@@ -594,6 +597,60 @@ def test_agent_ai_passport_writes_lockfile(valid_pap_dict, tmp_path) -> None:
     assert "ai_passport_written=" in result.output
     assert "status=pass" in result.output
     assert output_path.exists()
+
+
+def test_agent_ai_passport_writes_summary_json(valid_pap_dict, tmp_path) -> None:
+    import yaml
+
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    code = tmp_path / "analysis.do"
+    prompt.write_text("Write code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "provider": "Anthropic",
+            "model": "claude-sonnet-4.6",
+            "model_metadata_source": "agent_reported",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [code.name],
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    output_path = tmp_path / "ai.lock.json"
+    summary_path = tmp_path / "ai.gaps.json"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "agent",
+            "ai-passport",
+            "--pap",
+            str(pap_path),
+            "--output",
+            str(output_path),
+            "--summary-output",
+            str(summary_path),
+        ],
+    )
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert result.exit_code == 0
+    assert "ai_passport_summary_written=" in result.output
+    assert summary["schema"] == "aesdk.ai_passport_summary.v1"
+    assert summary["evidence_summary"]["artifact_counts"]["code_files"]["declared"] == 1
 
 
 def test_agent_ai_passport_writes_r_lockfile(valid_pap_dict, tmp_path) -> None:

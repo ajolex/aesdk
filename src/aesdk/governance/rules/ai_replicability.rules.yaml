@@ -75,6 +75,32 @@ rules:
       title: "AI Replicability Passport"
       year: 2026
 
+  - id: AI-REP-027
+    name: "Archived AI Prompts Must Exist"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_prompts_archived == true and ai_prompt_file_missing_count > 0"
+    requirement: "Prompt files listed in ai_use.prompt_files must exist in the project artifacts."
+    guidance: "Archive prompt templates, user prompts, system/developer instructions when available, or transcript excerpts before claiming prompts are archived."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-028
+    name: "Archived AI Outputs Must Exist"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_raw_outputs_archived == true and ai_output_file_missing_count > 0"
+    requirement: "Output files listed in ai_use.output_files must exist in the project artifacts."
+    guidance: "Archive raw model responses, JSONL classifications, extracted labels, generated-code transcripts, or output summaries before claiming raw outputs are archived."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
   - id: AI-REP-004
     name: "AI-Derived Data Requires Raw Output Archive"
     severity: "error"
@@ -140,6 +166,19 @@ rules:
       title: "AI Replicability Passport"
       year: 2026
 
+  - id: AI-REP-029
+    name: "AI-Derived Input Files Must Exist"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_output_used_as_data == true and ai_input_file_missing_count > 0"
+    requirement: "Input files listed for AI-derived data workflows must exist in the project artifacts."
+    guidance: "Archive the source documents, transcripts, images, or datasets processed by the AI system so the AI input corpus can be hashed and reviewed."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
   - id: AI-REP-011
     name: "AI Code Generation Requires Code File Records"
     severity: "error"
@@ -148,6 +187,19 @@ rules:
     condition: "ai_used == true and 'code_generation' in ai_roles and ai_code_file_count == 0"
     requirement: "If AI generated or materially revised analysis code, the final reviewable code file must be listed in ai_use.code_files."
     guidance: "Add every AI-generated or AI-revised analysis script, including Python `.py`, R `.R`, and Stata `.do` files, so the AI passport can hash the exact code that was checked, run, and archived."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-026
+    name: "AI Code Generation Requires Existing Code Files"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and 'code_generation' in ai_roles and ai_code_file_missing_count > 0"
+    requirement: "AI-generated or AI-revised analysis code files listed in ai_use.code_files must exist in the project artifacts."
+    guidance: "Create or archive the final reviewable `.py`, `.R`, or `.do` analysis scripts before claiming code generation in AI-use metadata."
     reference:
       authors: "AESDK"
       title: "AI Replicability Passport"

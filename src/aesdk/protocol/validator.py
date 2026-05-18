@@ -103,9 +103,74 @@ def _normalized_phrase(value: Any) -> str:
     return "_".join(part for part in text.split() if part)
 
 
+def _normalized_standard_errors(value: Any) -> Any:
+    if value is None:
+        return None
+    text = _normalized_phrase(value)
+    if not text:
+        return value
+    cluster_negations = {
+        "not_clustered",
+        "not_cluster",
+        "no_cluster",
+        "no_clustering",
+        "non_clustered",
+        "unclustered",
+        "without_cluster",
+        "without_clustering",
+    }
+    if (
+        text in cluster_negations
+        or any(text.startswith(f"{item}_") for item in cluster_negations)
+        or any(text.endswith(f"_{item}") for item in cluster_negations)
+        or "not_cluster" in text
+        or "no_cluster" in text
+        or "unclustered" in text
+        or "without_cluster" in text
+    ):
+        return value
+    if "two_way" in text and "cluster" in text:
+        return "two-way-cluster"
+    if "wild" in text and "cluster" in text:
+        return "wild-cluster-bootstrap"
+    if "driscoll" in text or "kraay" in text:
+        return "driscoll-kraay"
+    if text in {"robust_cluster", "cluster_robust", "clustered_robust"}:
+        return "robust-cluster"
+    if "cluster" in text:
+        return "cluster"
+    aliases = {
+        "hc1": "HC1",
+        "hc2": "HC2",
+        "hc3": "HC3",
+        "heteroskedasticity_robust": "HC1",
+        "heteroskedastic_robust": "HC1",
+        "robust": "HC1",
+        "iid": "conventional",
+        "classical": "conventional",
+    }
+    return aliases.get(text, value)
+
+
 def _text_missing(value: Any) -> bool:
     text = _normalized_phrase(value)
-    return text in {"", "tbd", "todo", "to_be_determined", "unknown", "na", "n_a", "none", "not_applicable", "undisclosed", "not_disclosed", "unavailable"}
+    return text in {
+        "",
+        "tbd",
+        "todo",
+        "to_be_determined",
+        "unknown",
+        "na",
+        "n_a",
+        "none",
+        "not_applicable",
+        "undisclosed",
+        "not_disclosed",
+        "unavailable",
+        "researcher_review_required",
+        "requires_researcher_review",
+        "draft_requires_researcher_review",
+    }
 
 
 def _code_languages_from_files(values: Any) -> list[str]:
@@ -409,8 +474,14 @@ def _estimator_matches(active: Any, rule_estimators: list[Any]) -> bool:
     aliases = {
         "SynthControl": "SyntheticControl",
     }
-    active_text = str(active) if active is not None else ""
-    candidates = {active_text, aliases.get(active_text, active_text)}
+    active_values = _as_list(active)
+    if not active_values:
+        active_values = [""]
+    candidates: set[str] = set()
+    for value in active_values:
+        active_text = str(value) if value is not None else ""
+        candidates.add(active_text)
+        candidates.add(aliases.get(active_text, active_text))
     return any(str(item) in candidates for item in rule_estimators)
 
 
@@ -500,9 +571,20 @@ class ValidationContext:
         covariates = identification.get("covariates", {})
         outcome_variable = self._proposal.get("outcome_variable", identification.get("outcome_variable"))
         treatment_variable = self._proposal.get("treatment_variable", identification.get("treatment_variable"))
-        standard_errors = self._proposal.get("standard_errors", identification.get("standard_errors"))
+        standard_errors = _normalized_standard_errors(
+            self._proposal.get("standard_errors", identification.get("standard_errors"))
+        )
         clustering_level = self._proposal.get("clustering", identification.get("clustering"))
         fixed_effects = self._proposal.get("fixed_effects", identification.get("fixed_effects", []))
+        estimator = self._proposal.get("estimator", identification.get("strategy"))
+        design_origin = _first_present(self._proposal.get("design_origin"), identification.get("design_origin"))
+        active_estimators = _as_list(estimator)
+        if identification.get("strategy") not in active_estimators:
+            active_estimators.extend(_as_list(identification.get("strategy")))
+        if design_origin == "experimental_rct" or rct:
+            active_estimators.append("RCT")
+            if rct.get("estimand"):
+                active_estimators.append(rct.get("estimand"))
 
         context: dict[str, Any] = {
             "data": data,
@@ -528,9 +610,10 @@ class ValidationContext:
             "G": data.get("G"),
             "time_invariant_vars": data.get("time_invariant_vars", []),
             "identification_strategy": identification.get("strategy"),
-            "design_origin": _first_present(self._proposal.get("design_origin"), identification.get("design_origin")),
+            "design_origin": design_origin,
             "design_note": _first_present(self._proposal.get("design_note"), identification.get("design_note")),
-            "estimator": self._proposal.get("estimator", identification.get("strategy")),
+            "estimator": estimator,
+            "active_estimators": sorted({str(item) for item in active_estimators if item is not None and str(item)}),
             "task_required_estimator": _first_present(
                 self._proposal.get("task_required_estimator"),
                 did.get("task_required_estimator"),
@@ -740,9 +823,25 @@ class ValidationContext:
             "ai_output_used_as_data": ai_use.get("ai_output_used_as_data", False),
             "ai_derived_variables": _as_list(ai_use.get("ai_derived_variables", [])),
             "ai_prompt_file_count": len(_as_list(ai_use.get("prompt_files", []))),
+            "ai_prompt_file_missing_count": _file_missing_count(
+                ai_use.get("prompt_files", []),
+                self._field_base_dirs("prompt_files", ai_use_provenance),
+            ),
             "ai_output_file_count": len(_as_list(ai_use.get("output_files", []))),
+            "ai_output_file_missing_count": _file_missing_count(
+                ai_use.get("output_files", []),
+                self._field_base_dirs("output_files", ai_use_provenance),
+            ),
             "ai_input_file_count": len(_as_list(ai_use.get("input_files", []))),
+            "ai_input_file_missing_count": _file_missing_count(
+                ai_use.get("input_files", []),
+                self._field_base_dirs("input_files", ai_use_provenance),
+            ),
             "ai_code_file_count": len(_as_list(ai_use.get("code_files", []))),
+            "ai_code_file_missing_count": _file_missing_count(
+                ai_use.get("code_files", []),
+                self._field_base_dirs("code_files", ai_use_provenance),
+            ),
             "ai_qa_sample_plan": ai_use.get("qa_sample_plan"),
             "ai_sensitivity_plan": ai_use.get("sensitivity_plan"),
         }
@@ -810,7 +909,7 @@ class Validator:
         for rule in self.registry.all_rules:
             estimators = rule.get("estimators") or []
             structures = rule.get("data_structures") or []
-            if not _estimator_matches(context.get("estimator"), estimators):
+            if not _estimator_matches(context.get("active_estimators", context.get("estimator")), estimators):
                 continue
             if structures and context.get("data_structure") not in structures:
                 continue

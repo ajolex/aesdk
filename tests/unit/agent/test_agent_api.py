@@ -784,6 +784,73 @@ def test_write_ai_passport_hashes_runtime_metadata(valid_pap_dict, tmp_path) -> 
     assert len(result.passport["artifact_hashes"]["runtime_metadata_files"][0]["sha256"]) == 64
 
 
+def test_ai_passport_surfaces_advisory_evidence_gaps(valid_pap_dict, tmp_path) -> None:
+    prompt = tmp_path / "prompt.md"
+    output = tmp_path / "output.md"
+    code = tmp_path / "analysis.do"
+    runtime = tmp_path / "codex_runtime.json"
+    prompt.write_text("Write Stata code.", encoding="utf-8")
+    output.write_text("Generated code.", encoding="utf-8")
+    code.write_text("set seed 20260514\ndisplay 1\n", encoding="utf-8")
+    runtime.write_text(
+        json.dumps(
+            {
+                "schema": "aesdk.codex_runtime.v1",
+                "codex_client": "codex-cli test",
+                "session": {
+                    "model": "gpt-5.5",
+                    "reasoning_effort": "high",
+                    "reasoning_summary": None,
+                    "verbosity": None,
+                    "metadata_sources": {
+                        "session_model": "config.toml",
+                        "reasoning_summary": "unavailable",
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    pap = {
+        **valid_pap_dict,
+        "ai_use": {
+            "used": True,
+            "role": ["code_generation", "other"],
+            "languages": ["stata"],
+            "agent_tool": "Codex",
+            "model_metadata_source": "agent_unavailable",
+            "model_metadata_unavailable_reason": "Codex did not expose an audited provider metadata object.",
+            "runtime_metadata_files": [runtime.name],
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "human_modified_code": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "prompt_files": [prompt.name],
+            "output_files": [output.name],
+            "code_files": [code.name],
+            "notes": "AI also summarized methodological context.",
+        },
+    }
+    pap_path = tmp_path / "pap.yaml"
+    summary_path = tmp_path / "ai.gaps.json"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+
+    result = ae.write_ai_passport(pap_path=pap_path, summary_output_path=summary_path)
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+
+    codes = {item["code"] for item in result.passport["improvement_opportunities"]}
+    assert result.status == "pass"
+    assert result.summary_path == summary_path
+    assert result.passport["evidence_summary"]["model_metadata"]["runtime_models"] == ["gpt-5.5"]
+    assert "reasoning_summary" in result.passport["evidence_summary"]["model_metadata"]["runtime_unavailable_fields"]
+    assert "HUMAN_REVIEW_NOT_DOCUMENTED" in codes
+    assert "RUNTIME_MODEL_NEEDS_VERIFICATION" in codes
+    assert summary["schema"] == "aesdk.ai_passport_summary.v1"
+    assert summary["evidence_summary"]["artifact_counts"]["code_files"]["hashed"] == 1
+
+
 def test_write_ai_passport_hashes_human_in_loop_and_intervention_evidence(valid_pap_dict, tmp_path) -> None:
     prompt = tmp_path / "prompt.md"
     output = tmp_path / "output.md"
@@ -1173,6 +1240,11 @@ def test_drafted_rct_pap_can_be_serialized_and_validated(tmp_path) -> None:
 
     assert pap["identification"]["strategy"] == "RCT"
     assert pap["rct_block"]["randomization_unit"] == "student"
+    assert pap["rct_block"]["baseline_balance_check"] is False
+    assert pap["rct_block"]["spillover_plan"] == "researcher_review_required"
+    assert {"RCT-011", "RCT-012", "RCT-013", "RCT-021"}.issubset(
+        {violation.rule_id for violation in result.violations}
+    )
     assert result.status in {"pass", "warn"}
     assert not result.blocked
 

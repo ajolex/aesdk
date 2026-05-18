@@ -12,7 +12,7 @@ rules:
   - id: W-PANEL-001
     name: "Cluster SE Required for Panel Data"
     severity: "error"
-    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD"]
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy", "Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["panel"]
     condition: "data_structure == 'panel' and standard_errors not in ['cluster', 'robust-cluster', 'two-way-cluster', 'driscoll-kraay', 'wild-cluster-bootstrap']"
     requirement: "Panel designs must use clustered standard errors or stronger alternatives."
@@ -26,7 +26,7 @@ rules:
   - id: W-PANEL-002
     name: "Cluster Level Must Not Be Below Treatment Assignment Level"
     severity: "error"
-    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy"]
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy", "Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["panel", "pooled"]
     condition: "treatment_assignment_level is not None and clustering_level is not None and cluster_hierarchy_rank(clustering_level) < cluster_hierarchy_rank(treatment_assignment_level)"
     requirement: "Clustered inference must be at least as aggregated as the treatment assignment level when that level is known."
@@ -40,7 +40,7 @@ rules:
   - id: W-PANEL-003
     name: "Clustered Inference Requires Declared Cluster Level"
     severity: "error"
-    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy"]
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy", "Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["panel", "pooled"]
     condition: "standard_errors in ['cluster', 'robust-cluster', 'two-way-cluster', 'wild-cluster-bootstrap'] and cluster_level_missing(clustering_level)"
     requirement: "Clustered inference must declare the clustering level or cluster dimensions."
@@ -54,7 +54,7 @@ rules:
   - id: W-PANEL-004
     name: "Two-Way Cluster Requires Two Declared Dimensions"
     severity: "error"
-    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy"]
+    estimators: ["OLS", "FE", "RE", "POLS", "TWFE", "DiD", "EventStudy", "Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["panel", "pooled"]
     condition: "standard_errors == 'two-way-cluster' and cluster_level_count(clustering_level) < 2"
     requirement: "Two-way clustered inference must declare two clustering dimensions."

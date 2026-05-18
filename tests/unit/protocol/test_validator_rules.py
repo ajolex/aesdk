@@ -93,7 +93,37 @@ def test_did_design_origin_falls_back_to_pap_when_proposal_null(valid_pap_dict: 
 
     ids = {violation.rule_id for violation in result.violations}
     assert "AP-DID-005" in ids
-    assert result.status == "warn"
+    assert "RCT-001" in ids
+    assert result.status == "block"
+
+
+def test_experimental_design_origin_triggers_rct_rules_for_logit(valid_pap_dict: dict) -> None:
+    pap = {
+        **valid_pap_dict,
+        "data": {**valid_pap_dict["data"], "structure": "panel"},
+        "identification": {
+            **valid_pap_dict["identification"],
+            "strategy": "Logit",
+            "design_origin": "experimental_rct",
+            "standard_errors": "cluster",
+            "clustering": "respondent",
+        },
+    }
+    pap.pop("did_block")
+    pap["limited_dependent_block"] = {
+        "outcome_type": "binary",
+        "link_or_family": "conditional logit",
+        "target_effect": "average marginal effects",
+        "marginal_effect_plan": "predicted-probability contrasts",
+        "convergence_check": True,
+        "separation_check": True,
+    }
+
+    result = Validator().validate(pap, {"estimator": "Logit", "standard_errors": "cluster", "clustering": "respondent"})
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert {"RCT-001", "RCT-002", "RCT-003", "RCT-004"}.issubset(ids)
+    assert result.status == "block"
 
 
 def test_rule_engine_triggers_ci_001_for_hallucinated_citations(valid_pap_dict: dict) -> None:
@@ -169,6 +199,16 @@ def test_rule_engine_blocks_one_dimension_for_two_way_cluster(valid_pap_dict: di
 
     ids = {violation.rule_id for violation in result.violations}
     assert "W-PANEL-004" in ids
+    assert result.status == "block"
+
+
+def test_rule_engine_does_not_treat_not_clustered_as_clustered(valid_pap_dict: dict) -> None:
+    proposal = {"estimator": "DiD", "standard_errors": "not clustered", "clustering": "state"}
+
+    result = Validator().validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-PANEL-001" in ids
     assert result.status == "block"
 
 
@@ -546,6 +586,23 @@ def test_differential_attrition_requires_sensitivity_plan(valid_pap_dict: dict) 
     assert result.status == "warn"
 
 
+def test_differential_attrition_blocks_under_strict_conformance(valid_pap_dict: dict) -> None:
+    pap = _rct_pap(
+        valid_pap_dict,
+        rct_block={"attrition_differential": True, "attrition_sensitivity_plan": ""},
+    )
+
+    result = Validator().validate(
+        pap,
+        {"estimator": "RCT", "standard_errors": "HC1"},
+        conformance=ConformanceLevel.STRICT,
+    )
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "RCT-019" in ids
+    assert result.status == "block"
+
+
 def test_spillover_risk_requires_plan_and_sutva_rationale(valid_pap_dict: dict) -> None:
     pap = _rct_pap(
         valid_pap_dict,
@@ -578,6 +635,24 @@ def test_rct_placeholder_text_does_not_satisfy_spillover_or_sutva_rules(valid_pa
     ids = {violation.rule_id for violation in result.violations}
     assert "RCT-013" in ids
     assert "RCT-021" in ids
+    assert result.status == "warn"
+
+
+def test_rct_review_required_text_does_not_satisfy_spillover_or_sutva_rules(valid_pap_dict: dict) -> None:
+    pap = _rct_pap(
+        valid_pap_dict,
+        rct_block={
+            "baseline_balance_check": False,
+            "attrition_check": False,
+            "spillover_plan": "researcher_review_required",
+            "sutva_rationale": "draft_requires_researcher_review",
+        },
+    )
+
+    result = Validator().validate(pap, {"estimator": "RCT", "standard_errors": "HC1"})
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert {"RCT-011", "RCT-012", "RCT-013", "RCT-021"}.issubset(ids)
     assert result.status == "warn"
 
 
@@ -763,6 +838,85 @@ def test_limited_dependent_rules_block_raw_coefficients(valid_pap_dict: dict) ->
     assert result.status == "block"
 
 
+def test_conditional_logit_uses_limited_dependent_rules(valid_pap_dict: dict) -> None:
+    pap = {
+        **valid_pap_dict,
+        "data": {**valid_pap_dict["data"], "structure": "cross-section"},
+        "identification": {**valid_pap_dict["identification"], "strategy": "ConditionalLogit"},
+    }
+    pap.pop("did_block")
+    pap["limited_dependent_block"] = {
+        "outcome_type": "binary",
+        "target_effect": "average marginal effects",
+        "marginal_effect_plan": "predicted-probability contrasts",
+        "convergence_check": True,
+        "separation_check": True,
+    }
+
+    result = Validator().validate(pap, {"estimator": "ConditionalLogit"})
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "LDV-002" in ids
+    assert result.status == "block"
+
+
+def test_panel_logit_requires_clustered_inference(valid_pap_dict: dict) -> None:
+    pap = {
+        **valid_pap_dict,
+        "data": {**valid_pap_dict["data"], "structure": "panel"},
+        "identification": {
+            **valid_pap_dict["identification"],
+            "strategy": "MixedLogit",
+            "standard_errors": "HC3",
+        },
+    }
+    pap.pop("did_block")
+    pap["limited_dependent_block"] = {
+        "outcome_type": "binary",
+        "link_or_family": "mixed logit",
+        "target_effect": "average marginal effects",
+        "marginal_effect_plan": "predicted-probability contrasts",
+        "convergence_check": True,
+    }
+
+    result = Validator().validate(pap, {"estimator": "MixedLogit", "standard_errors": "HC3"})
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-PANEL-001" in ids
+    assert result.status == "block"
+
+
+def test_panel_logit_accepts_human_readable_cluster_se(valid_pap_dict: dict) -> None:
+    pap = {
+        **valid_pap_dict,
+        "data": {**valid_pap_dict["data"], "structure": "panel"},
+        "identification": {
+            **valid_pap_dict["identification"],
+            "strategy": "MixedLogit",
+            "standard_errors": "cluster",
+            "clustering": "respondent_id",
+        },
+    }
+    pap.pop("did_block")
+    pap["limited_dependent_block"] = {
+        "outcome_type": "binary",
+        "link_or_family": "mixed logit",
+        "target_effect": "average marginal effects",
+        "marginal_effect_plan": "predicted-probability contrasts",
+        "convergence_check": True,
+        "separation_check": True,
+    }
+
+    result = Validator().validate(
+        pap,
+        {"estimator": "MixedLogit", "standard_errors": "cluster by respondent_id", "clustering": "respondent_id"},
+    )
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "W-PANEL-001" not in ids
+    assert result.status == "pass"
+
+
 def test_time_series_rules_block_lookahead_bias(valid_pap_dict: dict) -> None:
     pap = {
         **valid_pap_dict,
@@ -836,7 +990,12 @@ def test_ai_derived_data_requires_archived_outputs(valid_pap_dict: dict) -> None
     assert result.status == "block"
 
 
-def test_ai_code_generation_with_archived_artifacts_passes(valid_pap_dict: dict) -> None:
+def test_ai_code_generation_with_archived_artifacts_passes(valid_pap_dict: dict, tmp_path) -> None:
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "outputs").mkdir()
+    (tmp_path / "prompts" / "code.md").write_text("Write Stata code.", encoding="utf-8")
+    (tmp_path / "outputs" / "code.md").write_text("Generated Stata code.", encoding="utf-8")
+    (tmp_path / "analysis.do").write_text("display 1\n", encoding="utf-8")
     proposal = {
         "estimator": "DiD",
         "standard_errors": "cluster",
@@ -859,7 +1018,7 @@ def test_ai_code_generation_with_archived_artifacts_passes(valid_pap_dict: dict)
         },
     }
 
-    result = Validator().validate(valid_pap_dict, proposal)
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
 
     assert not {item.rule_id for item in result.violations if item.rule_id.startswith("AI-REP")}
     assert result.status == "pass"
@@ -888,6 +1047,71 @@ def test_ai_code_generation_requires_language_and_code_file_records(valid_pap_di
 
     ids = {violation.rule_id for violation in result.violations}
     assert {"AI-REP-011", "AI-REP-012"}.issubset(ids)
+    assert result.status == "block"
+
+
+def test_ai_code_generation_requires_existing_code_files(valid_pap_dict: dict, tmp_path) -> None:
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "outputs").mkdir()
+    (tmp_path / "prompts" / "code.md").write_text("Write Stata code.", encoding="utf-8")
+    (tmp_path / "outputs" / "code.md").write_text("Generated Stata code.", encoding="utf-8")
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "ai_output_used_as_data": False,
+            "prompt_files": ["prompts/code.md"],
+            "output_files": ["outputs/code.md"],
+            "code_files": ["missing_analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert "AI-REP-026" in ids
+    assert result.status == "block"
+
+
+def test_ai_archived_prompt_and_output_files_must_exist(valid_pap_dict: dict, tmp_path) -> None:
+    (tmp_path / "analysis.do").write_text("display 1\n", encoding="utf-8")
+    proposal = {
+        "estimator": "DiD",
+        "standard_errors": "cluster",
+        "clustering": "state",
+        "ai_use": {
+            "used": True,
+            "role": "code_generation",
+            "languages": ["stata"],
+            "model": "gpt-example",
+            "model_metadata_source": "api_response",
+            "prompts_archived": True,
+            "raw_outputs_archived": True,
+            "human_reviewed": False,
+            "reproducible_without_ai": True,
+            "live_model_required": False,
+            "ai_output_used_as_data": False,
+            "prompt_files": ["prompts/missing.md"],
+            "output_files": ["outputs/missing.md"],
+            "code_files": ["analysis.do"],
+        },
+    }
+
+    result = Validator(artifact_base_dirs=[tmp_path]).validate(valid_pap_dict, proposal)
+
+    ids = {violation.rule_id for violation in result.violations}
+    assert {"AI-REP-027", "AI-REP-028"}.issubset(ids)
     assert result.status == "block"
 
 
@@ -1036,7 +1260,12 @@ def test_ai_model_metadata_source_required(valid_pap_dict: dict) -> None:
 
 
 def test_ai_coding_agent_can_record_unavailable_model_metadata(valid_pap_dict: dict, tmp_path) -> None:
+    (tmp_path / "prompts").mkdir()
+    (tmp_path / "outputs").mkdir()
+    (tmp_path / "prompts" / "code.md").write_text("Write Stata code.", encoding="utf-8")
+    (tmp_path / "outputs" / "code.md").write_text("Generated Stata code.", encoding="utf-8")
     (tmp_path / "codex_runtime.json").write_text('{"schema":"aesdk.codex_runtime.v1"}', encoding="utf-8")
+    (tmp_path / "analysis.do").write_text("display 1\n", encoding="utf-8")
     proposal = {
         "estimator": "DiD",
         "standard_errors": "cluster",

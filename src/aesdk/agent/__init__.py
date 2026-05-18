@@ -1,6 +1,6 @@
 """Agent-facing AESDK convenience API."""
 
-from .ai_passport import AIPassportResult, build_ai_passport, write_ai_passport
+from .ai_passport import AIPassportResult, build_ai_passport, build_ai_passport_summary, write_ai_passport
 from .context import AgentContext, agent_context
 from .intake import IntakeResult, intake_prompt, intake_task
 from .pap_draft import draft_pap
@@ -29,6 +29,7 @@ __all__ = [
     "agent_context",
     "append_interaction_log",
     "build_ai_passport",
+    "build_ai_passport_summary",
     "draft_pap",
     "intake_prompt",
     "intake_task",

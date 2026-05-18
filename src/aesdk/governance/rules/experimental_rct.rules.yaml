@@ -61,6 +61,7 @@ rules:
   - id: RCT-005
     name: "RCT Requires Assignment Probability or Randomization Method"
     severity: "warning"
+    strict_escalates: false
     estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "rct_assignment_probability is None and (rct_randomization_method is None or rct_randomization_method == '')"
@@ -73,6 +74,7 @@ rules:
   - id: RCT-006
     name: "RCT Reproducibility Requires Seed or Assignment File"
     severity: "warning"
+    strict_escalates: false
     estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "rct_random_seed is None and text_missing(rct_assignment_file) and rct_randomization_method != 'public_lottery'"
@@ -121,6 +123,7 @@ rules:
   - id: RCT-010
     name: "ATT/ToT Requires Compliance Reporting"
     severity: "warning"
+    strict_escalates: false
     estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "rct_estimand in ['ATT', 'ToT', 'LATE'] and rct_compliance_rate is None"
@@ -169,6 +172,7 @@ rules:
   - id: RCT-014
     name: "RCT Should Register Power Calculation"
     severity: "warning"
+    strict_escalates: false
     estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "rct_power_calculation != true"
@@ -181,6 +185,7 @@ rules:
   - id: RCT-015
     name: "RCT Should Register Trial and PAP"
     severity: "warning"
+    strict_escalates: false
     estimators: ["RCT", "RandomizedExperiment", "RandomizedControlledTrial", "ITT", "ATE", "ATT", "ToT", "LATE"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "rct_trial_registration != true or rct_pap_registered != true"

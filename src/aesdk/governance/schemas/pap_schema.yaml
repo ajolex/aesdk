@@ -86,6 +86,8 @@ properties:
           - IVGMM
           - DynamicPanelGMM
           - Logit
+          - ConditionalLogit
+          - MixedLogit
           - Probit
           - Tobit
           - Poisson
@@ -310,6 +312,15 @@ allOf:
           properties:
             strategy:
               enum: [RCT, RandomizedExperiment, RandomizedControlledTrial, ITT, ATE, ATT, ToT, LATE]
+    then:
+      required: [rct_block]
+  - if:
+      properties:
+        identification:
+          required: [design_origin]
+          properties:
+            design_origin:
+              const: experimental_rct
     then:
       required: [rct_block]
   - if:

@@ -14,7 +14,7 @@ maturity:
   code_recipes: "starter"
 scope:
   use_when:
-    - "The outcome is binary, censored, truncated, ordered, multinomial, fractional, or a count."
+    - "The outcome is binary, censored, truncated, ordered, multinomial, conditional choice, mixed choice, fractional, or a count."
     - "The analysis needs effects that respect the outcome support."
   do_not_use_when:
     - "The agent reports nonlinear coefficients as probability or count effects without transformation."
@@ -25,7 +25,7 @@ estimand:
 decision_tree:
   - id: "limited-design-001"
     if: "Outcome is binary."
-    then: "Use logit/probit or a linear probability model with interpretation and inference explicitly justified."
+    then: "Use logit/probit, conditional logit, mixed logit, or a linear probability model with interpretation and inference explicitly justified."
   - id: "limited-design-002"
     if: "Outcome is censored or corner-solution."
     then: "Consider Tobit or two-part models and state censoring assumptions."
@@ -130,7 +130,7 @@ code_recipes:
 reporting_checklist:
   - "State outcome type, link/family, and target effect scale."
   - "Report marginal effects or predicted contrasts when needed."
-  - "Report convergence, separation, and overdispersion checks."
+  - "Report convergence, separation, and overdispersion checks; for repeated choice panels, cluster or otherwise account for respondent-level dependence."
   - "Avoid causal language unless identification is separately justified."
 source_anchors:
   - source_id: "greene_econometric_analysis"

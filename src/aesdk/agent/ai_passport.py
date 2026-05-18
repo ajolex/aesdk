@@ -19,6 +19,7 @@ from aesdk.protocol.validator import DEFAULT_RULES_DIR, Validator
 class AIPassportResult:
     path: Path
     passport: dict[str, Any]
+    summary_path: Path | None = None
 
     @property
     def status(self) -> str:
@@ -34,6 +35,7 @@ def write_ai_passport(
     pap_path: str | Path,
     proposal_path: str | Path | None = None,
     output_path: str | Path | None = None,
+    summary_output_path: str | Path | None = None,
 ) -> AIPassportResult:
     """Write an ai.lock.json-style passport from PAP/proposal AI-use metadata."""
 
@@ -51,7 +53,11 @@ def write_ai_passport(
         proposal_path=proposal_target,
     )
     output.write_text(json.dumps(passport, indent=2), encoding="utf-8")
-    return AIPassportResult(path=output, passport=passport)
+    summary_output = Path(summary_output_path) if summary_output_path else None
+    if summary_output is not None:
+        summary_output.parent.mkdir(parents=True, exist_ok=True)
+        summary_output.write_text(json.dumps(build_ai_passport_summary(passport), indent=2), encoding="utf-8")
+    return AIPassportResult(path=output, passport=passport, summary_path=summary_output)
 
 
 def build_ai_passport(
@@ -98,6 +104,17 @@ def build_ai_passport(
         merged.get("runtime_metadata_files", []),
     )
     runtime_metadata = _runtime_metadata_records(runtime_metadata_files)
+    artifact_hashes = {
+        "prompt_files": prompt_files,
+        "output_files": output_files,
+        "input_files": input_files,
+        "ai_code_draft_files": ai_code_draft_files,
+        "code_files": code_files,
+        "human_interaction_files": human_interaction_files,
+        "human_intervention_files": human_intervention_files,
+        "review_files": review_files,
+        "runtime_metadata_files": runtime_metadata_files,
+    }
     findings = _passport_findings(
         merged,
         prompt_files,
@@ -123,6 +140,20 @@ def build_ai_passport(
         )
 
     status = _status_from_findings(findings)
+    evidence_summary = _passport_evidence_summary(
+        merged,
+        artifact_hashes,
+        runtime_metadata,
+        findings,
+        validation,
+        status,
+    )
+    improvement_opportunities = _passport_improvement_opportunities(
+        merged,
+        evidence_summary,
+        findings,
+        validation,
+    )
     pap_target = Path(pap_path) if pap_path else None
     proposal_target = Path(proposal_path) if proposal_path else None
     return {
@@ -139,22 +170,218 @@ def build_ai_passport(
         "field_provenance": provenance,
         "field_provenance_note": "Field provenance records which source document supplied each metadata field; it is not independent verification of the field value.",
         "ai_use": _public_ai_use(merged),
-        "artifact_hashes": {
-            "prompt_files": prompt_files,
-            "output_files": output_files,
-            "input_files": input_files,
-            "ai_code_draft_files": ai_code_draft_files,
-            "code_files": code_files,
-            "human_interaction_files": human_interaction_files,
-            "human_intervention_files": human_intervention_files,
-            "review_files": review_files,
-            "runtime_metadata_files": runtime_metadata_files,
-        },
+        "artifact_hashes": artifact_hashes,
         "runtime_metadata": runtime_metadata,
         "validation": validation,
         "findings": findings,
+        "evidence_summary": evidence_summary,
+        "improvement_opportunities": improvement_opportunities,
         "replication_statement": _replication_statement(merged, status),
     }
+
+
+def build_ai_passport_summary(passport: dict[str, Any]) -> dict[str, Any]:
+    """Return a compact reviewer-oriented JSON summary for an AI passport."""
+
+    return {
+        "schema": "aesdk.ai_passport_summary.v1",
+        "passport_schema": passport.get("schema"),
+        "status": passport.get("status"),
+        "generated_at": passport.get("generated_at"),
+        "source_documents": passport.get("source_documents", {}),
+        "evidence_summary": passport.get("evidence_summary", {}),
+        "improvement_opportunities": passport.get("improvement_opportunities", []),
+        "findings": passport.get("findings", []),
+        "validation": passport.get("validation"),
+        "replication_statement": passport.get("replication_statement"),
+    }
+
+
+def _passport_evidence_summary(
+    ai_use: dict[str, Any],
+    artifact_hashes: dict[str, list[dict[str, Any]]],
+    runtime_metadata: list[dict[str, Any]],
+    findings: list[dict[str, Any]],
+    validation: dict[str, Any] | None,
+    status: str,
+) -> dict[str, Any]:
+    runtime_summary = _runtime_metadata_summary(runtime_metadata)
+    return {
+        "artifact_type": "ai_passport",
+        "status": status,
+        "declared_ai_use": ai_use.get("used") is True,
+        "roles": _as_list(ai_use.get("role", [])),
+        "languages": _as_list(ai_use.get("languages", [])),
+        "finding_counts": _severity_counts(findings),
+        "validation_status": validation.get("status") if isinstance(validation, dict) else None,
+        "validation_violation_count": len(validation.get("violations", [])) if isinstance(validation, dict) else None,
+        "model_metadata": {
+            "model": None if _text_missing(ai_use.get("model")) else ai_use.get("model"),
+            "agent_tool": ai_use.get("agent_tool"),
+            "source": ai_use.get("model_metadata_source"),
+            "unavailable_reason_present": not _text_missing(ai_use.get("model_metadata_unavailable_reason")),
+            "runtime_models": runtime_summary["models"],
+            "runtime_unavailable_fields": runtime_summary["unavailable_session_fields"],
+        },
+        "human_review": {
+            "human_in_loop": ai_use.get("human_in_loop") is True,
+            "human_reviewed": ai_use.get("human_reviewed") is True,
+            "review_status": ai_use.get("review_status"),
+            "human_modified_code": ai_use.get("human_modified_code") is True,
+        },
+        "artifact_counts": {
+            key: _artifact_record_summary(records)
+            for key, records in artifact_hashes.items()
+        },
+        "runtime_metadata": runtime_summary,
+        "replication_blob_note": "The AI passport is not the .aesdk.json replication blob; keep it alongside the blob produced by agent prepare or agent run.",
+    }
+
+
+def _passport_improvement_opportunities(
+    ai_use: dict[str, Any],
+    evidence_summary: dict[str, Any],
+    findings: list[dict[str, Any]],
+    validation: dict[str, Any] | None,
+) -> list[dict[str, str]]:
+    if ai_use.get("used") is not True:
+        return []
+
+    opportunities: list[dict[str, str]] = []
+    if ai_use.get("human_reviewed") is not True:
+        opportunities.append(
+            {
+                "severity": "info",
+                "code": "HUMAN_REVIEW_NOT_DOCUMENTED",
+                "message": "Passport evidence can pass without documented researcher review; add review_status and review_files once a human review is complete.",
+            }
+        )
+
+    model_summary = evidence_summary.get("model_metadata", {})
+    if ai_use.get("model_metadata_source") == "agent_unavailable":
+        if model_summary.get("runtime_models") and _text_missing(ai_use.get("model")):
+            opportunities.append(
+                {
+                    "severity": "info",
+                    "code": "RUNTIME_MODEL_NEEDS_VERIFICATION",
+                    "message": "Runtime metadata contains a session model, but the passport model field is still unavailable; copy it only if the researcher can verify the runtime snapshot is authoritative.",
+                }
+            )
+        opportunities.append(
+            {
+                "severity": "info",
+                "code": "AGENT_METADATA_LIMITED",
+                "message": "Agent-unavailable model metadata is acceptable with a runtime snapshot, but it is weaker than provider API metadata or a reviewed session transcript.",
+            }
+        )
+
+    unavailable_fields = model_summary.get("runtime_unavailable_fields") or []
+    if unavailable_fields:
+        opportunities.append(
+            {
+                "severity": "info",
+                "code": "RUNTIME_METADATA_FIELDS_UNAVAILABLE",
+                "message": "Some runtime fields were unavailable in the archived snapshot: " + ", ".join(str(item) for item in unavailable_fields) + ".",
+            }
+        )
+
+    roles = set(_as_list(ai_use.get("role", [])))
+    artifact_counts = evidence_summary.get("artifact_counts", {})
+    if "code_generation" in roles and not artifact_counts.get("ai_code_draft_files", {}).get("declared", 0):
+        opportunities.append(
+            {
+                "severity": "info",
+                "code": "AI_CODE_DRAFT_NOT_ARCHIVED",
+                "message": "For generated analysis code, archive the first AI draft separately when feasible so later human edits can be compared directly.",
+            }
+        )
+
+    if "other" in roles and _text_missing(ai_use.get("notes")):
+        opportunities.append(
+            {
+                "severity": "info",
+                "code": "OTHER_AI_ROLE_NEEDS_NOTE",
+                "message": "The role list includes other; describe the additional AI role in notes.",
+            }
+        )
+
+    if isinstance(validation, dict) and validation.get("status") == "warn":
+        opportunities.append(
+            {
+                "severity": "info",
+                "code": "VALIDATION_WARNINGS_NEED_ACKNOWLEDGEMENT",
+                "message": "PAP/proposal validation returned warnings; record researcher acknowledgement before treating the workflow as final.",
+            }
+        )
+
+    if any(item.get("severity") == "warning" for item in findings):
+        opportunities.append(
+            {
+                "severity": "info",
+                "code": "PASSPORT_WARNINGS_PRESENT",
+                "message": "The passport has warning findings; resolve or explicitly acknowledge them before archival.",
+            }
+        )
+
+    return opportunities
+
+
+def _artifact_record_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    missing = [str(record.get("original_path")) for record in records if not record.get("exists")]
+    hashed = [record for record in records if record.get("exists") and record.get("sha256")]
+    return {
+        "declared": len(records),
+        "existing": sum(1 for record in records if record.get("exists")),
+        "hashed": len(hashed),
+        "missing": len(missing),
+        "missing_paths": missing,
+    }
+
+
+def _runtime_metadata_summary(runtime_metadata: list[dict[str, Any]]) -> dict[str, Any]:
+    models: list[str] = []
+    unavailable_fields: set[str] = set()
+    parse_error_count = 0
+    embedded_count = 0
+    for item in runtime_metadata:
+        if item.get("parse_error"):
+            parse_error_count += 1
+        if item.get("embedded") is True:
+            embedded_count += 1
+        metadata = item.get("metadata")
+        if not isinstance(metadata, dict):
+            continue
+        session = metadata.get("session")
+        if not isinstance(session, dict):
+            continue
+        model = session.get("model")
+        if not _text_missing(model):
+            models.append(str(model))
+        for key, value in session.items():
+            if key == "metadata_sources":
+                continue
+            if _text_missing(value):
+                unavailable_fields.add(str(key))
+        metadata_sources = session.get("metadata_sources")
+        if isinstance(metadata_sources, dict):
+            for key, value in metadata_sources.items():
+                if _text_missing(value):
+                    unavailable_fields.add(str(key))
+    return {
+        "declared": len(runtime_metadata),
+        "embedded": embedded_count,
+        "parse_error_count": parse_error_count,
+        "models": sorted(set(models)),
+        "unavailable_session_fields": sorted(unavailable_fields),
+    }
+
+
+def _severity_counts(items: list[dict[str, Any]]) -> dict[str, int]:
+    counts = {"error": 0, "warning": 0, "info": 0}
+    for item in items:
+        severity = str(item.get("severity", "info"))
+        counts[severity] = counts.get(severity, 0) + 1
+    return counts
 
 
 def _load_structured(path: Path | None) -> dict[str, Any]:

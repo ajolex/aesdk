@@ -13,7 +13,7 @@ rules:
   - id: LDV-001
     name: "Limited Dependent Model Requires Outcome Type"
     severity: "error"
-    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    estimators: ["Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "limited_outcome_type is None or limited_outcome_type == ''"
     requirement: "Limited dependent variable workflows must declare the outcome support."
@@ -25,7 +25,7 @@ rules:
   - id: LDV-002
     name: "Limited Dependent Model Requires Link or Family"
     severity: "error"
-    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    estimators: ["Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "limited_link_or_family is None or limited_link_or_family == ''"
     requirement: "Limited dependent variable workflows must declare the link or family."
@@ -37,10 +37,10 @@ rules:
   - id: LDV-003
     name: "Raw Nonlinear Coefficients Cannot Be Reported as Effects"
     severity: "error"
-    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    estimators: ["Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "limited_reporting_raw_coefficient == true and limited_marginal_effect_plan is None"
-    requirement: "Logit, probit, Tobit, count, ordered, or multinomial coefficients cannot be silently reported as probability/count effects."
+    requirement: "Logit, conditional logit, mixed logit, probit, Tobit, count, ordered, or multinomial coefficients cannot be silently reported as probability/count effects."
     guidance: "Add marginal effects, predicted contrasts, expected counts, or state that coefficients are on the model scale."
     reference:
       authors: "Greene, William H.; Wooldridge, Jeffrey M."
@@ -49,7 +49,7 @@ rules:
   - id: LDV-004
     name: "Limited Dependent Model Requires Target Effect"
     severity: "error"
-    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    estimators: ["Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "limited_target_effect is None or limited_target_effect == ''"
     requirement: "Limited dependent variable workflows must declare the target effect scale."
@@ -61,7 +61,7 @@ rules:
   - id: LDV-005
     name: "Limited Dependent Model Requires Convergence Check"
     severity: "warning"
-    estimators: ["Logit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
+    estimators: ["Logit", "ConditionalLogit", "MixedLogit", "Probit", "Tobit", "Poisson", "NegativeBinomial", "OrderedLogit", "MultinomialLogit"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "limited_convergence_check != true"
     requirement: "Limited dependent variable workflows should report optimizer convergence and numerical warnings."
@@ -73,7 +73,7 @@ rules:
   - id: LDV-006
     name: "Binary Outcome Requires Separation Check"
     severity: "warning"
-    estimators: ["Logit", "Probit"]
+    estimators: ["Logit", "ConditionalLogit", "MixedLogit", "Probit"]
     data_structures: ["cross-section", "pooled", "panel"]
     condition: "limited_outcome_type == 'binary' and limited_separation_check != true"
     requirement: "Binary logit/probit workflows should check complete or quasi-complete separation."

@@ -136,6 +136,8 @@ def _method_from_pap_strategy(pap_path: Path) -> str:
         "NonlinearDiD": "nonlinear_did",
         "GMM": "gmm",
         "Logit": "limited_dependent",
+        "ConditionalLogit": "limited_dependent",
+        "MixedLogit": "limited_dependent",
         "Probit": "limited_dependent",
         "ARIMA": "time_series",
     }
@@ -262,7 +264,7 @@ def agent_intake_cmd(
     title: str | None = typer.Option(None, help="Optional PAP title."),
     blob: Path | None = typer.Option(None, help="Output .aesdk.json path. Defaults to output-dir/.aesdk.json."),
     context: str = typer.Option("research", help="Execution context for the replication blob."),
-    conformance: str = typer.Option("strict", help="Conformance level for the replication blob."),
+    conformance: str = typer.Option("basic", help="Conformance level for the starter replication blob."),
     policy_version: str = typer.Option("1.0.0", help="Policy version tag for governance passport."),
 ) -> None:
     prompt_text = _read_prompt_value(prompt, prompt_file)
@@ -340,7 +342,7 @@ def agent_prepare_cmd(
     title: str | None = typer.Option(None, help="Optional PAP title."),
     blob: Path | None = typer.Option(None, help="Output .aesdk.json path. Defaults to output-dir/.aesdk.json."),
     context: str = typer.Option("research", help="Execution context: research|production|regulated"),
-    conformance: str = typer.Option("strict", help="Conformance level: basic|strict|regulated"),
+    conformance: str = typer.Option("basic", help="Conformance level for the starter replication blob: basic|strict|regulated"),
     policy_version: str = typer.Option("1.0.0", help="Policy version tag for governance passport."),
 ) -> None:
     prompt_text = _read_prompt_value(prompt, prompt_file)
@@ -429,14 +431,17 @@ def agent_ai_passport_cmd(
     pap: Path = typer.Option(..., exists=True, help="PAP path containing optional ai_use metadata."),
     proposal: Path | None = typer.Option(None, exists=True, help="Optional proposal JSON path."),
     output: Path | None = typer.Option(None, help="Output ai.lock.json path."),
+    summary_output: Path | None = typer.Option(None, "--summary-output", help="Optional compact JSON summary of evidence gaps and improvement opportunities."),
     allow_incomplete: bool = typer.Option(
         False,
         "--allow-incomplete",
         help="Write the passport even if AI evidence is incomplete and would otherwise block.",
     ),
 ) -> None:
-    result = write_ai_passport(pap_path=pap, proposal_path=proposal, output_path=output)
+    result = write_ai_passport(pap_path=pap, proposal_path=proposal, output_path=output, summary_output_path=summary_output)
     typer.echo(f"ai_passport_written={result.path}")
+    if result.summary_path:
+        typer.echo(f"ai_passport_summary_written={result.summary_path}")
     typer.echo(f"status={result.status}")
     if result.blocked and not allow_incomplete:
         for finding in result.passport.get("findings", []):

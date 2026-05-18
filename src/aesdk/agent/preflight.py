@@ -26,6 +26,8 @@ _METHOD_STRATEGY_ALIASES = {
     "gmm": {"GMM", "IVGMM", "DynamicPanelGMM"},
     "limited_dependent": {
         "Logit",
+        "ConditionalLogit",
+        "MixedLogit",
         "Probit",
         "Tobit",
         "Poisson",
