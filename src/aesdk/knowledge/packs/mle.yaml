@@ -1,0 +1,121 @@
+version: "0.1.0"
+method_id: "mle"
+name: "Maximum Likelihood Estimation"
+language_coverage:
+  supported_recipes: ["python", "r"]
+  intentionally_missing:
+    stata: "Stata's ml/mlexp are supported by governed execution but no starter recipe is bundled yet; pending human review."
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "theoretical_microfoundations"
+  curriculum_topics: ["maximum_likelihood", "asymptotic_theory"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "A fully parametric model implies a likelihood for the observed data."
+    - "The estimand is a parameter of that distribution or a function of it."
+  do_not_use_when:
+    - "No credible distributional model can be stated and only moment conditions are available (use GMM)."
+    - "The likelihood is badly misspecified and no quasi-MLE robust interpretation is offered."
+estimand:
+  default: "Parameters of a declared parametric model, with marginal effects reported where relevant."
+  agent_instruction: "State the density/likelihood, the parameters, and whether inference is classical MLE or quasi-MLE with robust standard errors."
+decision_tree:
+  - id: "mle-design-001"
+    if: "The parametric model is believed correctly specified."
+    then: "Use MLE with information-matrix standard errors; report LR/Wald/LM tests."
+  - id: "mle-design-002"
+    if: "The conditional mean is of interest but the full density may be misspecified."
+    then: "Use quasi-MLE (e.g., Poisson QMLE) with robust sandwich standard errors and say so."
+  - id: "mle-design-003"
+    if: "Optimization is unstable or the likelihood is flat."
+    then: "Report convergence, try multiple starting values, and check identification before interpreting estimates."
+assumptions:
+  - id: "mle-assumption-001"
+    plain: "The model that generates the data is written down as a likelihood."
+    formal: "The parametric density f(y|x;theta) is correctly specified up to theta."
+    evidence: "Stated distribution, link, and parameter vector."
+  - id: "mle-assumption-002"
+    plain: "The estimator actually found the maximum."
+    formal: "The optimizer converged to an interior maximum with a well-conditioned Hessian."
+    evidence: "Convergence flags, gradient norm, and starting-value checks."
+  - id: "mle-assumption-003"
+    plain: "The standard errors match how confident the model really is."
+    formal: "Information-matrix equality holds under correct specification; otherwise a robust sandwich variance is used."
+    evidence: "Declared standard-error type and a misspecification note when quasi-MLE."
+required_inputs:
+  - id: "mle-input-001"
+    name: "distribution_or_likelihood"
+    reason: "Defines the objective being maximized."
+  - id: "mle-input-002"
+    name: "parameters"
+    reason: "Names the quantities being estimated."
+  - id: "mle-input-003"
+    name: "standard_error_type"
+    reason: "Determines whether inference is classical or robust."
+diagnostics:
+  - id: "mle-diagnostic-001"
+    name: "convergence"
+    instruction: "Report convergence status, gradient/Hessian conditioning, and starting-value sensitivity."
+  - id: "mle-diagnostic-002"
+    name: "identification"
+    instruction: "Confirm the parameters are identified (no flat directions in the likelihood)."
+  - id: "mle-diagnostic-003"
+    name: "hypothesis_tests"
+    instruction: "Use likelihood-ratio, Wald, or Lagrange-multiplier tests appropriate to the restriction."
+failure_modes:
+  - id: "mle-failure-001"
+    risk: "Reporting estimates from a run that did not converge."
+    response: "Block interpretation until convergence is confirmed."
+  - id: "mle-failure-002"
+    risk: "Classical standard errors under a misspecified density."
+    response: "Warn and require robust (sandwich) inference or a correct-specification argument."
+code_recipes:
+  - id: "mle-python-genericlikelihood"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels_genericmle"
+    template: |
+      import numpy as np
+      from statsmodels.base.model import GenericLikelihoodModel
+
+      class MyMLE(GenericLikelihoodModel):
+          def loglike(self, params):
+              # return the log-likelihood evaluated at params
+              ...
+
+      fit = MyMLE(endog, exog).fit()
+      print(fit.summary())
+  - id: "mle-r-stats4"
+    language: "r"
+    package: "stats4"
+    source: "r_stats4_mle"
+    template: |
+      library(stats4)
+
+      negll <- function(theta) {
+        # return the negative log-likelihood
+      }
+      fit <- mle(negll, start = list(theta = 0))
+      summary(fit)
+reporting_checklist:
+  - "State the distribution/likelihood and the parameters estimated."
+  - "Report convergence and identification diagnostics."
+  - "State the standard-error type (information matrix vs robust sandwich)."
+  - "Interpret marginal effects where the raw coefficients are not the quantity of interest."
+source_anchors:
+  - source_id: "greene_econometric_analysis"
+    topics:
+      - "maximum likelihood estimation and inference"
+  - source_id: "hansen_econometrics_2022"
+    topics:
+      - "asymptotic theory for extremum and likelihood estimators"
+  - source_id: "wooldridge_cross_section_panel"
+    topics:
+      - "quasi-MLE and robust inference"

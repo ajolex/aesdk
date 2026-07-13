@@ -1,0 +1,118 @@
+version: "0.1.0"
+method_id: "garch"
+name: "Volatility Models (ARCH / GARCH)"
+language_coverage:
+  supported_recipes: ["python", "r"]
+  intentionally_missing:
+    stata: "Stata supports arch, but no starter recipe is bundled yet; pending human review."
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "theoretical_microfoundations"
+  curriculum_topics: ["financial_volatility", "time_series_dynamics"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
+maturity:
+  status: "reviewed_guardrail"
+  source_review: "primary_source_page_audited"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "A time series (often financial returns) shows volatility clustering to be modeled or forecast."
+    - "The conditional variance, not only the conditional mean, is of interest."
+  do_not_use_when:
+    - "There is no evidence of ARCH effects in the residuals."
+    - "The data are not a genuine time series with a stable frequency."
+estimand:
+  default: "The conditional-variance process alongside the conditional-mean model, and volatility forecasts."
+  agent_instruction: "Specify the conditional-mean model first, then the variance model and innovation distribution, and test for ARCH effects before fitting."
+decision_tree:
+  - id: "garch-design-001"
+    if: "Residuals show volatility clustering and symmetric responses."
+    then: "Use a GARCH(1,1) with a stated innovation distribution."
+  - id: "garch-design-002"
+    if: "Volatility responds asymmetrically to positive vs negative shocks (leverage)."
+    then: "Use EGARCH or GJR-GARCH."
+  - id: "garch-design-003"
+    if: "Standardized residuals are heavy-tailed."
+    then: "Use a Student-t (or skewed-t) innovation distribution."
+assumptions:
+  - id: "garch-assumption-001"
+    plain: "The average behavior of the series is modeled before its volatility."
+    formal: "A conditional-mean model is specified so the residuals feed the variance equation."
+    evidence: "Declared mean model and residuals."
+  - id: "garch-assumption-002"
+    plain: "There really is volatility clustering to model."
+    formal: "An ARCH-effects test (Engle LM) rejects constant conditional variance."
+    evidence: "Reported ARCH-LM test on the mean-model residuals."
+  - id: "garch-assumption-003"
+    plain: "The estimated variance process is well-behaved and does not explode."
+    formal: "Non-negativity and stationarity constraints hold (e.g., alpha, beta >= 0 and alpha + beta < 1 for GARCH(1,1))."
+    evidence: "Reported parameter estimates and the persistence sum."
+required_inputs:
+  - id: "garch-input-001"
+    name: "mean_model"
+    reason: "Defines the residuals that enter the variance equation."
+  - id: "garch-input-002"
+    name: "variance_model"
+    reason: "The ARCH/GARCH-family specification."
+  - id: "garch-input-003"
+    name: "innovation_distribution"
+    reason: "Determines tail behavior and likelihood."
+diagnostics:
+  - id: "garch-diagnostic-001"
+    name: "arch_test"
+    instruction: "Run and report an ARCH-effects (Engle LM) test before fitting a volatility model."
+  - id: "garch-diagnostic-002"
+    name: "persistence"
+    instruction: "Report the persistence (e.g., alpha + beta) and confirm stationarity/positivity constraints."
+  - id: "garch-diagnostic-003"
+    name: "standardized_residuals"
+    instruction: "Check standardized residuals for remaining autocorrelation and distributional fit (Ljung-Box)."
+failure_modes:
+  - id: "garch-failure-001"
+    risk: "Fitting a volatility model with no evidence of ARCH effects."
+    response: "Warn and require an ARCH-LM test first."
+  - id: "garch-failure-002"
+    risk: "Estimated variance process is non-stationary or has negative coefficients."
+    response: "Warn and require constraint checks before interpreting or forecasting."
+code_recipes:
+  - id: "garch-python-arch"
+    language: "python"
+    package: "arch"
+    source: "arch_py"
+    template: |
+      from arch import arch_model
+
+      am = arch_model(returns, mean="Constant", vol="GARCH", p=1, q=1, dist="t")
+      res = am.fit(disp="off")
+      print(res.summary())
+  - id: "garch-r-rugarch"
+    language: "r"
+    package: "rugarch"
+    source: "rugarch_r"
+    template: |
+      library(rugarch)
+
+      spec <- ugarchspec(
+        variance.model = list(model = "sGARCH", garchOrder = c(1, 1)),
+        mean.model = list(armaOrder = c(0, 0)),
+        distribution.model = "std"
+      )
+      fit <- ugarchfit(spec, data = returns)
+      show(fit)
+reporting_checklist:
+  - "State the conditional-mean model, the variance model, and the innovation distribution."
+  - "Report an ARCH-effects test justifying the volatility model."
+  - "Report persistence and confirm stationarity/positivity constraints."
+  - "Report standardized-residual diagnostics."
+source_anchors:
+  - source_id: "tsay_financial_time_series_2010"
+    topics:
+      - "conditional heteroscedastic models and testing for ARCH effects"
+      - "ARCH and GARCH model building and estimation"
+      - "EGARCH and leverage effects"
+    local_pdf_pages: [122, 127, 131, 135, 139, 149, 153]
+  - source_id: "box_jenkins_reinsel_ljung_2015"
+    topics:
+      - "time-series model building and residual diagnostics"

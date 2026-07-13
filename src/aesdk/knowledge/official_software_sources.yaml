@@ -9,6 +9,72 @@ sources:
     sdk_use:
       - "OLS and robust covariance examples"
       - "clustered covariance options"
+  statsmodels_genericmle:
+    language: "python"
+    url: "https://www.statsmodels.org/stable/dev/generated/statsmodels.base.model.GenericLikelihoodModel.html"
+    sdk_use:
+      - "custom maximum-likelihood estimation"
+      - "robust (sandwich) standard errors under misspecification"
+  r_stats4_mle:
+    language: "r"
+    url: "https://stat.ethz.ch/R-manual/R-devel/library/stats4/html/mle.html"
+    sdk_use:
+      - "maximum-likelihood estimation and profiling in base R"
+  statsmodels_nonparametric:
+    language: "python"
+    url: "https://www.statsmodels.org/stable/nonparametric.html"
+    sdk_use:
+      - "kernel regression and kernel density estimation"
+  np_r:
+    language: "r"
+    url: "https://cran.r-project.org/package=np"
+    sdk_use:
+      - "nonparametric kernel regression and bandwidth selection"
+  doubleml_py:
+    language: "python"
+    url: "https://docs.doubleml.org/stable/index.html"
+    sdk_use:
+      - "double/debiased machine learning with cross-fitting"
+  doubleml_r:
+    language: "r"
+    url: "https://docs.doubleml.org/r/stable/"
+    sdk_use:
+      - "double/debiased machine learning with cross-fitting"
+  econml_py:
+    language: "python"
+    url: "https://github.com/py-why/EconML"
+    sdk_use:
+      - "heterogeneous treatment effects and orthogonal/DML learners"
+  grf_r:
+    language: "r"
+    url: "https://grf-labs.github.io/grf/"
+    sdk_use:
+      - "causal forests for heterogeneous treatment effects"
+  pyblp_py:
+    language: "python"
+    url: "https://pyblp.readthedocs.io/en/stable/"
+    sdk_use:
+      - "BLP random-coefficients demand estimation"
+  arch_py:
+    language: "python"
+    url: "https://arch.readthedocs.io/en/latest/univariate/introduction.html"
+    sdk_use:
+      - "ARCH/GARCH volatility modeling"
+  rugarch_r:
+    language: "r"
+    url: "https://cran.r-project.org/package=rugarch"
+    sdk_use:
+      - "univariate GARCH-family volatility modeling"
+  pymc_py:
+    language: "python"
+    url: "https://www.pymc.io/welcome.html"
+    sdk_use:
+      - "Bayesian inference via MCMC"
+  brms_r:
+    language: "r"
+    url: "https://cran.r-project.org/package=brms"
+    sdk_use:
+      - "Bayesian regression models via Stan"
   linearmodels:
     language: "python"
     url: "https://bashtage.github.io/linearmodels/iv/iv/linearmodels.iv.model.IV2SLS.from_formula.html"

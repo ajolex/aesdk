@@ -1,0 +1,127 @@
+version: "0.1.0"
+method_id: "dml"
+name: "Double / Debiased Machine Learning"
+language_coverage:
+  supported_recipes: ["python", "r"]
+  intentionally_missing:
+    stata: "DML is primarily used via Python (DoubleML/EconML) and R (DoubleML/grf); no Stata starter recipe is bundled yet, pending human review."
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "advanced_empirical_research"
+  curriculum_topics: ["double_machine_learning", "potential_outcomes"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "A low-dimensional causal or structural parameter must be estimated with many controls or flexible nuisance functions."
+    - "Identification rests on unconfoundedness given controls, or on a valid instrument."
+  do_not_use_when:
+    - "There is no credible identification argument (machine learning does not create exogeneity)."
+    - "The target is pure prediction rather than a causal parameter."
+estimand:
+  default: "A low-dimensional causal parameter (e.g., ATE, ATT, LATE, or a partially linear coefficient), optionally with heterogeneity."
+  agent_instruction: "State the target parameter, the identification assumption, the nuisance learners, and the cross-fitting scheme before estimation."
+decision_tree:
+  - id: "dml-design-001"
+    if: "Treatment is unconfounded given high-dimensional controls and the effect is a scalar."
+    then: "Use a partially linear regression (PLR) or interactive regression model (IRM) DML estimator with cross-fitting."
+  - id: "dml-design-002"
+    if: "Identification uses an instrument."
+    then: "Use a partially linear IV (PLIV) DML estimator; the instrument must still satisfy relevance and exclusion."
+  - id: "dml-design-003"
+    if: "The goal is heterogeneous treatment effects (CATE)."
+    then: "Use a causal forest or a DML-based CATE learner and report honest confidence intervals."
+assumptions:
+  - id: "dml-assumption-001"
+    plain: "Controlling for the covariates (or using the instrument) makes the comparison credible."
+    formal: "Conditional unconfoundedness given X, or a valid instrument; machine learning estimates the nuisance functions, not identification."
+    evidence: "Stated identification assumption and the set of controls/instruments."
+  - id: "dml-assumption-002"
+    plain: "The estimator is built so small errors in the machine-learning steps do not bias the target."
+    formal: "The score for the target parameter is Neyman-orthogonal."
+    evidence: "Use of a documented orthogonal score (PLR/PLIV/IRM)."
+  - id: "dml-assumption-003"
+    plain: "The nuisance functions are learned on different data than the final estimate."
+    formal: "Cross-fitting (sample splitting) is used to remove own-observation overfitting bias."
+    evidence: "Reported number of folds and repetitions."
+required_inputs:
+  - id: "dml-input-001"
+    name: "target_parameter"
+    reason: "Defines the causal quantity of interest."
+  - id: "dml-input-002"
+    name: "identification"
+    reason: "States why the parameter is identified (unconfoundedness or instrument)."
+  - id: "dml-input-003"
+    name: "nuisance_learners"
+    reason: "The machine-learning models for the nuisance functions."
+  - id: "dml-input-004"
+    name: "cross_fitting_folds"
+    reason: "Controls the sample-splitting that removes overfitting bias."
+diagnostics:
+  - id: "dml-diagnostic-001"
+    name: "cross_fitting"
+    instruction: "Report the number of folds and repetitions used for cross-fitting."
+  - id: "dml-diagnostic-002"
+    name: "learner_sensitivity"
+    instruction: "Report sensitivity of the estimate to the choice of nuisance learners and tuning."
+  - id: "dml-diagnostic-003"
+    name: "heterogeneity_inference"
+    instruction: "For CATE, report honest confidence intervals (e.g., causal-forest honesty)."
+failure_modes:
+  - id: "dml-failure-001"
+    risk: "Calling an association causal without an identification assumption."
+    response: "Block causal interpretation until unconfoundedness or an instrument is stated."
+  - id: "dml-failure-002"
+    risk: "No cross-fitting, so regularization/overfitting bias contaminates the estimate."
+    response: "Warn and require cross-fitting."
+  - id: "dml-failure-003"
+    risk: "Using a non-orthogonal plug-in of machine-learning predictions."
+    response: "Warn and require a Neyman-orthogonal score."
+code_recipes:
+  - id: "dml-python-doubleml"
+    language: "python"
+    package: "doubleml"
+    source: "doubleml_py"
+    template: |
+      import doubleml as dml
+      from sklearn.ensemble import RandomForestRegressor, RandomForestClassifier
+
+      dml_data = dml.DoubleMLData(df, y_col="outcome", d_cols="treatment", x_cols=controls)
+      model = dml.DoubleMLPLR(
+          dml_data,
+          ml_l=RandomForestRegressor(),
+          ml_m=RandomForestClassifier(),
+          n_folds=5,
+      )
+      model.fit()
+      print(model.summary)
+  - id: "dml-r-grf-causalforest"
+    language: "r"
+    package: "grf"
+    source: "grf_r"
+    template: |
+      library(grf)
+
+      cf <- causal_forest(X = X, Y = Y, W = W)
+      average_treatment_effect(cf)
+reporting_checklist:
+  - "State the target parameter and the identification assumption."
+  - "Report the orthogonal score (PLR/PLIV/IRM) and the nuisance learners."
+  - "Report cross-fitting folds/repetitions and sensitivity to learners."
+  - "For heterogeneous effects, report honest confidence intervals."
+source_anchors:
+  - source_id: "chernozhukov_dml_2018"
+    topics:
+      - "double/debiased machine learning and Neyman-orthogonal scores"
+      - "cross-fitting for high-dimensional nuisance estimation"
+  - source_id: "wager_athey_2018"
+    topics:
+      - "causal forests and honest inference for heterogeneous effects"
+  - source_id: "athey_imbens_2019"
+    topics:
+      - "machine learning methods for causal inference"

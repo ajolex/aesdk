@@ -1,0 +1,49 @@
+source:
+  id: "GARCH_GOVERNANCE"
+  method_id: "garch"
+  topic: "volatility_models"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "theoretical_microfoundations"
+  topics:
+    - "financial_volatility"
+    - "time_series_dynamics"
+rules:
+  - id: GARCH-001
+    name: "Volatility Models Require A Time Series"
+    severity: "error"
+    estimators: ["ARCH", "GARCH", "EGARCH", "GJR-GARCH"]
+    data_structures: ["cross-section", "pooled", "panel"]
+    condition: "estimator in ['ARCH', 'GARCH', 'EGARCH', 'GJR-GARCH']"
+    requirement: "ARCH/GARCH-family models are defined for time-ordered data; the declared data structure is not a time series."
+    guidance: "Declare the series as time-series with a stable frequency and a time index before fitting a volatility model."
+    reference:
+      authors: "Tsay, Ruey S."
+      book: "Analysis of Financial Time Series"
+      title: "Conditional heteroskedastic models"
+  - id: GARCH-002
+    name: "Justify The Volatility Model With An ARCH-Effects Test"
+    severity: "warning"
+    estimators: ["ARCH", "GARCH", "EGARCH", "GJR-GARCH"]
+    data_structures: ["time-series"]
+    condition: "estimator in ['ARCH', 'GARCH', 'EGARCH', 'GJR-GARCH'] and garch_arch_test_planned != true"
+    requirement: "A volatility model should be justified by evidence of ARCH effects in the mean-model residuals."
+    guidance: "Run and report an Engle ARCH-LM test on the conditional-mean residuals before fitting a GARCH-family model."
+    reference:
+      authors: "Tsay, Ruey S."
+      book: "Analysis of Financial Time Series"
+      title: "Testing for ARCH effects"
+  - id: GARCH-003
+    name: "Declare The Conditional-Mean Model And Innovation Distribution"
+    severity: "warning"
+    strict_escalates: false
+    estimators: ["ARCH", "GARCH", "EGARCH", "GJR-GARCH"]
+    data_structures: ["time-series"]
+    condition: "estimator in ['ARCH', 'GARCH', 'EGARCH', 'GJR-GARCH'] and (text_missing(garch_mean_model) or text_missing(garch_innovation_distribution))"
+    requirement: "A volatility model requires a declared conditional-mean model and innovation distribution."
+    guidance: "State the mean model (whose residuals feed the variance equation) and the innovation distribution (normal or Student-t); heavy tails usually require a Student-t."
+    reference:
+      authors: "Tsay, Ruey S."
+      book: "Analysis of Financial Time Series"
+      title: "Mean and volatility model building"

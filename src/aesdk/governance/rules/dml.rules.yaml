@@ -1,0 +1,51 @@
+source:
+  id: "DML_GOVERNANCE"
+  method_id: "dml"
+  topic: "double_debiased_machine_learning"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "double_machine_learning"
+    - "potential_outcomes"
+rules:
+  - id: DML-001
+    name: "Causal DML Requires An Identification Assumption"
+    severity: "error"
+    estimators: ["DML", "DoubleML", "PLR", "PLIV", "IRM", "CausalForest"]
+    data_structures: []
+    condition: "causal_claim == true and identification_assumption_documented == false"
+    requirement: "Double machine learning estimates a causal parameter only under a stated identification assumption; machine learning does not create exogeneity."
+    guidance: "State conditional unconfoundedness given the controls, or a valid instrument, before interpreting the DML estimate causally."
+    reference:
+      authors: "Chernozhukov, Victor; Chetverikov, Denis; Demirer, Mert; Duflo, Esther; Hansen, Christian; Newey, Whitney; Robins, James"
+      journal: "Econometrics Journal"
+      year: 2018
+      title: "Double/Debiased Machine Learning for Treatment and Structural Parameters"
+  - id: DML-002
+    name: "DML Requires Cross-Fitting"
+    severity: "warning"
+    estimators: ["DML", "DoubleML", "PLR", "PLIV", "IRM"]
+    data_structures: []
+    condition: "estimator in ['DML', 'DoubleML', 'PLR', 'PLIV', 'IRM'] and dml_cross_fitting != true"
+    requirement: "DML must use cross-fitting (sample splitting) to remove overfitting/regularization bias from the machine-learned nuisance functions."
+    guidance: "Estimate nuisance functions on held-out folds and report the number of folds and repetitions."
+    reference:
+      authors: "Chernozhukov, Victor; et al."
+      journal: "Econometrics Journal"
+      year: 2018
+      title: "Cross-fitting in double/debiased machine learning"
+  - id: DML-003
+    name: "DML Requires An Orthogonal Score"
+    severity: "warning"
+    estimators: ["DML", "DoubleML", "PLR", "PLIV", "IRM"]
+    data_structures: []
+    condition: "estimator in ['DML', 'DoubleML', 'PLR', 'PLIV', 'IRM'] and dml_orthogonal_score != true"
+    requirement: "The moment/score for the target parameter must be Neyman-orthogonal so first-order nuisance errors do not bias it."
+    guidance: "Use a documented orthogonal score (partially linear, PLIV, or interactive regression model), not a naive plug-in of machine-learning predictions."
+    reference:
+      authors: "Chernozhukov, Victor; et al."
+      journal: "Econometrics Journal"
+      year: 2018
+      title: "Neyman-orthogonal scores for structural parameters"

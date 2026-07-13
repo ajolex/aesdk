@@ -1,0 +1,120 @@
+version: "0.1.0"
+method_id: "bayesian"
+name: "Bayesian Econometrics"
+language_coverage:
+  supported_recipes: ["python", "r"]
+  intentionally_missing:
+    stata: "Stata supports bayes:/bayesmh, but no starter recipe is bundled yet; pending human review."
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "theoretical_microfoundations"
+  curriculum_topics: ["bayesian_inference", "maximum_likelihood"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
+maturity:
+  status: "reviewed_guardrail"
+  source_review: "primary_source_page_audited"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "Prior information should be combined with the likelihood, or a full posterior is wanted."
+    - "Hierarchical structure or regularization is naturally expressed through priors."
+  do_not_use_when:
+    - "Priors cannot be justified and the audience expects frequentist inference without disclosure."
+    - "The reported quantities would be presented as frequentist confidence statements."
+estimand:
+  default: "A posterior distribution over parameters, summarized by posterior means and credible intervals."
+  agent_instruction: "State the priors, the likelihood, the sampler, and the convergence and prior-sensitivity plans before estimation."
+decision_tree:
+  - id: "bayesian-design-001"
+    if: "A standard regression with prior information is wanted."
+    then: "Use a Bayesian regression with explicit priors and report the posterior."
+  - id: "bayesian-design-002"
+    if: "Data are grouped/multilevel."
+    then: "Use a hierarchical model with priors on the group-level variances."
+  - id: "bayesian-design-003"
+    if: "The posterior has no closed form."
+    then: "Use MCMC and demonstrate convergence before summarizing the posterior."
+assumptions:
+  - id: "bayesian-assumption-001"
+    plain: "The priors are stated and defensible."
+    formal: "Proper (or clearly justified improper) priors are specified for all parameters."
+    evidence: "Declared priors and their rationale."
+  - id: "bayesian-assumption-002"
+    plain: "The sampler actually explored the posterior."
+    formal: "MCMC chains have converged and mixed (e.g., R-hat near 1, adequate effective sample size)."
+    evidence: "Convergence diagnostics and trace plots."
+  - id: "bayesian-assumption-003"
+    plain: "Conclusions are not driven only by the prior."
+    formal: "Posterior conclusions are robust to reasonable alternative priors."
+    evidence: "A prior-sensitivity analysis."
+required_inputs:
+  - id: "bayesian-input-001"
+    name: "priors"
+    reason: "Defines the prior information combined with the likelihood."
+  - id: "bayesian-input-002"
+    name: "likelihood"
+    reason: "Defines the data model."
+  - id: "bayesian-input-003"
+    name: "sampler"
+    reason: "How the posterior is computed (e.g., HMC/NUTS, Gibbs)."
+diagnostics:
+  - id: "bayesian-diagnostic-001"
+    name: "convergence"
+    instruction: "Report R-hat, effective sample size, and trace plots for MCMC."
+  - id: "bayesian-diagnostic-002"
+    name: "prior_sensitivity"
+    instruction: "Report how posteriors change under alternative reasonable priors."
+  - id: "bayesian-diagnostic-003"
+    name: "posterior_predictive"
+    instruction: "Report posterior predictive checks where model fit matters."
+failure_modes:
+  - id: "bayesian-failure-001"
+    risk: "Reporting a posterior without declared priors."
+    response: "Block until priors are stated."
+  - id: "bayesian-failure-002"
+    risk: "Summarizing a non-converged MCMC run."
+    response: "Warn and require convergence evidence before interpretation."
+  - id: "bayesian-failure-003"
+    risk: "Reporting credible intervals as frequentist confidence intervals."
+    response: "Warn and require correct Bayesian interpretation."
+code_recipes:
+  - id: "bayesian-python-pymc"
+    language: "python"
+    package: "pymc"
+    source: "pymc_py"
+    template: |
+      import pymc as pm
+
+      with pm.Model() as model:
+          beta = pm.Normal("beta", mu=0, sigma=1, shape=X.shape[1])
+          sigma = pm.HalfNormal("sigma", 1)
+          pm.Normal("y", mu=X @ beta, sigma=sigma, observed=y)
+          idata = pm.sample(1000, tune=1000, target_accept=0.9)
+      print(pm.summary(idata))
+  - id: "bayesian-r-brms"
+    language: "r"
+    package: "brms"
+    source: "brms_r"
+    template: |
+      library(brms)
+
+      fit <- brm(y ~ x1 + x2, data = df,
+                 prior = set_prior("normal(0, 1)", class = "b"))
+      summary(fit)
+reporting_checklist:
+  - "State the priors and the likelihood."
+  - "Report MCMC convergence diagnostics (R-hat, effective sample size)."
+  - "Report a prior-sensitivity analysis."
+  - "Report credible intervals and interpret them as Bayesian, not frequentist."
+source_anchors:
+  - source_id: "koop_poirier_tobias_2007"
+    topics:
+      - "choice of prior and Bayesian interval (credible) estimation"
+      - "the normal linear regression model"
+      - "Bayesian computation, Gibbs sampling, and MCMC convergence"
+    local_pdf_pages: [75, 103, 104, 131, 142, 153, 158, 167]
+  - source_id: "greene_econometric_analysis"
+    topics:
+      - "Bayesian estimation in econometrics"

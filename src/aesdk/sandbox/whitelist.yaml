@@ -6,14 +6,21 @@
   - pathlib
   - numpy
   - pandas
+  - scipy
   - statsmodels
   - linearmodels
   - pyfixest
   - rdrobust
   - scpi
+  - doubleml
+  - econml
+  - pyblp
+  - arch
+  - pymc
 allowed_r_packages:
   - base
   - stats
+  - stats4
   - fixest
   - did
   - rdrobust
@@ -23,3 +30,8 @@ allowed_r_packages:
   - DRDID
   - NonlinearDiD
   - scpi
+  - np
+  - grf
+  - DoubleML
+  - brms
+  - rugarch

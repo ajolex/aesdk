@@ -11,8 +11,10 @@ OUT = Path(__file__).with_name("training_policy_panel.csv")
 
 def main() -> None:
     rng = np.random.default_rng(SEED)
-    states = [f"S{str(i).zfill(2)}" for i in range(1, 13)]
-    treated_states = set(states[:6])
+    # 48 states keeps the panel above the ~42-cluster rule of thumb so
+    # cluster-robust inference is credible in the passing example.
+    states = [f"S{str(i).zfill(2)}" for i in range(1, 49)]
+    treated_states = set(states[:24])
     years = list(range(2016, 2024))
     state_fe = {state: rng.normal(0, 1.2) for state in states}
     rows = []

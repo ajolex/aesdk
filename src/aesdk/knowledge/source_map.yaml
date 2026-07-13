@@ -183,3 +183,68 @@ method_sources:
           topic: "time-series econometrics"
       sdk_context:
         - "Serial dependence and nonstationarity are first-order design risks, not afterthought diagnostics."
+  # The mle/dml/structural entries below carry no verified page locators yet:
+  # their textbook sources (Greene, Hayashi, Train) are not audited locally.
+  mle:
+    - source_id: "greene_econometric_analysis"
+      sdk_context:
+        - "Declare the likelihood; report convergence, identification, and the standard-error type."
+        - "Use robust (sandwich) inference under a quasi-likelihood interpretation."
+  dml:
+    - source_id: "chernozhukov_dml_2018"
+      sdk_context:
+        - "Machine learning estimates the nuisance functions, not identification; state the causal assumption."
+        - "Use a Neyman-orthogonal score and cross-fitting."
+    - source_id: "wager_athey_2018"
+      sdk_context:
+        - "For heterogeneous effects, use honest inference (causal forests)."
+  structural:
+    - source_id: "berry_levinsohn_pakes_1995"
+      sdk_context:
+        - "Declare the model and identification; instrument endogenous prices before estimating demand."
+    - source_id: "train_discrete_choice_2009"
+      sdk_context:
+        - "Simulation-based discrete choice requires a stated choice set and estimand."
+  nonparametric:
+    - source_id: "li_racine_nonparametric_2007"
+      local_path: "docs/books/Nonparametric Econometrics_ Theory and Practice.pdf"
+      locators:
+        - pdf_pages: [52, 104, 110]
+          topic: "kernel density and kernel regression estimation"
+        - pdf_pages: [124, 127, 132]
+          topic: "local constant and local polynomial (local linear) estimation"
+        - pdf_pages: [59, 63, 117, 205]
+          topic: "bandwidth selection by cross-validation"
+        - pdf_pages: [178, 194]
+          topic: "kernel estimation with mixed continuous and discrete data"
+      sdk_context:
+        - "Disclose the bandwidth/series-selection rule and its sensitivity."
+        - "Guard against the curse of dimensionality with semiparametric restrictions."
+  bayesian:
+    - source_id: "koop_poirier_tobias_2007"
+      local_path: "docs/books/Bayesian Econometric Methods.pdf"
+      locators:
+        - pdf_pages: [103, 104]
+          topic: "choice of prior"
+        - pdf_pages: [75]
+          topic: "Bayesian interval (credible) estimation"
+        - pdf_pages: [131]
+          topic: "the normal linear regression model"
+        - pdf_pages: [142, 153, 158, 167]
+          topic: "Bayesian computation, Gibbs sampling, Metropolis-Hastings, and convergence"
+      sdk_context:
+        - "Declare priors; demonstrate MCMC convergence and report prior sensitivity."
+        - "Interpret credible intervals as Bayesian, not frequentist."
+  garch:
+    - source_id: "tsay_financial_time_series_2010"
+      local_path: "docs/books/analysis-of-financial-time-series-copy-2ffgm3v.pdf"
+      locators:
+        - pdf_pages: [122, 127, 131]
+          topic: "conditional heteroscedastic models and testing for ARCH effects"
+        - pdf_pages: [135, 139]
+          topic: "ARCH and GARCH model building and estimation"
+        - pdf_pages: [149, 153]
+          topic: "EGARCH and leverage effects"
+      sdk_context:
+        - "Model the conditional mean first, then justify a volatility model with an ARCH-effects test."
+        - "Check persistence and positivity constraints before forecasting volatility."

@@ -35,6 +35,7 @@ properties:
     properties:
       source: {type: string}
       unit: {type: string}
+      time: {type: string}
       structure:
         type: string
         enum: [cross-section, panel, time-series, pooled]
@@ -101,6 +102,30 @@ properties:
           - ARDL
           - HACRegression
           - DML
+          - DoubleML
+          - PLR
+          - PLIV
+          - IRM
+          - CausalForest
+          - MLE
+          - QMLE
+          - BLP
+          - StructuralGMM
+          - StructuralMLE
+          - DiscreteChoiceDemand
+          - KernelRegression
+          - LocalPolynomial
+          - SeriesEstimator
+          - LOESS
+          - BayesianRegression
+          - MCMC
+          - GibbsSampler
+          - BayesianVAR
+          - HierarchicalBayes
+          - ARCH
+          - GARCH
+          - EGARCH
+          - GJR-GARCH
           - other
       treatment_variable: {type: string}
       outcome_variable: {type: string}
@@ -152,6 +177,15 @@ properties:
       staggered_adoption: {type: boolean}
       treatment_pre_announced: {type: boolean}
       anticipation_periods: {type: integer, minimum: 0}
+      no_anticipation: {type: boolean}
+      non_absorbing_treatment: {type: boolean}
+      parallel_trends_transformation:
+        type: string
+        enum: [levels, logs, other, insensitivity_tested]
+      sensitivity_analysis: {type: boolean}
+      covariate_adjustment:
+        type: string
+        enum: [none, regression_adjustment, ipw, doubly_robust, twfe_covariates]
       control_group:
         type: string
         enum: [never_treated, not_yet_treated, matched, all_others]

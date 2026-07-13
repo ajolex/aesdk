@@ -1,0 +1,37 @@
+source:
+  id: "NONPARAMETRIC_GOVERNANCE"
+  method_id: "nonparametric"
+  topic: "nonparametric_semiparametric_estimation"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "theoretical_microfoundations"
+  topics:
+    - "nonparametric_semiparametric"
+    - "asymptotic_theory"
+rules:
+  - id: NONPARAM-001
+    name: "Bandwidth / Series Selection Must Be Disclosed"
+    severity: "warning"
+    estimators: ["KernelRegression", "LocalPolynomial", "SeriesEstimator", "LOESS"]
+    data_structures: []
+    condition: "estimator in ['KernelRegression', 'LocalPolynomial', 'SeriesEstimator', 'LOESS'] and text_missing(nonparametric_bandwidth_rule)"
+    requirement: "Nonparametric estimates depend heavily on the amount of smoothing, so the bandwidth or series-length rule must be declared."
+    guidance: "Use a data-driven rule (e.g., cross-validation) and report sensitivity; a hand-picked bandwidth can manufacture or hide features."
+    reference:
+      authors: "Li, Qi; Racine, Jeffrey S."
+      book: "Nonparametric Econometrics: Theory and Practice"
+      title: "Bandwidth selection"
+  - id: NONPARAM-002
+    name: "Guard Against The Curse Of Dimensionality"
+    severity: "warning"
+    strict_escalates: false
+    estimators: ["KernelRegression", "LocalPolynomial", "SeriesEstimator", "LOESS"]
+    data_structures: []
+    condition: "estimator in ['KernelRegression', 'LocalPolynomial', 'SeriesEstimator', 'LOESS'] and nonparametric_continuous_regressor_count > 3 and nonparametric_semiparametric_restriction != true"
+    requirement: "Fully nonparametric estimation with many continuous regressors converges too slowly to be informative (curse of dimensionality)."
+    guidance: "Impose a semiparametric restriction (partially linear, single-index) or reduce dimension when several continuous conditioning variables are present."
+    reference:
+      authors: "Li, Qi; Racine, Jeffrey S."
+      book: "Nonparametric Econometrics: Theory and Practice"
+      title: "Curse of dimensionality and semiparametric restrictions"

@@ -8,10 +8,11 @@ project:
 data:
   source: "docs/examples/simulated_did_training_policy/training_policy_panel.csv"
   unit: "state"
+  time: "year"
   structure: "panel"
-  N: 96
+  N: 384
   T: 8
-  G: 12
+  G: 48
 identification:
   strategy: "DiD"
   treatment_variable: "policy_active"
@@ -29,8 +30,12 @@ did_block:
   staggered_adoption: false
   treatment_pre_announced: false
   anticipation_periods: 0
+  no_anticipation: true
+  # Roth, Sant'Anna, Bilinski & Poe (2023) best practices:
+  parallel_trends_transformation: "levels"
+  sensitivity_analysis: true
   control_group: "never_treated"
-  control_group_justification: "Six states are simulated as never treated and share the same pre-policy trend as treated states."
+  control_group_justification: "Twenty-four states are simulated as never treated and share the same pre-policy trend as treated states."
   goodman_bacon_decomposition: false
   hausman_test_documented: false
   placebo_test: true

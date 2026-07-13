@@ -1,0 +1,122 @@
+version: "0.1.0"
+method_id: "structural"
+name: "Structural Estimation (IO / BLP)"
+language_coverage:
+  supported_recipes: ["python"]
+  intentionally_missing:
+    r: "Structural/BLP recipes are bundled for Python (pyblp); an R recipe is pending human review."
+    stata: "No Stata structural-demand starter recipe is bundled yet; pending human review."
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "advanced_empirical_research"
+  curriculum_topics: ["structural_blp", "potential_outcomes"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
+maturity:
+  status: "pending_human_review"
+  source_review: "ai_source_audited_pending_human_review"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "Counterfactuals require deep parameters (preferences, costs, technology) that only a model can recover."
+    - "Equilibrium or optimality conditions link observed data to structural parameters."
+  do_not_use_when:
+    - "A reduced-form design answers the question without model assumptions."
+    - "The economic model or its identification cannot be stated."
+estimand:
+  default: "Structural (deep) parameters and the counterfactuals implied by the estimated model."
+  agent_instruction: "State the model, the deep parameters, the moments or likelihood, the instruments for endogenous variables, and the identification argument before estimation."
+decision_tree:
+  - id: "structural-design-001"
+    if: "The target is differentiated-product demand with endogenous prices."
+    then: "Use a BLP-style random-coefficients logit with demand instruments (e.g., cost shifters, BLP instruments)."
+  - id: "structural-design-002"
+    if: "Individual-level discrete choices are observed."
+    then: "Use simulation-based discrete-choice estimation (mixed/nested logit) with a stated choice set."
+  - id: "structural-design-003"
+    if: "The model is defined by moment/equilibrium conditions."
+    then: "Use structural GMM; document the moments and the identifying instruments."
+assumptions:
+  - id: "structural-assumption-001"
+    plain: "The economic model that maps parameters to data is written down."
+    formal: "A parametric structural model with equilibrium/optimality restrictions is specified."
+    evidence: "Stated model, deep parameters, and equilibrium conditions."
+  - id: "structural-assumption-002"
+    plain: "Prices or other choices that respond to unobservables are instrumented."
+    formal: "Valid instruments address endogeneity of prices/choices (relevance and exclusion)."
+    evidence: "Declared instruments and an exclusion argument."
+  - id: "structural-assumption-003"
+    plain: "The data actually pin down the parameters."
+    formal: "The structural parameters are identified from the chosen moments/likelihood."
+    evidence: "Identification argument and fit diagnostics."
+required_inputs:
+  - id: "structural-input-001"
+    name: "model"
+    reason: "Defines the mapping from parameters to observed data."
+  - id: "structural-input-002"
+    name: "parameters"
+    reason: "Names the deep parameters to estimate."
+  - id: "structural-input-003"
+    name: "instruments"
+    reason: "Address endogeneity of prices or choices."
+  - id: "structural-input-004"
+    name: "identification_argument"
+    reason: "Explains why the parameters are recoverable."
+diagnostics:
+  - id: "structural-diagnostic-001"
+    name: "instrument_audit"
+    instruction: "Report the instruments used for endogenous variables and their relevance."
+  - id: "structural-diagnostic-002"
+    name: "fit_and_identification"
+    instruction: "Report model fit and evidence that parameters are identified."
+  - id: "structural-diagnostic-003"
+    name: "counterfactual_sensitivity"
+    instruction: "Report how counterfactuals move with key parameters and assumptions."
+failure_modes:
+  - id: "structural-failure-001"
+    risk: "Presenting counterfactuals without a stated model or identification."
+    response: "Block until the model and identification argument are documented."
+  - id: "structural-failure-002"
+    risk: "Treating endogenous prices/choices as exogenous."
+    response: "Warn and require instruments for the endogenous variables."
+  - id: "structural-failure-003"
+    risk: "Extrapolating counterfactuals far outside the estimation support."
+    response: "Warn and require an out-of-support caveat."
+code_recipes:
+  - id: "structural-python-pyblp"
+    language: "python"
+    package: "pyblp"
+    source: "pyblp_py"
+    template: |
+      import pyblp
+
+      problem = pyblp.Problem(product_formulations, product_data)
+      results = problem.solve(sigma=starting_sigma)
+      print(results)
+  - id: "structural-python-choice"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels_discrete"
+    template: |
+      import statsmodels.api as sm
+
+      # Conditional/multinomial logit as a building block for discrete-choice demand.
+      model = sm.MNLogit(endog_choice, exog_attributes).fit()
+      print(model.summary())
+reporting_checklist:
+  - "State the economic model, the deep parameters, and the equilibrium/optimality conditions."
+  - "Report the estimation moments or likelihood and the instruments for endogenous variables."
+  - "Report identification and fit diagnostics."
+  - "Report counterfactuals with sensitivity and out-of-support caveats."
+source_anchors:
+  - source_id: "berry_levinsohn_pakes_1995"
+    topics:
+      - "random-coefficients discrete-choice demand estimation"
+      - "instruments for endogenous prices"
+  - source_id: "train_discrete_choice_2009"
+    topics:
+      - "simulation-based discrete-choice estimation"
+  - source_id: "hayashi_econometrics_2000"
+    topics:
+      - "GMM foundations for structural estimation"

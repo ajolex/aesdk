@@ -1,0 +1,51 @@
+source:
+  id: "STRUCTURAL_GOVERNANCE"
+  method_id: "structural"
+  topic: "structural_estimation"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "advanced_empirical_research"
+  topics:
+    - "structural_blp"
+    - "potential_outcomes"
+rules:
+  - id: STRUCT-001
+    name: "Structural Estimation Requires A Declared Model And Identification"
+    severity: "error"
+    estimators: ["BLP", "StructuralGMM", "StructuralMLE", "DiscreteChoiceDemand"]
+    data_structures: []
+    condition: "estimator in ['BLP', 'StructuralGMM', 'StructuralMLE', 'DiscreteChoiceDemand'] and (text_missing(structural_model) or text_missing(structural_identification_argument))"
+    requirement: "Structural estimates and counterfactuals require a declared economic model and an identification argument for its deep parameters."
+    guidance: "State the model, the deep parameters, the equilibrium/optimality conditions, and why the data identify the parameters before estimating or simulating counterfactuals."
+    reference:
+      authors: "Berry, Steven; Levinsohn, James; Pakes, Ariel"
+      journal: "Econometrica"
+      year: 1995
+      title: "Automobile Prices in Market Equilibrium"
+  - id: STRUCT-002
+    name: "Endogenous Prices / Choices Must Be Instrumented"
+    severity: "warning"
+    estimators: ["BLP", "StructuralGMM", "DiscreteChoiceDemand"]
+    data_structures: []
+    condition: "estimator in ['BLP', 'StructuralGMM', 'DiscreteChoiceDemand'] and structural_prices_endogenous == true and len(structural_instruments) == 0"
+    requirement: "When prices or choices respond to unobserved demand/cost shocks, structural demand estimation must use instruments."
+    guidance: "Declare demand/supply instruments (e.g., cost shifters or BLP-style instruments) and argue relevance and exclusion; ignoring price endogeneity biases the deep parameters."
+    reference:
+      authors: "Berry, Steven; Levinsohn, James; Pakes, Ariel"
+      journal: "Econometrica"
+      year: 1995
+      title: "Instruments for endogenous prices in demand estimation"
+  - id: STRUCT-003
+    name: "Counterfactuals Should Note Out-Of-Support Extrapolation"
+    severity: "warning"
+    strict_escalates: false
+    estimators: ["BLP", "StructuralGMM", "StructuralMLE", "DiscreteChoiceDemand"]
+    data_structures: []
+    condition: "estimator in ['BLP', 'StructuralGMM', 'StructuralMLE', 'DiscreteChoiceDemand'] and structural_counterfactual == true and structural_support_note != true"
+    requirement: "Model-driven counterfactuals should state the support over which they are credible."
+    guidance: "Flag when a counterfactual extrapolates far beyond the range of the estimation data, and report sensitivity to key structural parameters."
+    reference:
+      authors: "Hayashi, Fumio"
+      book: "Econometrics"
+      title: "Structural estimation and counterfactual analysis"

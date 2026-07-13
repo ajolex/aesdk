@@ -566,6 +566,12 @@ class ValidationContext:
         gmm = self._merged_block("gmm_block")
         limited = self._merged_block("limited_dependent_block")
         time_series = self._merged_block("time_series_block")
+        mle = self._merged_block("mle_block")
+        dml = self._merged_block("dml_block")
+        structural = self._merged_block("structural_block")
+        nonparametric = self._merged_block("nonparametric_block")
+        bayesian = self._merged_block("bayesian_block")
+        garch = self._merged_block("garch_block")
         ai_use, ai_use_provenance = self._merged_block_with_provenance("ai_use")
         robustness = self._pap.get("robustness", {})
         covariates = identification.get("covariates", {})
@@ -653,6 +659,13 @@ class ValidationContext:
             "placebo_test": did.get("placebo_test", False),
             "goodman_bacon_decomposition": did.get("goodman_bacon_decomposition", False),
             "hausman_test_documented": did.get("hausman_test_documented", False),
+            "no_anticipation": did.get("no_anticipation", False),
+            "non_absorbing_treatment": did.get("non_absorbing_treatment", False),
+            "parallel_trends_transformation": did.get("parallel_trends_transformation"),
+            "sensitivity_analysis": did.get(
+                "sensitivity_analysis", robustness.get("sensitivity_analysis", False)
+            ),
+            "covariate_adjustment": did.get("covariate_adjustment"),
             "iv_instruments": _as_list(iv.get("instruments", [])),
             "first_stage_f_threshold": iv.get("first_stage_f_threshold", 10),
             "first_stage_f_stat": self._proposal.get("first_stage_f_stat"),
@@ -756,6 +769,33 @@ class ValidationContext:
             "autocorrelation_diagnostic": time_series.get("autocorrelation_diagnostic"),
             "forecast_backtest": time_series.get("forecast_backtest"),
             "lookahead_bias": time_series.get("lookahead_bias", False),
+            "mle_distribution": _first_present(mle.get("distribution"), mle.get("likelihood")),
+            "mle_convergence_confirmed": mle.get("convergence_confirmed", False),
+            "mle_standard_error_type": _normalized_phrase(mle.get("standard_error_type")) or None,
+            "dml_cross_fitting": bool(dml.get("cross_fitting"))
+            or bool(dml.get("cross_fitting_folds")),
+            "dml_orthogonal_score": bool(dml.get("orthogonal_score")),
+            "structural_model": structural.get("model"),
+            "structural_identification_argument": structural.get("identification_argument"),
+            "structural_prices_endogenous": structural.get("prices_endogenous", False),
+            "structural_instruments": _as_list(structural.get("instruments", [])),
+            "structural_counterfactual": structural.get("counterfactual", False),
+            "structural_support_note": bool(structural.get("support_note")),
+            "nonparametric_bandwidth_rule": nonparametric.get("bandwidth_rule"),
+            "nonparametric_continuous_regressor_count": nonparametric.get(
+                "continuous_regressor_count",
+                len(_as_list(nonparametric.get("continuous_regressors", []))),
+            ),
+            "nonparametric_semiparametric_restriction": bool(
+                nonparametric.get("semiparametric_restriction", False)
+            ),
+            "bayesian_priors": bayesian.get("priors"),
+            "bayesian_convergence_checked": bayesian.get("convergence_checked", False),
+            "bayesian_prior_sensitivity_checked": bayesian.get("prior_sensitivity_checked", False),
+            "garch_arch_test_planned": bool(garch.get("arch_test_planned"))
+            or not _text_missing(garch.get("arch_test_plan")),
+            "garch_mean_model": garch.get("mean_model"),
+            "garch_innovation_distribution": garch.get("innovation_distribution"),
             "ai_used": ai_use.get("used", False),
             "ai_role": ai_use.get("role"),
             "ai_roles": _as_list(ai_use.get("role", [])),

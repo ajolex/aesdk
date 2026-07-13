@@ -30,9 +30,10 @@ You do not need to be a software engineer to benefit from it. The intended workf
 
 AESDK currently provides:
 
-- method guidance for common econometric workflows, including OLS/CEF, IV/2SLS, panel fixed effects, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series
+- method guidance for common econometric workflows, including OLS/CEF, IV/2SLS, panel fixed effects, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, maximum likelihood estimation, double/debiased machine learning, structural/BLP estimation, nonparametric/semiparametric estimation, Bayesian econometrics, and ARCH/GARCH volatility models
 - pre-analysis plan checks
 - proposal validation with `pass`, `warn`, or `block`
+- data-aware preflight that reads the declared dataset and cross-checks the PAP against it (missing variables, undeclared staggered adoption, few clusters, singleton clusters, missingness, no-variation regressors)
 - AI-agent context packets that explain the relevant assumptions and diagnostics
 - governed execution that refuses to run blocked analysis code
 - governed execution for Python scripts, Stata `.do` files, and R scripts
@@ -76,7 +77,16 @@ From PyPI:
 pip install aesdk
 ```
 
-Check that the command is available:
+Then get set up in one step. This verifies the install, saves the ready-made
+assistant instructions into your project, and prints a plain-language "you're
+ready" summary — no other commands to learn:
+
+```bash
+aesdk setup
+```
+
+If you are not a programmer, that is the only command you (or your assistant)
+need. Check that the command is available:
 
 ```bash
 aesdk methods list
@@ -166,37 +176,92 @@ aesdk agent template --target CLAUDE.md
 
 ## Add This To AGENTS.md Or CLAUDE.md
 
-For most users, the most useful setup is to tell the AI agent:
+You do not need to hand-write these instructions. Generate the ready-made file
+and save it in your project:
 
-```text
-First make sure AESDK is installed. Run `aesdk agent doctor`; if the command is missing, run `python -m pip install aesdk` and then retry with `python -m aesdk agent doctor`.
-
-Before writing econometric analysis code, use AESDK.
-
-Identify the method, then load method context:
-`aesdk agent context --method <method>`
-
-If starting from a task document, run:
-`aesdk agent intake --task <task.pdf> --method <method> --output-dir .`
-
-If there is no task file, use the actual prompt:
-`aesdk agent intake --prompt "<research task>" --method <method> --output-dir .`
-
-Intake writes starter files and the required `.aesdk.json` blob. If `pap.yaml` or `proposal.json` are edited later, refresh the blob with:
-`aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .`
-
-If AI materially shaped the analysis, document `ai_use` and write `ai.lock.json`:
-`aesdk agent ai-passport --pap pap.yaml --proposal proposal.json`
-
-Run preflight:
-`aesdk agent preflight --method <method> --pap pap.yaml --proposal proposal.json --conformance strict`
-
-If AESDK returns `block`, stop and explain the violated assumptions. If AESDK returns `warn`, explain what needs researcher acknowledgement.
-
-Do not invent econometric assumptions, diagnostics, citations, estimator requirements, task files, or AI-use evidence.
+```bash
+aesdk agent template --target AGENTS.md   # for most AI coding agents
+aesdk agent template --target CLAUDE.md   # for Claude / Claude Code
 ```
 
-This keeps AESDK in the background as part of the automated workflow.
+Both bundled templates are written for a **non-technical audience** — research
+analysts, associates, faculty, and economists who do not run terminal commands.
+They instruct the AI assistant to do all the technical work itself (run the
+AESDK commands, draft and update the record files, run the analysis) and to
+translate everything into plain research language: ask plain-English questions
+instead of field names, never dump JSON or terminal output, and explain any
+issue like a careful senior RA — what the concern is, why it matters, and what
+to do next.
+
+If you are not a programmer, the only thing you need to do is keep this file in
+your project and, if AESDK is not installed yet, ask your assistant: "Please set
+up AESDK for me." The assistant handles the rest and keeps the methods check
+running quietly in the background before any analysis code is written or run.
+
+## Use AESDK From Chat (ChatGPT or Claude)
+
+Most researchers start in a chat window (ChatGPT or Claude) rather than a coding
+agent. AESDK works there too, at three levels:
+
+```bash
+aesdk chat-guide --target chatgpt   # paste-in preset for a ChatGPT Custom GPT / chat
+aesdk chat-guide --target claude    # paste-in preset for a Claude Project / chat
+aesdk chat-guide --target mcp       # connect AESDK to Claude as an MCP connector
+```
+
+- **Advisory (zero setup):** paste the `chatgpt` or `claude` preset into a Custom
+  GPT, a Claude Project, or your first message. The assistant then follows AESDK's
+  workflow and guardrails and explains issues in plain language. Because nothing
+  executes, treat its verdicts as a knowledgeable review, not enforcement.
+- **Enforced via code interpreter:** in ChatGPT Advanced Data Analysis or Claude's
+  code tool, upload your data (and, for ChatGPT's offline sandbox, the AESDK wheel),
+  and the assistant runs `aesdk` for real pass/warn/block results.
+- **Enforced via MCP (recommended for Claude):** run AESDK as a local Model Context
+  Protocol server so Claude can call the real checks from a chat window, with your
+  data staying on your machine. Full steps are below.
+
+### Connect AESDK to Claude via MCP (two commands)
+
+This runs entirely on your own computer; no data is sent anywhere. There is no
+JSON to edit — the second command finds and updates Claude Desktop's config for
+you (merging with anything already there, and backing up the old file first):
+
+```bash
+pip install "aesdk[mcp]"   # install the MCP tools
+aesdk connect-claude       # wire AESDK into Claude Desktop
+```
+
+Then fully quit and reopen Claude Desktop, and in a chat say: *"Use AESDK to check
+my study design before we write any code."* Claude can now call `list_methods`,
+`method_context`, `preflight`, `scan_data`, and `check_ols`, and explains the
+pass/warn/block result in plain language. Use `aesdk connect-claude --dry-run` to
+preview the change first.
+
+<details>
+<summary>Prefer to edit the config yourself?</summary>
+
+Open Claude Desktop's **Settings → Developer → Edit Config**
+(`claude_desktop_config.json`) and add an `aesdk` entry, then restart:
+
+```json
+{
+  "mcpServers": {
+    "aesdk": {
+      "command": "python",
+      "args": ["-m", "aesdk", "mcp"]
+    }
+  }
+}
+```
+
+`aesdk chat-guide --target mcp` prints this and the auto-connect steps at any time.
+</details>
+
+On **claude.ai** (web), add a custom connector only if your organization hosts a
+trusted internal AESDK endpoint; because econometrics data is often confidential,
+prefer the local Claude Desktop setup above. Code execution is intentionally
+**not** exposed over MCP — chat gets the guardrails and diagnostics, while
+governed execution stays in the CLI.
 
 ## Worked Example
 
@@ -292,6 +357,74 @@ aesdk agent review-diff --ai-code ai_outputs/analysis_ai.do --final-code analysi
 
 These fields do not automatically count as final human review. `human_reviewed: true` still requires review status and non-empty review evidence files; agent-only runs should leave it false until a researcher actually reviews the work. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived.
 
+## Data-Aware Preflight
+
+The rule engine validates what the researcher or agent *declares* in the PAP and proposal. That leaves a gap: an agent can declare `staggered_adoption: false` on genuinely staggered data, name an outcome column that does not exist, or cluster standard errors on a variable with only a handful of clusters, and the declaration-only rules will pass it.
+
+Data-aware preflight closes that gap. When the PAP declares a readable dataset (via `data.source`) or you pass `--data`, AESDK reads the data and cross-checks the declared structure against it. Each check maps to a documented econometric failure mode:
+
+- **DATA-VARS-001/002/003** — the declared outcome, treatment, unit, time, running, assignment, instrument, and mandatory-covariate names must exist as columns. A missing outcome or treatment variable is a hard block; constructed expressions such as `log(income)` or `i.year` are recognized and skipped so real regressors are not misflagged.
+- **DATA-DID-001/002** — detects the number of treatment-adoption cohorts. If the data are staggered but `did_block.staggered_adoption` is not set, AESDK flags the two-way fixed-effects negative-weighting trap (Goodman-Bacon 2021; Callaway & Sant'Anna 2021).
+- **DATA-CLUST-001** — warns when clustering yields fewer than ~42 clusters and recommends wild-cluster-bootstrap inference (Cameron & Miller 2015).
+- **DATA-CLUST-002** — flags singleton clusters that distort cluster-robust variance and fixed-effects degrees of freedom (Correia 2015).
+- **DATA-MISS-001** — warns on high missingness (>20%) of a core variable.
+- **DATA-COLLIN-001** — flags declared variables with no variation (collinear with the intercept, or a constant outcome/treatment).
+- **DATA-TREAT-001** — notes when the treatment is non-binary for a method that targets a binary-treatment estimand.
+
+Run it standalone or as part of preflight:
+
+```bash
+aesdk agent scan-data --method did --pap pap.yaml
+aesdk agent scan-data --method did --pap pap.yaml --data panel.csv --format json
+aesdk agent preflight --method did --pap pap.yaml --proposal proposal.json --conformance strict
+aesdk agent preflight --method did --pap pap.yaml --proposal proposal.json --no-scan-data
+```
+
+From Python:
+
+```python
+import aesdk as ae
+
+scan = ae.scan_data(method="did", pap=pap_dict, proposal=proposal_dict, data_path="panel.csv")
+print(scan.profile.adoption_cohorts, scan.profile.n_clusters)
+for finding in scan.findings:
+    print(finding.rule_id, finding.severity.value, finding.message)
+```
+
+The scan is **safe by design**: if the dataset cannot be located or read, no findings are produced and preflight behaves exactly as before. Advisory data checks (few clusters, singletons, missingness, no variation) never turn a passing workflow into a block; only a missing core variable and a staggered-adoption mismatch gate. AESDK reads local data files (`.csv`, `.tsv`, `.dta`, `.parquet`, `.feather`, `.xlsx`) and derives structural facts only; it does not modify the data or send it anywhere.
+
+### OLS Assumption Checker (Wooldridge)
+
+For `ols_cef`, AESDK fits the declared linear model on the data and runs a ten-item assumption checklist grounded in Wooldridge, *Introductory Econometrics: A Modern Approach*. It is honest about what data can and cannot show: the diagnostics that can be tested are tested, and the two assumptions that cannot be tested from data alone are reported as declaration items rather than given a false "pass".
+
+| # | Assumption | Wooldridge | How AESDK checks it |
+|---|---|---|---|
+| 1 | Linear in parameters (functional form) | MLR.1 | Ramsey RESET test |
+| 2 | Random sampling / independent observations | MLR.2 | declaration-only (notes duplicates) |
+| 3 | No perfect collinearity | MLR.3 | matrix rank + VIF |
+| 4 | Zero conditional mean (exogeneity) | MLR.4 | declaration-only (untestable) |
+| 5 | Homoskedasticity | MLR.5 | Breusch-Pagan + White |
+| 6 | No serial correlation (time-ordered data) | TS.5 | Breusch-Godfrey + Durbin-Watson |
+| 7 | Normality of errors | MLR.6 | Jarque-Bera (CLT-softened when n is large) |
+| 8 | No unduly influential observations | Ch. 9 | Cook's distance + leverage |
+| 9 | Sufficient observations for the parameters | — | n vs k / rank |
+| 10 | Inference matches the error structure | Ch. 8/12 | robust/clustered SE vs detected heteroskedasticity or dependence |
+
+```bash
+aesdk agent check-ols --pap pap.yaml --data cross_section.csv
+```
+
+```python
+import aesdk as ae
+
+report = ae.ols_assumption_report(df, outcome="y", regressors=["treated", "income"],
+                                  structure="cross-section", standard_errors="conventional")
+for check in report.checks:
+    print(check.wooldridge, check.name, check.status)
+```
+
+When run inside preflight, detected violations (e.g. heteroskedasticity with non-robust standard errors, functional-form misspecification, perfect collinearity) become `DATA-OLS-*` findings.
+
 ## Method Protocols
 
 To see what AESDK tells an agent about a method:
@@ -324,7 +457,7 @@ Each method protocol now declares its curriculum stage and topic tags, so an AI 
 
 Governance files and knowledge packs are organized by econometric topic or method, not by textbook author. Textbooks and papers remain registered as sources inside the rule or pack, but the file identity is the research decision being governed: `did`, `iv_2sls`, `panel_inference`, `citation_integrity`, and the method pack ids. This is deliberate: it helps AI agents treat sources as evidence rather than inventing author-specific doctrine.
 
-Every bundled method pack now has an executable governance rule file. AESDK currently ships 120 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, citation integrity, and AI replicability. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
+Every bundled method pack now has an executable governance rule file. AESDK currently ships 146 executable rules across OLS/CEF, IV/2SLS, panel inference, DiD, randomized controlled trials/experimental methods, RDD, matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, maximum likelihood estimation, double/debiased machine learning, structural/BLP estimation, nonparametric estimation, Bayesian econometrics, ARCH/GARCH volatility models, citation integrity, and AI replicability. The newer method areas still carry human-review maturity labels, but their core required inputs, assumptions, diagnostics, and failure modes are now promoted into runnable `pass`/`warn`/`block` checks.
 
 The source metadata covers the local textbook/source library under `tools/`, including Wooldridge, Angrist & Pischke, Greene, Stock & Watson, Gujarati, Verbeek, Heiss, World Bank impact evaluation material, J-PAL randomized-evaluation resources, critical RCT scope sources, recent Wooldridge DiD sources, and package documentation. Public source registry entries must include an online locator such as a DOI, publisher page, journal page, author page, or official package page. The package stores metadata, source locators, and compact paraphrased guidance. It does not package the PDFs or long extracted textbook text.
 
@@ -336,7 +469,9 @@ python scripts/deep_knowledge_audit.py --tools-dir tools --write-report docs/dee
 
 The report scans local PDFs page-by-page and records candidate page locators, duplicate pack IDs, long-text warnings, and coverage gaps. It is a maintenance aid, not a substitute for human source review.
 
-The newest packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, and time series are marked `pending_human_review` with `ai_source_audited_pending_human_review`. They now have executable guardrails, but a human econometrician should still sign off before treating their full guidance as final audited doctrine.
+The packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, maximum likelihood, double/debiased machine learning, and structural/BLP are marked `pending_human_review` with `ai_source_audited_pending_human_review`. They now have executable guardrails, but a human econometrician should still sign off before treating their full guidance as final audited doctrine.
+
+The nonparametric, Bayesian, and ARCH/GARCH volatility packs have been upgraded to `reviewed_guardrail` with `primary_source_page_audited`: their guidance is anchored to verified page numbers in the local source PDFs (Li & Racine 2007; Koop, Poirier & Tobias 2007; Tsay 2010), recorded in `source_map.yaml` and the pack `source_anchors`.
 
 ## Reproducibility
 

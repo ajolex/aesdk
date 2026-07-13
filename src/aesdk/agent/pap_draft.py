@@ -37,7 +37,7 @@ def _infer_data(data_path: str | Path | None, unit: str | None, time: str | None
         structure = "panel" if unit and time else "cross-section"
         data = {"source": "TBD", "unit": unit or "unit", "structure": structure}
         if time:
-            data["time_index"] = time
+            data["time"] = time
         return data
     path = Path(data_path)
     if path.suffix.lower() == ".csv":
@@ -49,6 +49,8 @@ def _infer_data(data_path: str | Path | None, unit: str | None, time: str | None
 
     structure = "panel" if unit and time and unit in df.columns and time in df.columns else "cross-section"
     data: dict[str, Any] = {"source": str(path), "unit": unit or "unit", "structure": structure, "N": int(len(df))}
+    if time:
+        data["time"] = time
     if structure == "panel":
         data["T"] = int(df[time].nunique())
         data["G"] = int(df[unit].nunique())

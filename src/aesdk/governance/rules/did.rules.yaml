@@ -77,6 +77,58 @@ rules:
       book: "Mostly Harmless Econometrics"
       chapter: 5
       title: "Fixed Effects, Differences-in-Differences, and Panel Data"
+  - id: AP-DID-007
+    name: "Pre-Trends Are Low-Powered; Register A Sensitivity Analysis"
+    severity: "info"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and sensitivity_analysis != true"
+    requirement: "A parallel-trends pre-test is not the identifying assumption and is often underpowered; register a sensitivity analysis to violations of parallel trends."
+    guidance: "Do not rely on a non-significant pre-trend test to establish parallel trends. Register a sensitivity analysis that bounds post-treatment violations by the pre-treatment trend (Rambachan & Sant'Anna honest DiD), and report the breakdown point."
+    reference:
+      authors: "Rambachan, Ashesh; Roth, Jonathan"
+      journal: "Review of Economic Studies"
+      year: 2023
+      title: "A More Credible Approach to Parallel Trends"
+  - id: AP-DID-008
+    name: "Parallel Trends Is Functional-Form Dependent"
+    severity: "info"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and text_missing(parallel_trends_transformation)"
+    requirement: "Parallel trends generally holds for at most one transformation of the outcome, so the outcome scale must be declared."
+    guidance: "State the outcome transformation (levels, logs, or other) in which parallel trends is assumed, and justify it; parallel trends in levels and in logs are different assumptions. Consider the Roth-Sant'Anna falsification test for insensitivity to functional form."
+    reference:
+      authors: "Roth, Jonathan; Sant'Anna, Pedro H. C."
+      journal: "Econometrica"
+      year: 2023
+      title: "When Is Parallel Trends Sensitive to Functional Form?"
+  - id: AP-DID-009
+    name: "No-Anticipation Assumption Must Be Addressed"
+    severity: "info"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "identification_strategy in ['DiD', 'TWFE', 'EventStudy'] and no_anticipation != true"
+    requirement: "DiD requires a no-anticipation assumption so pre-treatment outcomes reflect untreated potential outcomes."
+    guidance: "Confirm units do not respond before treatment (no anticipation), or model an explicit anticipation window. Announcement effects before implementation violate the standard estimand."
+    reference:
+      authors: "Roth, Jonathan; Sant'Anna, Pedro H. C.; Bilinski, Alyssa; Poe, John"
+      journal: "Journal of Econometrics"
+      year: 2023
+      title: "What's Trending in Difference-in-Differences?"
+  - id: AP-DID-010
+    name: "Conditional Parallel Trends Needs Doubly-Robust Covariate Adjustment"
+    severity: "warning"
+    estimators: ["DiD", "TWFE", "EventStudy"]
+    data_structures: ["panel", "pooled"]
+    condition: "covariate_adjustment == 'twfe_covariates'"
+    requirement: "When covariates are needed for conditional parallel trends, including them linearly in a TWFE regression does not generally recover the ATT."
+    guidance: "Use regression adjustment, inverse-propensity weighting, or a doubly-robust estimator (Sant'Anna & Zhao 2020; Callaway & Sant'Anna 2021) rather than adding covariates to a TWFE specification, whose weighting can be misleading (Caetano & Callaway 2024)."
+    reference:
+      authors: "Sant'Anna, Pedro H. C.; Zhao, Jun"
+      journal: "Journal of Econometrics"
+      year: 2020
+      title: "Doubly Robust Difference-in-Differences Estimators"
   - id: AP-DID-005
     name: "Randomized-Design DiD Requires Provenance Note"
     severity: "warning"

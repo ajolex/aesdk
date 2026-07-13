@@ -37,6 +37,12 @@ decision_tree:
   - id: "did-design-004"
     if: "The outcome is nonlinear or binary and the target is not a linear mean effect."
     then: "Escalate to nonlinear DiD guidance; do not silently use linear TWFE as the estimand."
+  - id: "did-design-005"
+    if: "Treatment turns on and off, or a unit is treated more than once (non-absorbing)."
+    then: "Use estimators built for switching treatments (de Chaisemartin & D'Haultfoeuille 2020/2024); state any no-carryover assumption. Do not use standard absorbing-treatment DiD estimators."
+  - id: "did-design-006"
+    if: "Treatment is continuous or multi-valued (a dose or intensity)."
+    then: "Use continuous/multi-valued DiD estimators (Callaway, Goodman-Bacon & Sant'Anna; de Chaisemartin & D'Haultfoeuille) and define the dose-specific estimand; a single binary indicator misstates it."
 assumptions:
   - id: "did-assumption-001"
     plain: "The comparison group shows what would have happened to treated units without treatment."
@@ -50,6 +56,18 @@ assumptions:
     plain: "Inference reflects repeated observations and grouped treatment assignment."
     formal: "Standard errors allow within-cluster dependence at the assignment or unit level, with stronger methods for few clusters."
     evidence: "Registered clustering level, cluster count, and small-cluster remedy when needed."
+  - id: "did-assumption-004"
+    plain: "Units do not change behavior before treatment starts (no anticipation)."
+    formal: "No-anticipation: pre-treatment outcomes equal untreated potential outcomes; ATT(t)=0 for pre-periods."
+    evidence: "Announcement vs implementation dates, an explicitly modeled anticipation window, or flat event-study leads."
+  - id: "did-assumption-005"
+    plain: "Parallel trends is stated for one scale of the outcome; it usually cannot hold in both levels and logs."
+    formal: "Parallel trends is functional-form dependent (Roth & Sant'Anna 2023) except under strong conditions."
+    evidence: "Declared outcome transformation (levels/logs) and, where possible, a falsification test for insensitivity to functional form."
+  - id: "did-assumption-006"
+    plain: "When comparison groups differ on covariates, parallel trends is only credible after conditioning on them."
+    formal: "Conditional parallel trends given covariates X; recovered by regression adjustment, IPW, or doubly-robust estimators."
+    evidence: "Covariate balance/overlap checks and a doubly-robust or IPW estimator rather than TWFE with linear covariates."
 required_inputs:
   - id: "did-input-001"
     name: "outcome_variable"
@@ -82,6 +100,15 @@ diagnostics:
   - id: "did-diagnostic-004"
     name: "cluster_audit"
     instruction: "Report clustering level and number of clusters."
+  - id: "did-diagnostic-005"
+    name: "sensitivity_analysis"
+    instruction: "Report a sensitivity analysis to parallel-trends violations (Rambachan & Roth honest DiD) and the breakdown point, instead of relying on an underpowered pre-trend test."
+  - id: "did-diagnostic-006"
+    name: "functional_form_falsification"
+    instruction: "State the outcome scale (levels/logs) parallel trends is assumed in; where possible run the Roth-Sant'Anna test for insensitivity to functional form."
+  - id: "did-diagnostic-007"
+    name: "uniform_event_study_bands"
+    instruction: "For event studies, report uniform sup-t confidence bands (multiplier bootstrap), not just pointwise intervals, to account for multiple testing across event time."
 failure_modes:
   - id: "did-failure-001"
     risk: "No comparison-group justification."
@@ -92,6 +119,12 @@ failure_modes:
   - id: "did-failure-003"
     risk: "Conventional standard errors in panel/grouped treatment."
     response: "Block and require clustered or stronger inference."
+  - id: "did-failure-004"
+    risk: "Treating a non-significant, underpowered pre-trend test as proof of parallel trends."
+    response: "Warn; require a sensitivity analysis (Rambachan & Roth) rather than a pre-test verdict."
+  - id: "did-failure-005"
+    risk: "Adding covariates linearly to a TWFE regression to satisfy conditional parallel trends."
+    response: "Warn; require regression adjustment, IPW, or a doubly-robust estimator instead."
 code_recipes:
   - id: "did-python-pyfixest-event-study"
     language: "python"
@@ -136,9 +169,11 @@ code_recipes:
       estat ptrends
 reporting_checklist:
   - "State the treated group, comparison group, treatment timing, and estimand."
-  - "Report the estimator and why it matches the timing design."
-  - "Show pre-trend or registered substitute diagnostics."
-  - "Report clustering level, number of clusters, and small-cluster adjustments if used."
+  - "State the parallel-trends and no-anticipation assumptions, and the outcome scale (levels/logs) they are assumed in."
+  - "Report the estimator and why it matches the timing design (and, if staggered, that it is heterogeneity-robust)."
+  - "Show pre-trend or registered substitute diagnostics, and a sensitivity analysis to parallel-trends violations."
+  - "Report clustering level, number of clusters, and small-cluster adjustments if used; for event studies, report uniform sup-t bands."
+  - "If covariates are needed for identification, report a doubly-robust/IPW/regression-adjustment estimator, not TWFE-with-covariates."
   - "Separate design evidence from statistical significance."
 source_anchors:
   - source_id: "angrist_pischke_mhe"
@@ -158,3 +193,22 @@ source_anchors:
   - source_id: "wooldridge_nonlinear_did_2023"
     topics:
       - "nonlinear panel DiD extensions"
+  - source_id: "roth_santanna_bilinski_poe_2023"
+    topics:
+      - "synthesis of the recent DiD econometrics literature"
+      - "parallel trends, no anticipation, staggered timing, and estimator choice"
+  - source_id: "rambachan_roth_2023"
+    topics:
+      - "sensitivity analysis and honest confidence intervals for parallel-trends violations"
+  - source_id: "roth_santanna_2023_functional_form"
+    topics:
+      - "functional-form sensitivity of parallel trends"
+  - source_id: "santanna_zhao_2020"
+    topics:
+      - "doubly-robust difference-in-differences estimators with covariates"
+  - source_id: "borusyak_jaravel_spiess_2024"
+    topics:
+      - "imputation-based event-study estimator under staggered adoption"
+  - source_id: "dechaisemartin_dhaultfoeuille_2020"
+    topics:
+      - "heterogeneity-robust DiD and treatments that switch on and off"

@@ -16,6 +16,9 @@ dist/
 tests/.runtime/
 tools/
 
+# Local textbook source material (not distributed with the package)
+docs/books/
+
 # Local agent/project memory
 AGENTS.md
 CLAUDE.md

@@ -24,6 +24,7 @@ from aesdk.agent import (
     intake_task,
     preflight,
     run_analysis,
+    run_setup,
     write_ai_passport,
     write_claude_runtime_metadata,
     write_codex_runtime_metadata,
@@ -190,8 +191,26 @@ def agent_preflight_cmd(
     proposal: Path | None = typer.Option(None, exists=True, help="Optional proposal JSON path."),
     conformance: str = typer.Option("strict", help="Conformance level: basic|strict|regulated"),
     output_format: str = typer.Option("text", "--format", help="Output format: text|json|markdown"),
+    scan_data_file: bool = typer.Option(
+        True,
+        "--scan-data/--no-scan-data",
+        help="Read the declared dataset and cross-check the PAP structure against it.",
+    ),
+    data: Path | None = typer.Option(
+        None,
+        "--data",
+        exists=True,
+        help="Explicit dataset path for the data scan (overrides data.source in the PAP).",
+    ),
 ) -> None:
-    result = preflight(method=method, pap_path=pap, proposal=proposal, conformance=conformance)
+    result = preflight(
+        method=method,
+        pap_path=pap,
+        proposal=proposal,
+        conformance=conformance,
+        scan_data_file=scan_data_file,
+        data_path=data,
+    )
     if output_format.lower() == "json":
         typer.echo(json.dumps(result.to_dict(), indent=2))
     elif output_format.lower() == "markdown":
@@ -205,6 +224,114 @@ def agent_preflight_cmd(
         raise typer.BadParameter("format must be text, json, or markdown")
     if result.blocked:
         raise typer.Exit(code=1)
+
+
+@agent_app.command("scan-data")
+def agent_scan_data_cmd(
+    method: str = typer.Option(..., help="Method id, for example did or iv_2sls."),
+    pap: Path = typer.Option(..., exists=True, help="PAP path declaring the dataset and variables."),
+    proposal: Path | None = typer.Option(None, exists=True, help="Optional proposal JSON path."),
+    data: Path | None = typer.Option(
+        None, "--data", exists=True, help="Explicit dataset path (overrides data.source in the PAP)."
+    ),
+    conformance: str = typer.Option("strict", help="Conformance level: basic|strict|regulated"),
+    output_format: str = typer.Option("text", "--format", help="Output format: text|json"),
+) -> None:
+    """Read the declared dataset and cross-check the PAP structure against it."""
+
+    from aesdk.data import scan_data as _scan_data
+    from aesdk.governance.pap import validate_pap_file
+
+    pap_doc = validate_pap_file(pap)
+    loaded_proposal: dict[str, Any] = {}
+    if proposal is not None:
+        with Path(proposal).open("r", encoding="utf-8-sig") as handle:
+            loaded_proposal = json.load(handle)
+    base_dirs = [Path.cwd(), Path(pap).resolve().parent]
+    result = _scan_data(
+        method=method,
+        pap=pap_doc,
+        proposal=loaded_proposal,
+        data_path=data,
+        base_dirs=base_dirs,
+        conformance=conformance,
+    )
+    if output_format.lower() == "json":
+        typer.echo(json.dumps(result.to_dict(), indent=2))
+    elif output_format.lower() == "text":
+        if not result.scanned:
+            typer.echo(f"scanned=False reason={result.profile.reason_unresolved}")
+        else:
+            profile = result.profile
+            typer.echo(
+                f"scanned=True path={profile.path} rows={profile.n_rows} columns={profile.n_columns}"
+            )
+            typer.echo(
+                f"units={profile.n_units} periods={profile.n_periods} "
+                f"balanced={profile.balanced_panel} clusters={profile.n_clusters} "
+                f"adoption_cohorts={profile.adoption_cohorts}"
+            )
+        if result.profile.ols_assumptions and result.profile.ols_assumptions.fitted:
+            typer.echo("OLS assumption checklist (Wooldridge):")
+            for check in result.profile.ols_assumptions.checks:
+                typer.echo(f"  [{check.status}] {check.wooldridge} {check.name}")
+        for finding in result.findings:
+            typer.echo(f"- {finding.rule_id} severity={finding.severity.value}: {finding.message}")
+            if finding.guidance:
+                typer.echo(f"  guidance: {finding.guidance}")
+    else:
+        raise typer.BadParameter("format must be text or json")
+    if any(finding.severity.value == "error" for finding in result.findings):
+        raise typer.Exit(code=1)
+
+
+@agent_app.command("check-ols")
+def agent_check_ols_cmd(
+    pap: Path = typer.Option(..., exists=True, help="PAP declaring the dataset, outcome, and regressors."),
+    proposal: Path | None = typer.Option(None, exists=True, help="Optional proposal JSON path."),
+    data: Path | None = typer.Option(
+        None, "--data", exists=True, help="Explicit dataset path (overrides data.source in the PAP)."
+    ),
+    output_format: str = typer.Option("text", "--format", help="Output format: text|json"),
+) -> None:
+    """Fit the declared OLS model and run the ten-item Wooldridge assumption checklist."""
+
+    from aesdk.data import scan_data as _scan_data
+    from aesdk.governance.pap import validate_pap_file
+
+    pap_doc = validate_pap_file(pap)
+    loaded_proposal: dict[str, Any] = {}
+    if proposal is not None:
+        with Path(proposal).open("r", encoding="utf-8-sig") as handle:
+            loaded_proposal = json.load(handle)
+    base_dirs = [Path.cwd(), Path(pap).resolve().parent]
+    result = _scan_data(
+        method="ols_cef",
+        pap=pap_doc,
+        proposal=loaded_proposal,
+        data_path=data,
+        base_dirs=base_dirs,
+        conformance="basic",
+    )
+    report = result.profile.ols_assumptions
+    if output_format.lower() == "json":
+        typer.echo(json.dumps(report.to_dict() if report else {"fitted": False}, indent=2))
+        return
+    if output_format.lower() != "text":
+        raise typer.BadParameter("format must be text or json")
+    if report is None or not report.fitted:
+        reason = (report.reason_unfitted if report else result.profile.reason_unresolved) or "model not fitted"
+        typer.echo(f"fitted=False reason={reason}")
+        raise typer.Exit(code=1)
+    typer.echo(f"fitted=True n={report.n_obs} k={report.n_params} r_squared={report.r_squared}")
+    if report.dropped_non_numeric:
+        typer.echo(f"dropped_non_numeric={report.dropped_non_numeric}")
+    for check in report.checks:
+        line = f"[{check.status}] {check.wooldridge} {check.name}"
+        if check.p_value is not None:
+            line += f" (p={check.p_value})"
+        typer.echo(line)
+        typer.echo(f"    {check.detail}")
 
 
 @agent_app.command("draft-pap")
@@ -850,6 +977,101 @@ def rules_list_cmd(
             f"{rule.get('id')} | {rule.get('severity')} | "
             f"{rule.get('name')} | {rule.get('_source_file')}"
         )
+
+
+@app.command("setup")
+def setup_cmd(
+    output_dir: Path = typer.Option(Path("."), "--output-dir", help="Project folder to set up."),
+    template: str = typer.Option(
+        "both",
+        "--template",
+        help="Which assistant instructions to save: both|AGENTS.md|CLAUDE.md|none.",
+    ),
+    force: bool = typer.Option(
+        False, "--force", help="Overwrite existing AGENTS.md/CLAUDE.md instead of keeping them."
+    ),
+    output_format: str = typer.Option("text", "--format", help="Output format: text|json"),
+) -> None:
+    """Get AESDK ready in one step and print a plain-language summary.
+
+    Verifies the install, saves the ready-made assistant instructions into the
+    project, and explains what to do next. It never installs packages or changes
+    system settings on its own.
+    """
+
+    result = run_setup(output_dir=output_dir, write_templates=template, force=force)
+    if output_format.lower() == "json":
+        typer.echo(json.dumps(result.to_dict(), indent=2))
+    elif output_format.lower() == "text":
+        typer.echo(result.friendly_report())
+    else:
+        raise typer.BadParameter("format must be text or json")
+    if not result.ready:
+        raise typer.Exit(code=1)
+
+
+@app.command("chat-guide")
+def chat_guide_cmd(
+    target: str = typer.Option(
+        "claude", "--target", help="Which chat preset to print: chatgpt|claude|mcp."
+    ),
+) -> None:
+    """Print a ready-to-paste preset for using AESDK inside ChatGPT or Claude chat."""
+
+    from aesdk.chat import available_targets, chat_guide
+
+    try:
+        typer.echo(chat_guide(target))
+    except ValueError:
+        raise typer.BadParameter(f"target must be one of: {', '.join(available_targets())}")
+
+
+@app.command("connect-claude")
+def connect_claude_cmd(
+    config_path: Path | None = typer.Option(
+        None, "--config-path", help="Path to claude_desktop_config.json (auto-detected by default)."
+    ),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Show what would change without writing."),
+    force: bool = typer.Option(
+        False, "--force", help="Replace an unreadable/invalid existing config."
+    ),
+    output_format: str = typer.Option("text", "--format", help="Output format: text|json"),
+) -> None:
+    """Connect AESDK to Claude Desktop in one step (edits the config for you).
+
+    Finds claude_desktop_config.json, adds the AESDK MCP server without disturbing
+    other connectors, and backs up the previous file. Then restart Claude Desktop.
+    """
+
+    from aesdk.chat import connect_claude_desktop
+
+    result = connect_claude_desktop(config_path=config_path, dry_run=dry_run, force=force)
+    if output_format.lower() == "json":
+        typer.echo(json.dumps(result.to_dict(), indent=2))
+    elif output_format.lower() == "text":
+        typer.echo(result.friendly_report())
+    else:
+        raise typer.BadParameter("format must be text or json")
+    if not result.ok:
+        raise typer.Exit(code=1)
+
+
+@app.command("mcp")
+def mcp_cmd(
+    transport: str = typer.Option("stdio", "--transport", help="MCP transport (stdio)."),
+) -> None:
+    """Run the AESDK MCP server so chat clients (e.g. Claude) can call the checks.
+
+    Requires the optional 'mcp' extra: pip install aesdk[mcp].
+    """
+
+    from aesdk.chat.server import run as run_server
+
+    try:
+        run_server(transport=transport)
+    except RuntimeError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(code=1)
 
 
 @app.command("init")

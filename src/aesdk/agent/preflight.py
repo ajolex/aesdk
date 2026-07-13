@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from aesdk.agent.context import AgentContext, agent_context
+from aesdk.data.probe import DataProfile, DataScanResult, scan_data
 from aesdk.governance.pap import validate_pap_file
 from aesdk.governance.policy import ConformanceLevel
 from aesdk.protocol.validator import RuleViolation, Severity, ValidationResult, Validator
@@ -36,6 +37,12 @@ _METHOD_STRATEGY_ALIASES = {
         "MultinomialLogit",
     },
     "time_series": {"ARIMA", "ARMAX", "VAR", "VECM", "ARDL", "HACRegression"},
+    "mle": {"MLE", "QMLE"},
+    "dml": {"DML", "DoubleML", "PLR", "PLIV", "IRM", "CausalForest"},
+    "structural": {"BLP", "StructuralGMM", "StructuralMLE", "DiscreteChoiceDemand"},
+    "nonparametric": {"KernelRegression", "LocalPolynomial", "SeriesEstimator", "LOESS"},
+    "bayesian": {"BayesianRegression", "MCMC", "GibbsSampler", "BayesianVAR", "HierarchicalBayes"},
+    "garch": {"ARCH", "GARCH", "EGARCH", "GJR-GARCH"},
 }
 
 
@@ -46,10 +53,19 @@ class PreflightResult:
     validation: ValidationResult | None = None
     pap_path: str | None = None
     proposal: dict[str, Any] | None = None
+    data_scan: DataScanResult | None = None
 
     @property
     def status(self) -> str:
         return self.validation.status if self.validation else "context-only"
+
+    @property
+    def data_profile(self) -> DataProfile | None:
+        return self.data_scan.profile if self.data_scan else None
+
+    @property
+    def data_scanned(self) -> bool:
+        return bool(self.data_scan and self.data_scan.scanned)
 
     @property
     def blocked(self) -> bool:
@@ -71,6 +87,8 @@ class PreflightResult:
         if not self.validation.violations:
             return f"AESDK preflight status={self.validation.status}; no rule violations."
         lines = [f"AESDK preflight status={self.validation.status}."]
+        if self.data_scanned:
+            lines.append(f"Data scan: read {self.data_scan.profile.path}.")
         for violation in self.validation.violations:
             lines.append(f"- {violation.rule_id} severity={violation.severity.value}: {violation.message}")
             if violation.guidance:
@@ -100,6 +118,7 @@ class PreflightResult:
                 for item in self.violations
             ],
             "context": self.context.to_dict(),
+            "data_scan": self.data_scan.to_dict() if self.data_scan else None,
         }
 
 
@@ -162,14 +181,31 @@ def _method_strategy_violation(method: str, pap: dict[str, Any], proposal: dict[
     )
 
 
+def _status_from_violations(violations: list[RuleViolation]) -> str:
+    if any(v.severity == Severity.ERROR for v in violations):
+        return "block"
+    if any(v.severity == Severity.WARNING for v in violations):
+        return "warn"
+    return "pass"
+
+
 def preflight(
     *,
     method: str,
     pap_path: str | Path | None = None,
     proposal: dict[str, Any] | str | Path | None = None,
     conformance: str = "strict",
+    scan_data_file: bool = True,
+    data_path: str | Path | None = None,
 ) -> PreflightResult:
-    """Load method context and optionally validate a PAP/proposal pair."""
+    """Load method context and optionally validate a PAP/proposal pair.
+
+    When ``scan_data_file`` is true and the PAP declares a readable dataset (or
+    ``data_path`` is provided), AESDK also reads the data and cross-checks the
+    declared structure against it. A missing or unreadable dataset degrades
+    gracefully: no data findings are produced and the declaration-only result
+    is returned unchanged.
+    """
 
     ctx = agent_context(method)
     loaded_proposal = _load_proposal(proposal)
@@ -191,6 +227,21 @@ def preflight(
         proposal=loaded_proposal,
         conformance=ConformanceLevel(conformance.lower()),
     )
+
+    data_scan: DataScanResult | None = None
+    if scan_data_file:
+        data_scan = scan_data(
+            method=method,
+            pap=pap,
+            proposal=loaded_proposal,
+            data_path=data_path,
+            base_dirs=artifact_base_dirs,
+            conformance=conformance,
+        )
+        if data_scan.findings:
+            merged = [*validation.violations, *data_scan.findings]
+            validation = ValidationResult(status=_status_from_violations(merged), violations=merged)
+
     method_violation = _method_strategy_violation(method, pap, loaded_proposal)
     if method_violation:
         validation = ValidationResult(status="block", violations=[method_violation, *validation.violations])
@@ -200,4 +251,5 @@ def preflight(
         validation=validation,
         pap_path=str(pap_path),
         proposal=loaded_proposal,
+        data_scan=data_scan,
     )

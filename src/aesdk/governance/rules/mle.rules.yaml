@@ -1,0 +1,48 @@
+source:
+  id: "MLE_GOVERNANCE"
+  method_id: "mle"
+  topic: "maximum_likelihood_estimation"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "theoretical_microfoundations"
+  topics:
+    - "maximum_likelihood"
+    - "asymptotic_theory"
+rules:
+  - id: MLE-001
+    name: "MLE Requires A Declared Distribution / Likelihood"
+    severity: "error"
+    estimators: ["MLE", "QMLE"]
+    data_structures: []
+    condition: "estimator in ['MLE', 'QMLE'] and text_missing(mle_distribution)"
+    requirement: "Maximum likelihood estimation must declare the parametric distribution or likelihood being maximized."
+    guidance: "Name the density/likelihood (e.g., logistic, Poisson, normal) and the parameter vector before estimation; the estimator is only defined relative to a stated model."
+    reference:
+      authors: "Greene, William H."
+      book: "Econometric Analysis"
+      title: "Maximum Likelihood Estimation"
+  - id: MLE-002
+    name: "MLE Convergence Must Be Confirmed"
+    severity: "warning"
+    estimators: ["MLE", "QMLE"]
+    data_structures: []
+    condition: "estimator in ['MLE', 'QMLE'] and mle_convergence_confirmed != true"
+    requirement: "MLE estimates should not be interpreted until optimizer convergence is confirmed."
+    guidance: "Report convergence status, gradient/Hessian conditioning, and starting-value sensitivity; a non-converged run yields meaningless coefficients and standard errors."
+    reference:
+      authors: "Greene, William H."
+      book: "Econometric Analysis"
+      title: "Optimization and convergence in ML estimation"
+  - id: MLE-003
+    name: "Quasi-MLE Requires Robust Standard Errors"
+    severity: "warning"
+    estimators: ["MLE", "QMLE"]
+    data_structures: []
+    condition: "estimator == 'QMLE' and mle_standard_error_type not in ['robust', 'sandwich', 'hc1', 'hc2', 'hc3', 'robust_cluster', 'cluster', 'cluster_robust']"
+    requirement: "Under a quasi-likelihood interpretation, inference must use a robust (sandwich) covariance rather than the information-matrix form."
+    guidance: "When the density may be misspecified (e.g., Poisson QMLE for a conditional mean), use sandwich or cluster-robust standard errors and state the quasi-MLE interpretation."
+    reference:
+      authors: "Wooldridge, Jeffrey M."
+      book: "Econometric Analysis of Cross Section and Panel Data"
+      title: "Quasi-maximum likelihood and robust inference"

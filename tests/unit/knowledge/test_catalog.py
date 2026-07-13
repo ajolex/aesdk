@@ -157,6 +157,12 @@ def test_every_method_pack_has_executable_rule_coverage() -> None:
         "gmm": "gmm.rules.yaml",
         "limited_dependent": "limited_dependent.rules.yaml",
         "time_series": "time_series.rules.yaml",
+        "mle": "mle.rules.yaml",
+        "dml": "dml.rules.yaml",
+        "structural": "structural.rules.yaml",
+        "nonparametric": "nonparametric.rules.yaml",
+        "bayesian": "bayesian.rules.yaml",
+        "garch": "garch.rules.yaml",
     }
     assert set(method_rule_files) == set(list_knowledge_pack_ids())
     for method_id, file_name in method_rule_files.items():

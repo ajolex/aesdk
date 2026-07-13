@@ -289,6 +289,193 @@ sources:
     sdk_use:
       - "modern DiD guidance for staggered treatment timing"
 
+  roth_santanna_bilinski_poe_2023:
+    type: article
+    title: "What's Trending in Difference-in-Differences? A Synthesis of the Recent Econometrics Literature"
+    authors:
+      - "Jonathan Roth"
+      - "Pedro H. C. Sant'Anna"
+      - "Alyssa Bilinski"
+      - "John Poe"
+    journal: "Journal of Econometrics"
+    year: 2023
+    online:
+      doi: "10.1016/j.jeconom.2023.03.008"
+      url: "https://doi.org/10.1016/j.jeconom.2023.03.008"
+    sdk_use:
+      - "synthesis of recent DiD econometrics"
+      - "parallel trends, no anticipation, and estimator choice under staggered timing"
+
+  rambachan_roth_2023:
+    type: article
+    title: "A More Credible Approach to Parallel Trends"
+    authors:
+      - "Ashesh Rambachan"
+      - "Jonathan Roth"
+    journal: "Review of Economic Studies"
+    year: 2023
+    online:
+      doi: "10.1093/restud/rdad018"
+      url: "https://doi.org/10.1093/restud/rdad018"
+    sdk_use:
+      - "sensitivity analysis and honest confidence sets for parallel-trends violations"
+
+  roth_santanna_2023_functional_form:
+    type: article
+    title: "When Is Parallel Trends Sensitive to Functional Form?"
+    authors:
+      - "Jonathan Roth"
+      - "Pedro H. C. Sant'Anna"
+    journal: "Econometrica"
+    year: 2023
+    online:
+      doi: "10.3982/ECTA19402"
+      url: "https://doi.org/10.3982/ECTA19402"
+    sdk_use:
+      - "functional-form sensitivity of the parallel-trends assumption"
+
+  santanna_zhao_2020:
+    type: article
+    title: "Doubly Robust Difference-in-Differences Estimators"
+    authors:
+      - "Pedro H. C. Sant'Anna"
+      - "Jun Zhao"
+    journal: "Journal of Econometrics"
+    year: 2020
+    online:
+      doi: "10.1016/j.jeconom.2020.06.003"
+      url: "https://doi.org/10.1016/j.jeconom.2020.06.003"
+    sdk_use:
+      - "doubly-robust DiD with covariates under conditional parallel trends"
+
+  borusyak_jaravel_spiess_2024:
+    type: article
+    title: "Revisiting Event-Study Designs: Robust and Efficient Estimation"
+    authors:
+      - "Kirill Borusyak"
+      - "Xavier Jaravel"
+      - "Jann Spiess"
+    journal: "Review of Economic Studies"
+    year: 2024
+    online:
+      doi: "10.1093/restud/rdae007"
+      url: "https://doi.org/10.1093/restud/rdae007"
+    sdk_use:
+      - "imputation-based event-study estimator under staggered adoption"
+
+  dechaisemartin_dhaultfoeuille_2020:
+    type: article
+    title: "Two-Way Fixed Effects Estimators with Heterogeneous Treatment Effects"
+    authors:
+      - "Clement de Chaisemartin"
+      - "Xavier D'Haultfoeuille"
+    journal: "American Economic Review"
+    year: 2020
+    online:
+      doi: "10.1257/aer.20181169"
+      url: "https://doi.org/10.1257/aer.20181169"
+    sdk_use:
+      - "heterogeneity-robust DiD and treatments that switch on and off"
+
+  train_discrete_choice_2009:
+    type: textbook
+    title: "Discrete Choice Methods with Simulation"
+    authors:
+      - "Kenneth E. Train"
+    edition: "2nd"
+    year: 2009
+    online:
+      url: "https://eml.berkeley.edu/books/choice2.html"
+    sdk_use:
+      - "simulation-based estimation of multinomial, nested, and mixed logit"
+      - "structural discrete-choice demand"
+
+  hayashi_econometrics_2000:
+    type: textbook
+    title: "Econometrics"
+    authors:
+      - "Fumio Hayashi"
+    year: 2000
+    online:
+      url: "https://press.princeton.edu/books/hardcover/9780691010182/econometrics"
+    sdk_use:
+      - "GMM foundations and rigorous bridge to structural estimation"
+    notes: "Online locator AI-provided; verify against the source before public release."
+
+  wager_athey_2018:
+    type: article
+    title: "Estimation and Inference of Heterogeneous Treatment Effects Using Random Forests"
+    authors:
+      - "Stefan Wager"
+      - "Susan Athey"
+    journal: "Journal of the American Statistical Association"
+    year: 2018
+    online:
+      doi: "10.1080/01621459.2017.1319839"
+      url: "https://doi.org/10.1080/01621459.2017.1319839"
+    sdk_use:
+      - "causal forests for heterogeneous treatment effects"
+
+  athey_imbens_2019:
+    type: article
+    title: "Machine Learning Methods That Economists Should Know About"
+    authors:
+      - "Susan Athey"
+      - "Guido W. Imbens"
+    journal: "Annual Review of Economics"
+    year: 2019
+    online:
+      doi: "10.1146/annurev-economics-080217-053433"
+      url: "https://doi.org/10.1146/annurev-economics-080217-053433"
+    sdk_use:
+      - "overview of machine learning for causal inference and heterogeneous effects"
+
+  li_racine_nonparametric_2007:
+    type: textbook
+    title: "Nonparametric Econometrics: Theory and Practice"
+    authors:
+      - "Qi Li"
+      - "Jeffrey Scott Racine"
+    year: 2007
+    local_path: "docs/books/Nonparametric Econometrics_ Theory and Practice.pdf"
+    online:
+      url: "https://press.princeton.edu/books/hardcover/9780691121611/nonparametric-econometrics"
+    sdk_use:
+      - "kernel regression, local polynomial, and series estimators"
+      - "bandwidth selection and the curse of dimensionality"
+    notes: "Page anchors verified against the local source PDF; the online URL is AI-provided and not independently verified."
+
+  koop_poirier_tobias_2007:
+    type: textbook
+    title: "Bayesian Econometric Methods"
+    authors:
+      - "Gary Koop"
+      - "Dale J. Poirier"
+      - "Justin L. Tobias"
+    year: 2007
+    local_path: "docs/books/Bayesian Econometric Methods.pdf"
+    online:
+      url: "https://www.cambridge.org/9780521671736"
+    sdk_use:
+      - "priors, posteriors, and MCMC-based Bayesian estimation"
+      - "posterior convergence and prior sensitivity"
+    notes: "Page anchors verified against the local source PDF; the online URL is AI-provided and not independently verified."
+
+  tsay_financial_time_series_2010:
+    type: textbook
+    title: "Analysis of Financial Time Series"
+    authors:
+      - "Ruey S. Tsay"
+    year: 2010
+    local_path: "docs/books/analysis-of-financial-time-series-copy-2ffgm3v.pdf"
+    online:
+      doi: "10.1002/9780470644560"
+      url: "https://doi.org/10.1002/9780470644560"
+    sdk_use:
+      - "ARCH/GARCH volatility modeling"
+      - "volatility clustering and financial time-series diagnostics"
+    notes: "Page anchors verified against the local source PDF (Chapter 3, Conditional Heteroscedastic Models). The DOI/edition is AI-provided and not independently verified."
+
   rosenbaum_rubin_1983:
     type: article
     title: "The Central Role of the Propensity Score in Observational Studies for Causal Effects"

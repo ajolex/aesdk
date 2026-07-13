@@ -427,3 +427,191 @@ methods:
       - {id: "stock_watson_intro_econometrics"}
       - {id: "greene_econometric_analysis"}
       - {id: "box_jenkins_reinsel_ljung_2015"}
+  mle:
+    name: "Maximum Likelihood Estimation"
+    status: "starter"
+    curriculum:
+      stage: "theoretical_microfoundations"
+      topics: ["maximum_likelihood", "asymptotic_theory"]
+    data_structures: ["cross-section", "pooled", "panel", "time-series"]
+    estimators: ["MLE", "QMLE"]
+    purpose: "Estimate parameters by maximizing a likelihood implied by a declared distributional model, with inference from the information matrix."
+    assumptions:
+      - "The parametric density/likelihood is explicitly specified."
+      - "The likelihood is correctly specified, or quasi-MLE with robust inference is used and stated."
+      - "Optimization convergence and identification are checked."
+      - "Standard errors come from the information matrix, or a robust sandwich under possible misspecification."
+    required_pap_fields:
+      - "mle_block.distribution"
+      - "mle_block.likelihood"
+      - "mle_block.parameters"
+      - "mle_block.optimizer"
+      - "mle_block.standard_error_type"
+    diagnostics:
+      - "Report convergence status and starting-value sensitivity."
+      - "Check identification and the information-matrix conditioning."
+      - "Use likelihood-ratio, Wald, or LM tests appropriately."
+      - "Prefer robust (sandwich) standard errors when the density may be misspecified."
+    blocks_or_warnings:
+      - "Block MLE without a declared distribution/likelihood."
+      - "Warn when convergence is not confirmed."
+      - "Warn when non-robust standard errors are used under a quasi-likelihood interpretation."
+    sources:
+      - {id: "greene_econometric_analysis"}
+      - {id: "hansen_econometrics_2022"}
+      - {id: "wooldridge_cross_section_panel"}
+  dml:
+    name: "Double / Debiased Machine Learning"
+    status: "pending_human_review"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics: ["double_machine_learning", "potential_outcomes"]
+    data_structures: ["cross-section", "panel"]
+    estimators: ["DML", "DoubleML", "PLR", "PLIV", "IRM", "CausalForest"]
+    purpose: "Estimate a low-dimensional causal parameter in the presence of high-dimensional nuisance functions using Neyman-orthogonal scores and cross-fitting."
+    assumptions:
+      - "The target parameter and identification (unconfoundedness or a valid instrument) are stated before estimation."
+      - "The moment/score used for the target parameter is Neyman-orthogonal."
+      - "Nuisance functions are estimated by machine learning with cross-fitting (sample splitting)."
+      - "Regularization/overfitting bias is controlled through orthogonalization and cross-fitting."
+    required_pap_fields:
+      - "dml_block.target_parameter"
+      - "dml_block.identification"
+      - "dml_block.nuisance_learners"
+      - "dml_block.cross_fitting_folds"
+      - "dml_block.orthogonal_score"
+    diagnostics:
+      - "Report the number of cross-fitting folds and repetitions."
+      - "Report nuisance-learner choices and tuning."
+      - "Report sensitivity to learners and folds."
+      - "For heterogeneous effects, report honest inference (e.g., causal forests)."
+    blocks_or_warnings:
+      - "Block causal DML without a stated identification assumption."
+      - "Warn when cross-fitting is not used (regularization bias)."
+      - "Warn when the score is not orthogonal to the nuisance functions."
+    sources:
+      - {id: "chernozhukov_dml_2018"}
+      - {id: "wager_athey_2018"}
+      - {id: "athey_imbens_2019"}
+  structural:
+    name: "Structural Estimation (IO / BLP)"
+    status: "pending_human_review"
+    curriculum:
+      stage: "advanced_empirical_research"
+      topics: ["structural_blp", "potential_outcomes"]
+    data_structures: ["cross-section", "panel"]
+    estimators: ["BLP", "StructuralGMM", "StructuralMLE", "DiscreteChoiceDemand"]
+    purpose: "Estimate structural (deep) parameters from an economic model and equilibrium/optimality restrictions, enabling model-driven counterfactuals."
+    assumptions:
+      - "The economic model, deep parameters, and equilibrium/optimality conditions are stated."
+      - "Endogenous variables (for example prices) are instrumented with a defensible instrument set."
+      - "Identification of the structural parameters from the moments/likelihood is argued."
+      - "Counterfactuals are tied to the estimated model, with stated out-of-sample caveats."
+    required_pap_fields:
+      - "structural_block.model"
+      - "structural_block.parameters"
+      - "structural_block.moment_or_likelihood"
+      - "structural_block.instruments"
+      - "structural_block.identification_argument"
+    diagnostics:
+      - "Report the estimation moments/likelihood and the instruments used for endogenous variables."
+      - "Report identification and fit diagnostics."
+      - "Report sensitivity of counterfactuals to key parameters and assumptions."
+    blocks_or_warnings:
+      - "Block structural counterfactuals without a stated model and identification argument."
+      - "Warn when endogenous prices/choices are not instrumented."
+      - "Warn when counterfactuals extrapolate far beyond the estimation support."
+    sources:
+      - {id: "berry_levinsohn_pakes_1995"}
+      - {id: "train_discrete_choice_2009"}
+      - {id: "hayashi_econometrics_2000"}
+  nonparametric:
+    name: "Nonparametric / Semiparametric Estimation"
+    status: "reviewed"
+    curriculum:
+      stage: "theoretical_microfoundations"
+      topics: ["nonparametric_semiparametric", "asymptotic_theory"]
+    data_structures: ["cross-section", "pooled", "panel", "time-series"]
+    estimators: ["KernelRegression", "LocalPolynomial", "SeriesEstimator", "LOESS"]
+    purpose: "Estimate conditional means or densities with flexible functional forms that do not impose a global parametric shape."
+    assumptions:
+      - "The estimand (for example the conditional mean function) and the smoothing target are stated."
+      - "Bandwidth or series-length selection is data-driven and disclosed."
+      - "The dimension of continuous conditioning variables is small enough to avoid the curse of dimensionality."
+      - "Boundary bias and inference (bias-corrected or undersmoothed) are addressed."
+    required_pap_fields:
+      - "nonparametric_block.estimator"
+      - "nonparametric_block.bandwidth_rule"
+      - "nonparametric_block.continuous_regressors"
+      - "nonparametric_block.inference_plan"
+    diagnostics:
+      - "Report the bandwidth/series-selection rule and sensitivity to it."
+      - "Report the number of continuous conditioning variables (curse of dimensionality)."
+      - "Address boundary bias and the inference method for confidence bands."
+    blocks_or_warnings:
+      - "Warn when bandwidth selection is undisclosed or arbitrary."
+      - "Warn when many continuous regressors make nonparametric estimation infeasible."
+    sources:
+      - {id: "li_racine_nonparametric_2007"}
+      - {id: "hansen_econometrics_2022"}
+      - {id: "greene_econometric_analysis"}
+  bayesian:
+    name: "Bayesian Econometrics"
+    status: "reviewed"
+    curriculum:
+      stage: "theoretical_microfoundations"
+      topics: ["bayesian_inference", "maximum_likelihood"]
+    data_structures: ["cross-section", "pooled", "panel", "time-series"]
+    estimators: ["BayesianRegression", "MCMC", "GibbsSampler", "BayesianVAR", "HierarchicalBayes"]
+    purpose: "Estimate a posterior distribution over parameters by combining a likelihood with declared priors, typically via MCMC."
+    assumptions:
+      - "Priors are declared and justified, and the likelihood is stated."
+      - "Posterior sampling (MCMC) convergence is checked."
+      - "Prior sensitivity is assessed."
+      - "Reported quantities (posterior means, credible intervals) are interpreted as Bayesian, not frequentist."
+    required_pap_fields:
+      - "bayesian_block.priors"
+      - "bayesian_block.likelihood"
+      - "bayesian_block.sampler"
+      - "bayesian_block.convergence_plan"
+      - "bayesian_block.prior_sensitivity_plan"
+    diagnostics:
+      - "Report convergence diagnostics (for example R-hat, effective sample size, trace plots)."
+      - "Report prior specification and a prior-sensitivity analysis."
+      - "Report credible intervals and posterior predictive checks."
+    blocks_or_warnings:
+      - "Block Bayesian estimates without declared priors."
+      - "Warn when MCMC convergence is not demonstrated."
+      - "Warn when credible intervals are reported as frequentist confidence intervals."
+    sources:
+      - {id: "koop_poirier_tobias_2007"}
+      - {id: "greene_econometric_analysis"}
+  garch:
+    name: "Volatility Models (ARCH / GARCH)"
+    status: "reviewed"
+    curriculum:
+      stage: "theoretical_microfoundations"
+      topics: ["financial_volatility", "time_series_dynamics"]
+    data_structures: ["time-series"]
+    estimators: ["ARCH", "GARCH", "EGARCH", "GJR-GARCH"]
+    purpose: "Model the conditional variance of a time series (volatility clustering) alongside its conditional mean."
+    assumptions:
+      - "The conditional-mean model is specified before the conditional-variance model."
+      - "The residuals show ARCH effects that justify a volatility model."
+      - "Stationarity and positivity constraints on the variance parameters hold (for example non-negative coefficients and persistence below one)."
+      - "The innovation distribution (normal, Student-t) is stated."
+    required_pap_fields:
+      - "garch_block.mean_model"
+      - "garch_block.variance_model"
+      - "garch_block.innovation_distribution"
+      - "garch_block.arch_test_plan"
+    diagnostics:
+      - "Test for ARCH effects (Engle LM test) before fitting."
+      - "Check parameter constraints and persistence (for example alpha plus beta below one for GARCH(1,1))."
+      - "Check standardized-residual diagnostics (Ljung-Box and the assumed distribution)."
+    blocks_or_warnings:
+      - "Warn when a volatility model is fit without evidence of ARCH effects."
+      - "Warn when variance-parameter constraints are violated (non-stationary variance)."
+    sources:
+      - {id: "tsay_financial_time_series_2010"}
+      - {id: "box_jenkins_reinsel_ljung_2015"}

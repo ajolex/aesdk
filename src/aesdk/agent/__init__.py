@@ -9,6 +9,7 @@ from .preflight import PreflightResult, preflight
 from .report import write_workflow_report
 from .review import InteractionLogResult, ReviewDiffResult, append_interaction_log, write_review_diff
 from .run import AnalysisRunResult, run_analysis
+from .setup import SetupResult, run_setup
 from .runtime_metadata import (
     RuntimeMetadataResult,
     write_claude_runtime_metadata,
@@ -26,6 +27,7 @@ __all__ = [
     "PrepareResult",
     "ReviewDiffResult",
     "RuntimeMetadataResult",
+    "SetupResult",
     "agent_context",
     "append_interaction_log",
     "build_ai_passport",
@@ -36,6 +38,7 @@ __all__ = [
     "prepare",
     "preflight",
     "run_analysis",
+    "run_setup",
     "write_ai_passport",
     "write_claude_runtime_metadata",
     "write_codex_runtime_metadata",

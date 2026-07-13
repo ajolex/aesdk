@@ -1,0 +1,49 @@
+source:
+  id: "BAYESIAN_GOVERNANCE"
+  method_id: "bayesian"
+  topic: "bayesian_econometrics"
+  rule_file_version: "1.0.0"
+  organization: "method_topic"
+curriculum:
+  stage: "theoretical_microfoundations"
+  topics:
+    - "bayesian_inference"
+    - "maximum_likelihood"
+rules:
+  - id: BAYES-001
+    name: "Bayesian Estimation Requires Declared Priors"
+    severity: "error"
+    estimators: ["BayesianRegression", "MCMC", "GibbsSampler", "BayesianVAR", "HierarchicalBayes"]
+    data_structures: []
+    condition: "estimator in ['BayesianRegression', 'MCMC', 'GibbsSampler', 'BayesianVAR', 'HierarchicalBayes'] and text_missing(bayesian_priors)"
+    requirement: "Bayesian estimates are defined only relative to declared priors."
+    guidance: "State the prior for every parameter and justify it; undisclosed priors make the posterior uninterpretable and unreproducible."
+    reference:
+      authors: "Koop, Gary; Poirier, Dale J.; Tobias, Justin L."
+      book: "Bayesian Econometric Methods"
+      title: "Prior specification"
+  - id: BAYES-002
+    name: "MCMC Convergence Must Be Demonstrated"
+    severity: "warning"
+    estimators: ["MCMC", "GibbsSampler", "BayesianVAR", "HierarchicalBayes", "BayesianRegression"]
+    data_structures: []
+    condition: "estimator in ['MCMC', 'GibbsSampler', 'BayesianVAR', 'HierarchicalBayes', 'BayesianRegression'] and bayesian_convergence_checked != true"
+    requirement: "Posterior summaries should not be reported before MCMC convergence is demonstrated."
+    guidance: "Report R-hat, effective sample size, and trace plots; summarizing a non-converged chain gives an unreliable posterior."
+    reference:
+      authors: "Koop, Gary; Poirier, Dale J.; Tobias, Justin L."
+      book: "Bayesian Econometric Methods"
+      title: "MCMC convergence diagnostics"
+  - id: BAYES-003
+    name: "Report Prior Sensitivity"
+    severity: "warning"
+    strict_escalates: false
+    estimators: ["BayesianRegression", "MCMC", "GibbsSampler", "BayesianVAR", "HierarchicalBayes"]
+    data_structures: []
+    condition: "estimator in ['BayesianRegression', 'MCMC', 'GibbsSampler', 'BayesianVAR', 'HierarchicalBayes'] and bayesian_prior_sensitivity_checked != true"
+    requirement: "Conclusions should be shown to be robust to reasonable alternative priors, especially with small samples."
+    guidance: "Report a prior-sensitivity analysis so readers can see whether the data or the prior drives the posterior."
+    reference:
+      authors: "Koop, Gary; Poirier, Dale J.; Tobias, Justin L."
+      book: "Bayesian Econometric Methods"
+      title: "Prior sensitivity analysis"

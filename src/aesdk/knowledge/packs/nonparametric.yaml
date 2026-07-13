@@ -1,0 +1,116 @@
+version: "0.1.0"
+method_id: "nonparametric"
+name: "Nonparametric / Semiparametric Estimation"
+language_coverage:
+  supported_recipes: ["python", "r"]
+  intentionally_missing:
+    stata: "Stata supports npregress, but no starter recipe is bundled yet; pending human review."
+organization:
+  type: "method_topic_pack"
+  curriculum_stage: "theoretical_microfoundations"
+  curriculum_topics: ["nonparametric_semiparametric", "asymptotic_theory"]
+  authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
+maturity:
+  status: "reviewed_guardrail"
+  source_review: "primary_source_page_audited"
+  estimator_choice: "medium"
+  diagnostics: "medium"
+  code_recipes: "starter"
+scope:
+  use_when:
+    - "The shape of a conditional mean or density should be estimated flexibly rather than assumed."
+    - "There are few continuous conditioning variables."
+  do_not_use_when:
+    - "There are many continuous regressors (curse of dimensionality) without a semiparametric restriction."
+    - "A parametric or design-based estimator answers the question more precisely."
+estimand:
+  default: "A conditional mean function, density, or derivative estimated without a global parametric form."
+  agent_instruction: "State the estimand, the smoothing method, the bandwidth/series-selection rule, and the inference plan before estimation."
+decision_tree:
+  - id: "nonparametric-design-001"
+    if: "The conditional mean is smooth and there are one or two continuous regressors."
+    then: "Use kernel regression or local polynomial regression with data-driven bandwidth."
+  - id: "nonparametric-design-002"
+    if: "A flexible but computationally simple global fit is acceptable."
+    then: "Use a series/sieve estimator and disclose the number of terms."
+  - id: "nonparametric-design-003"
+    if: "There are several continuous regressors."
+    then: "Impose a semiparametric restriction (e.g., partially linear or single-index) to avoid the curse of dimensionality."
+assumptions:
+  - id: "nonparametric-assumption-001"
+    plain: "The function being estimated is smooth enough to learn from the data."
+    formal: "The target function satisfies the smoothness conditions the estimator's rate requires."
+    evidence: "Stated estimator and smoothness rationale."
+  - id: "nonparametric-assumption-002"
+    plain: "The amount of smoothing is chosen from the data, not by hand."
+    formal: "Bandwidth or series length is selected by cross-validation or a documented rule."
+    evidence: "Declared selection rule and a sensitivity check."
+  - id: "nonparametric-assumption-003"
+    plain: "Estimates near the edges of the data and their error bands are handled correctly."
+    formal: "Boundary bias is addressed and inference is bias-corrected or undersmoothed."
+    evidence: "Stated inference plan for confidence bands."
+required_inputs:
+  - id: "nonparametric-input-001"
+    name: "estimator"
+    reason: "Kernel, local polynomial, or series."
+  - id: "nonparametric-input-002"
+    name: "bandwidth_rule"
+    reason: "Controls the bias-variance tradeoff and must be disclosed."
+  - id: "nonparametric-input-003"
+    name: "continuous_regressors"
+    reason: "Determines exposure to the curse of dimensionality."
+diagnostics:
+  - id: "nonparametric-diagnostic-001"
+    name: "bandwidth_sensitivity"
+    instruction: "Report the bandwidth/series-selection rule and sensitivity to it."
+  - id: "nonparametric-diagnostic-002"
+    name: "dimensionality"
+    instruction: "Report the number of continuous conditioning variables and any semiparametric restriction used."
+  - id: "nonparametric-diagnostic-003"
+    name: "boundary_and_inference"
+    instruction: "Address boundary bias and state the confidence-band construction."
+failure_modes:
+  - id: "nonparametric-failure-001"
+    risk: "Hand-picked bandwidth that drives the result."
+    response: "Warn and require a data-driven, disclosed selection rule with sensitivity."
+  - id: "nonparametric-failure-002"
+    risk: "Many continuous regressors making the estimator effectively uninformative."
+    response: "Warn and require a semiparametric restriction or dimension reduction."
+code_recipes:
+  - id: "nonparametric-python-kernelreg"
+    language: "python"
+    package: "statsmodels"
+    source: "statsmodels_nonparametric"
+    template: |
+      import statsmodels.api as sm
+
+      kr = sm.nonparametric.KernelReg(endog=y, exog=x, var_type="c")
+      mean, marginal = kr.fit()
+  - id: "nonparametric-r-np"
+    language: "r"
+    package: "np"
+    source: "np_r"
+    template: |
+      library(np)
+
+      bw <- npregbw(y ~ x)
+      fit <- npreg(bws = bw)
+      summary(fit)
+reporting_checklist:
+  - "State the estimand and the smoothing method."
+  - "Report the bandwidth/series-selection rule and sensitivity to it."
+  - "Report the number of continuous regressors and any semiparametric restriction."
+  - "Describe boundary handling and the inference method for confidence bands."
+source_anchors:
+  - source_id: "li_racine_nonparametric_2007"
+    topics:
+      - "kernel density and kernel regression estimation"
+      - "local constant and local polynomial estimation"
+      - "bandwidth selection by cross-validation"
+    local_pdf_pages: [52, 59, 63, 104, 110, 117, 124, 127, 132, 178, 194, 205]
+  - source_id: "hansen_econometrics_2022"
+    topics:
+      - "nonparametric and semiparametric asymptotics"
+  - source_id: "greene_econometric_analysis"
+    topics:
+      - "applied nonparametric and semiparametric methods"

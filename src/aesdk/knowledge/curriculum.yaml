@@ -99,15 +99,34 @@ curriculum:
         label: "Time-Series Dynamics"
         scope:
           - "Stationarity, lags, autocorrelation, forecasting, unit roots, and temporal ordering."
+      financial_volatility:
+        label: "Financial Volatility Models"
+        scope:
+          - "Volatility clustering, ARCH/GARCH-family models, and conditional-variance forecasting."
+      nonparametric_semiparametric:
+        label: "Nonparametric and Semiparametric Estimation"
+        scope:
+          - "Kernel regression, local polynomials, series estimators, bandwidth selection, and the curse of dimensionality."
+      bayesian_inference:
+        label: "Bayesian Inference"
+        scope:
+          - "Priors, likelihoods, posteriors, MCMC estimation, convergence diagnostics, and prior sensitivity."
     primary_sources:
       - verbeek_modern_econometrics
       - wooldridge_cross_section_panel
       - hansen_econometrics_2022
       - greene_econometric_analysis
+      - tsay_financial_time_series_2010
+      - li_racine_nonparametric_2007
+      - koop_poirier_tobias_2007
     method_ids:
       - panel_fe
       - gmm
       - time_series
+      - mle
+      - garch
+      - nonparametric
+      - bayesian
 
   advanced_empirical_research:
     label: "Advanced Empirical Research (The Modern Frontier)"
@@ -156,6 +175,10 @@ curriculum:
       - bedecarrats_guerin_roubaud_2015
       - chernozhukov_dml_2018
       - berry_levinsohn_pakes_1995
+      - wager_athey_2018
+      - athey_imbens_2019
+      - train_discrete_choice_2009
+      - hayashi_econometrics_2000
     method_ids:
       - did
       - rdd
@@ -163,3 +186,5 @@ curriculum:
       - experimental_rct
       - synthetic_control
       - nonlinear_did
+      - structural
+      - dml
