@@ -3,6 +3,10 @@
 This lets Claude (in a chat window) run AESDK's real checks. The server runs
 locally on your machine, so your data never leaves it.
 
+**Run these on your own computer** (a local terminal), NOT inside a web chat's
+code tool. The claude.ai web sandbox is a temporary container that has no Claude
+Desktop and is wiped between sessions, so setting up there connects nothing real.
+
 ## The easy way: two commands
 
 ```bash

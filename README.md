@@ -222,9 +222,13 @@ aesdk chat-guide --target mcp       # connect AESDK to Claude as an MCP connecto
 
 ### Connect AESDK to Claude via MCP (two commands)
 
-This runs entirely on your own computer; no data is sent anywhere. There is no
-JSON to edit — the second command finds and updates Claude Desktop's config for
-you (merging with anything already there, and backing up the old file first):
+Run these in a terminal **on your own computer** — not inside a web chat's code
+tool. The claude.ai web sandbox is a temporary container with no Claude Desktop,
+so wiring it up there connects nothing (and `aesdk connect-claude` will warn you
+if it can't find Claude Desktop). This runs entirely on your machine; no data is
+sent anywhere. There is no JSON to edit — the second command finds and updates
+Claude Desktop's config for you (merging with anything already there, and backing
+up the old file first):
 
 ```bash
 pip install "aesdk[mcp]"   # install the MCP tools
@@ -469,9 +473,9 @@ python scripts/deep_knowledge_audit.py --tools-dir tools --write-report docs/dee
 
 The report scans local PDFs page-by-page and records candidate page locators, duplicate pack IDs, long-text warnings, and coverage gaps. It is a maintenance aid, not a substitute for human source review.
 
-The packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, maximum likelihood, double/debiased machine learning, and structural/BLP are marked `pending_human_review` with `ai_source_audited_pending_human_review`. They now have executable guardrails, but a human econometrician should still sign off before treating their full guidance as final audited doctrine.
+The packs for matching, synthetic control, nonlinear DiD, GMM, limited dependent variable models, time series, and double/debiased machine learning are marked `pending_human_review` with `ai_source_audited_pending_human_review`. They now have executable guardrails, but a human econometrician should still sign off before treating their full guidance as final audited doctrine. (Double/debiased machine learning is anchored on journal articles rather than a local textbook, so its upgrade path is a human sign-off rather than page anchors.)
 
-The nonparametric, Bayesian, and ARCH/GARCH volatility packs have been upgraded to `reviewed_guardrail` with `primary_source_page_audited`: their guidance is anchored to verified page numbers in the local source PDFs (Li & Racine 2007; Koop, Poirier & Tobias 2007; Tsay 2010), recorded in `source_map.yaml` and the pack `source_anchors`.
+The nonparametric, Bayesian, ARCH/GARCH volatility, maximum likelihood, and structural/BLP packs have been upgraded to `reviewed_guardrail` with `primary_source_page_audited`: their guidance is anchored to verified page numbers in the local source PDFs (Li & Racine 2007; Koop, Poirier & Tobias 2007; Tsay 2010; Greene *Econometric Analysis*; Hayashi 2000; Train 2009), recorded in `source_map.yaml` and the pack `source_anchors`.
 
 ## Reproducibility
 

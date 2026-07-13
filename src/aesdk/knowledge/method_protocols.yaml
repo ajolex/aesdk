@@ -429,7 +429,7 @@ methods:
       - {id: "box_jenkins_reinsel_ljung_2015"}
   mle:
     name: "Maximum Likelihood Estimation"
-    status: "starter"
+    status: "reviewed"
     curriculum:
       stage: "theoretical_microfoundations"
       topics: ["maximum_likelihood", "asymptotic_theory"]
@@ -495,7 +495,7 @@ methods:
       - {id: "athey_imbens_2019"}
   structural:
     name: "Structural Estimation (IO / BLP)"
-    status: "pending_human_review"
+    status: "reviewed"
     curriculum:
       stage: "advanced_empirical_research"
       topics: ["structural_blp", "potential_outcomes"]

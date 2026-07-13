@@ -19,6 +19,8 @@ AUDITED = {
     "nonparametric": "li_racine_nonparametric_2007",
     "bayesian": "koop_poirier_tobias_2007",
     "garch": "tsay_financial_time_series_2010",
+    "mle": "greene_econometric_analysis",
+    "structural": "hayashi_econometrics_2000",
 }
 
 

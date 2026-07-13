@@ -12,8 +12,8 @@ organization:
   curriculum_topics: ["structural_blp", "potential_outcomes"]
   authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
-  status: "pending_human_review"
-  source_review: "ai_source_audited_pending_human_review"
+  status: "reviewed_guardrail"
+  source_review: "primary_source_page_audited"
   estimator_choice: "medium"
   diagnostics: "medium"
   code_recipes: "starter"
@@ -116,7 +116,13 @@ source_anchors:
       - "instruments for endogenous prices"
   - source_id: "train_discrete_choice_2009"
     topics:
-      - "simulation-based discrete-choice estimation"
+      - "logit choice probabilities and identification of choice models"
+      - "nested logit and mixed logit (random coefficients)"
+      - "simulation-based estimation (MSL/MSM)"
+    local_pdf_pages: [39, 76, 101, 163, 172, 287, 296]
   - source_id: "hayashi_econometrics_2000"
     topics:
-      - "GMM foundations for structural estimation"
+      - "single-equation GMM and orthogonality conditions"
+      - "GMM identification and the rank condition"
+      - "efficient GMM and the optimal weighting matrix"
+    local_pdf_pages: [203, 208, 211, 219, 230, 233, 281]

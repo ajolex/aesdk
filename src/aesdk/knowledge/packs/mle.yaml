@@ -11,8 +11,8 @@ organization:
   curriculum_topics: ["maximum_likelihood", "asymptotic_theory"]
   authority_policy: "Organized by econometric topic; sources support the guardrails but do not define the file identity."
 maturity:
-  status: "pending_human_review"
-  source_review: "ai_source_audited_pending_human_review"
+  status: "reviewed_guardrail"
+  source_review: "primary_source_page_audited"
   estimator_choice: "medium"
   diagnostics: "medium"
   code_recipes: "starter"
@@ -112,7 +112,10 @@ reporting_checklist:
 source_anchors:
   - source_id: "greene_econometric_analysis"
     topics:
-      - "maximum likelihood estimation and inference"
+      - "maximum likelihood estimation, log-likelihood, and the information matrix"
+      - "likelihood-ratio, Wald, and Lagrange-multiplier tests"
+      - "pseudo-/quasi-maximum likelihood and robust covariance"
+    local_pdf_pages: [509, 514, 520, 524, 545, 546, 548]
   - source_id: "hansen_econometrics_2022"
     topics:
       - "asymptotic theory for extremum and likelihood estimators"

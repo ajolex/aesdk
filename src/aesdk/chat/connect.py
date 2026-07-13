@@ -20,6 +20,7 @@ from typing import Any
 @dataclass
 class ConnectResult:
     config_path: str | None = None
+    claude_desktop_detected: bool = False
     created: bool = False
     updated: bool = False
     already_current: bool = False
@@ -39,6 +40,7 @@ class ConnectResult:
         return {
             "ok": self.ok,
             "config_path": self.config_path,
+            "claude_desktop_detected": self.claude_desktop_detected,
             "created": self.created,
             "updated": self.updated,
             "already_current": self.already_current,
@@ -70,6 +72,14 @@ class ConnectResult:
         else:
             lines.append("Connected AESDK to Claude Desktop (added AESDK to your existing config).")
         lines.append(f"  Config file: {self.config_path}")
+        if not self.claude_desktop_detected:
+            lines.append("")
+            lines.append(
+                "  WARNING: Claude Desktop was not detected here. If you are not on the computer "
+                "where the Claude Desktop app is installed -- for example, inside a web chat's "
+                "code sandbox -- this file will be ignored and nothing is actually connected. "
+                "Run this in a terminal on your own computer instead."
+            )
         if self.backup_path:
             lines.append(f"  Saved a backup of your previous config: {self.backup_path}")
         if self.notes:
@@ -117,6 +127,11 @@ def connect_claude_desktop(
     path = Path(config_path) if config_path else default_config_path()
     result.config_path = str(path)
     result.mcp_extra_installed = _mcp_extra_installed()
+    # Claude Desktop keeps its config in a "Claude" app-data folder. If that
+    # folder (or the config file) is absent, the app is very likely not
+    # installed on this machine -- e.g., we are in a web chat's code sandbox --
+    # so a written config would be a throwaway that never connects anything.
+    result.claude_desktop_detected = path.exists() or path.parent.exists()
 
     # Use the current interpreter so it works regardless of PATH.
     command = [sys.executable, "-m", "aesdk", "mcp"]
@@ -153,6 +168,12 @@ def connect_claude_desktop(
     else:
         result.updated = not result.created
 
+    if not result.claude_desktop_detected:
+        result.notes.append(
+            "Claude Desktop was not detected on this machine, so this config will not connect "
+            "anything here. Run 'aesdk connect-claude' in a terminal on the computer where the "
+            "Claude Desktop app is installed (not inside a web chat's code sandbox)."
+        )
     if not result.mcp_extra_installed:
         result.notes.append(
             "The MCP tools are not installed yet. Before using AESDK in Claude, run: "

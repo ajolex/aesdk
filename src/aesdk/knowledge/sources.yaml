@@ -382,13 +382,14 @@ sources:
     title: "Discrete Choice Methods with Simulation"
     authors:
       - "Kenneth E. Train"
-    edition: "2nd"
     year: 2009
+    local_path: "docs/books/train1201.pdf"
     online:
       url: "https://eml.berkeley.edu/books/choice2.html"
     sdk_use:
       - "simulation-based estimation of multinomial, nested, and mixed logit"
       - "structural discrete-choice demand"
+    notes: "Page anchors verified against the local source PDF (logit, nested logit, mixed logit, and simulation-based estimation). The edition/online URL is AI-provided and not independently verified."
 
   hayashi_econometrics_2000:
     type: textbook
@@ -396,11 +397,12 @@ sources:
     authors:
       - "Fumio Hayashi"
     year: 2000
+    local_path: "docs/books/Fumio Hayashi-Econometrics-Princeton University Press (2000) (1).pdf"
     online:
       url: "https://press.princeton.edu/books/hardcover/9780691010182/econometrics"
     sdk_use:
       - "GMM foundations and rigorous bridge to structural estimation"
-    notes: "Online locator AI-provided; verify against the source before public release."
+    notes: "Page anchors verified against the local source PDF (Chapters 3-4, single-equation and multiple-equation GMM). The online URL is AI-provided and not independently verified."
 
   wager_athey_2018:
     type: article

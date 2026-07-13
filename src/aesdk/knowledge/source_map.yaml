@@ -183,10 +183,18 @@ method_sources:
           topic: "time-series econometrics"
       sdk_context:
         - "Serial dependence and nonstationarity are first-order design risks, not afterthought diagnostics."
-  # The mle/dml/structural entries below carry no verified page locators yet:
-  # their textbook sources (Greene, Hayashi, Train) are not audited locally.
+  # dml carries no verified page locators yet: its sources are journal articles
+  # (Chernozhukov et al. 2018, Wager & Athey, Athey & Imbens), not local books.
   mle:
     - source_id: "greene_econometric_analysis"
+      local_path: "docs/books/econometric_analysis_by_greence.pdf"
+      locators:
+        - pdf_pages: [509, 520, 524]
+          topic: "maximum likelihood estimation, log-likelihood, and the information matrix"
+        - pdf_pages: [509, 514]
+          topic: "likelihood-ratio, Wald, and Lagrange-multiplier tests"
+        - pdf_pages: [545, 546]
+          topic: "pseudo-/quasi-maximum likelihood and robust covariance"
       sdk_context:
         - "Declare the likelihood; report convergence, identification, and the standard-error type."
         - "Use robust (sandwich) inference under a quasi-likelihood interpretation."
@@ -202,7 +210,26 @@ method_sources:
     - source_id: "berry_levinsohn_pakes_1995"
       sdk_context:
         - "Declare the model and identification; instrument endogenous prices before estimating demand."
+    - source_id: "hayashi_econometrics_2000"
+      local_path: "docs/books/Fumio Hayashi-Econometrics-Princeton University Press (2000) (1).pdf"
+      locators:
+        - pdf_pages: [203, 208, 211]
+          topic: "single-equation GMM and orthogonality conditions"
+        - pdf_pages: [219, 281]
+          topic: "GMM identification and the rank condition"
+        - pdf_pages: [230, 233]
+          topic: "efficient GMM and the optimal weighting matrix"
+      sdk_context:
+        - "State the moment/equilibrium conditions and argue identification before estimating deep parameters."
     - source_id: "train_discrete_choice_2009"
+      local_path: "docs/books/train1201.pdf"
+      locators:
+        - pdf_pages: [39, 76]
+          topic: "logit choice probabilities and identification of choice models"
+        - pdf_pages: [101, 163, 172]
+          topic: "nested logit and mixed logit (random coefficients)"
+        - pdf_pages: [287, 296]
+          topic: "simulation-based estimation (MSL/MSM)"
       sdk_context:
         - "Simulation-based discrete choice requires a stated choice set and estimand."
   nonparametric:
