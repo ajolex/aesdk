@@ -85,6 +85,8 @@ def build_ai_passport(
             proposal_path=Path(proposal_path) if proposal_path else None,
         )
 
+    archive_root = (Path(pap_path).parent if pap_path else Path(base_dir)) / ARCHIVE_DIR
+    auto_discovered = _auto_discover_agent_archives(merged, provenance, base_dirs, archive_root)
     prompt_files = _file_records(_base_for("prompt_files", provenance, base_dirs), merged.get("prompt_files", []))
     output_files = _file_records(_base_for("output_files", provenance, base_dirs), merged.get("output_files", []))
     input_files = _file_records(_base_for("input_files", provenance, base_dirs), merged.get("input_files", []))
@@ -104,6 +106,13 @@ def build_ai_passport(
         merged.get("runtime_metadata_files", []),
     )
     runtime_metadata = _runtime_metadata_records(runtime_metadata_files)
+    session_files = _file_records(_base_for("session_files", provenance, base_dirs), merged.get("session_files", []))
+    memory_files = _file_records(_base_for("memory_files", provenance, base_dirs), merged.get("memory_files", []))
+    schema_files = _file_records(
+        _base_for("structured_output_schema_files", provenance, base_dirs),
+        merged.get("structured_output_schema_files", []),
+    )
+    agent_sessions = _agent_session_summary(session_files)
     artifact_hashes = {
         "prompt_files": prompt_files,
         "output_files": output_files,
@@ -114,6 +123,9 @@ def build_ai_passport(
         "human_intervention_files": human_intervention_files,
         "review_files": review_files,
         "runtime_metadata_files": runtime_metadata_files,
+        "session_files": session_files,
+        "memory_files": memory_files,
+        "structured_output_schema_files": schema_files,
     }
     findings = _passport_findings(
         merged,
@@ -127,6 +139,8 @@ def build_ai_passport(
         review_files,
         runtime_metadata_files,
         runtime_metadata,
+        [*session_files, *memory_files, *schema_files],
+        agent_sessions,
     )
     validation_base_dirs = [Path.cwd(), *base_dirs.values()]
     validation = _validation_summary(active_pap, active_proposal, validation_base_dirs, base_dirs) if active_pap else None
@@ -172,6 +186,8 @@ def build_ai_passport(
         "ai_use": _public_ai_use(merged),
         "artifact_hashes": artifact_hashes,
         "runtime_metadata": runtime_metadata,
+        "agent_sessions": agent_sessions,
+        "auto_discovered": auto_discovered,
         "validation": validation,
         "findings": findings,
         "evidence_summary": evidence_summary,
@@ -439,6 +455,18 @@ def _public_ai_use(ai_use: dict[str, Any]) -> dict[str, Any]:
         "model_metadata_unavailable_reason",
         "temperature",
         "top_p",
+        "reasoning_effort",
+        "thinking_budget_tokens",
+        "agent_autonomy",
+        "session_files",
+        "memory_files",
+        "mcp_servers",
+        "subagents_used",
+        "context_compacted",
+        "web_tools_used",
+        "computer_use",
+        "batch_ids",
+        "structured_output_schema_files",
         "seed",
         "prompts_archived",
         "raw_outputs_archived",
@@ -590,8 +618,13 @@ def _passport_findings(
     review_files: list[dict[str, Any]],
     runtime_metadata_files: list[dict[str, Any]],
     runtime_metadata: list[dict[str, Any]],
+    agent_files: list[dict[str, Any]] | None = None,
+    agent_sessions: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     findings: list[dict[str, str]] = []
+    agent_files = agent_files or []
+    agent_sessions = agent_sessions or {}
+    observed_models = list(agent_sessions.get("models_used") or [])
     if not ai_use:
         findings.append({"severity": "error", "code": "AI_USE_MISSING", "message": "No ai_use metadata found."})
         return findings
@@ -671,13 +704,24 @@ def _passport_findings(
             }
         )
     if _text_missing(ai_use.get("model")) and _text_missing(ai_use.get("model_metadata_unavailable_reason")):
-        findings.append(
-            {
-                "severity": "error",
-                "code": "MODEL_METADATA_MISSING",
-                "message": "Record the underlying model or explain why model metadata is unavailable.",
-            }
-        )
+        if observed_models:
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "MODEL_ONLY_IN_TRANSCRIPT",
+                    "message": "Archived agent sessions show the model(s) "
+                    + ", ".join(observed_models)
+                    + "; declare them in model and set model_metadata_source: transcript.",
+                }
+            )
+        else:
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "MODEL_METADATA_MISSING",
+                    "message": "Record the underlying model or explain why model metadata is unavailable.",
+                }
+            )
     if _text_missing(ai_use.get("model_metadata_source")):
         findings.append(
             {
@@ -776,6 +820,17 @@ def _passport_findings(
         *review_files,
         *runtime_metadata_files,
     ]:
+        if not record.get("exists") or "sha256" not in record:
+            findings.append(
+                {
+                    "severity": "error",
+                    "code": "ARTIFACT_NOT_HASHED",
+                    "message": f"AI artifact is missing or unhashable: {record.get('resolved_path')}",
+                }
+            )
+    if ai_use.get("used") is True:
+        findings.extend(_agent_session_findings(ai_use, agent_sessions))
+    for record in agent_files:
         if not record.get("exists") or "sha256" not in record:
             findings.append(
                 {
@@ -949,3 +1004,131 @@ def _replication_statement(ai_use: dict[str, Any], status: str) -> str:
     if status == "pass":
         return "The analysis can be replicated from archived AI artifacts without calling a live AI model."
     return "The AI-use evidence is incomplete; replication without a live AI model is not fully established."
+
+
+from aesdk.agent.transcripts import ARCHIVE_DIR  # noqa: E402
+
+_AUTONOMOUS_PERMISSION_MODES = {"bypassPermissions", "auto", "dontAsk", "never", "danger-full-access", "full-auto"}
+
+
+def _auto_discover_agent_archives(
+    ai_use: dict[str, Any],
+    provenance: dict[str, str],
+    base_dirs: dict[str, Path],
+    archive_root: Path,
+) -> dict[str, list[str]]:
+    """Pick up prompts/sessions archived by the AESDK hooks when not declared."""
+
+    from aesdk.agent.transcripts import discover_agent_archives
+
+    discovered = discover_agent_archives(ai_use, archive_root.parent)
+    if discovered:
+        base_dirs["auto_discovered"] = archive_root.parent
+        for key in discovered:
+            provenance[key] = "auto_discovered"
+    return discovered
+
+
+def _agent_session_summary(session_files: list[dict[str, Any]]) -> dict[str, Any]:
+    from aesdk.agent.transcripts import summarize_transcript
+
+    sessions = []
+    for record in session_files:
+        path = Path(str(record.get("resolved_path")))
+        if record.get("exists") and path.is_file():
+            summary = summarize_transcript(path)
+            summary["transcript_file"] = record.get("original_path")
+            sessions.append(summary)
+    if not sessions:
+        return {}
+
+    def union(key: str) -> list[str]:
+        return sorted({item for session in sessions for item in session.get(key) or []})
+
+    return {
+        "session_count": len(sessions),
+        "agent_tools": sorted({s["agent_tool"] for s in sessions if s.get("agent_tool")}),
+        "models_used": union("models_used"),
+        "reasoning_efforts": union("reasoning_efforts"),
+        "permission_modes": union("permission_modes"),
+        "mcp_servers": union("mcp_servers"),
+        "used_subagents": any(s.get("used_subagents") for s in sessions),
+        "compacted": any(s.get("compacted") for s in sessions),
+        "used_web_tools": any(s.get("used_web_tools") for s in sessions),
+        "used_computer_use": any(s.get("used_computer_use") for s in sessions),
+        "sessions": sessions,
+        "note": "Derived from archived transcripts; transcript formats are internal to each agent tool, so this is best-effort evidence.",
+    }
+
+
+def _model_matches(declared: str, observed: list[str]) -> bool:
+    declared = declared.strip().lower()
+    return any(item.lower().startswith(declared) or declared.startswith(item.lower()) for item in observed)
+
+
+def _agent_session_findings(ai_use: dict[str, Any], sessions: dict[str, Any]) -> list[dict[str, str]]:
+    findings: list[dict[str, str]] = []
+    autonomy = ai_use.get("agent_autonomy")
+    if autonomy in {"autonomous", "cloud_autonomous"} and ai_use.get("human_reviewed") is not True:
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "AUTONOMOUS_WORK_UNREVIEWED",
+                "message": "The agent ran without per-action approval and no human review is documented.",
+            }
+        )
+    if not sessions:
+        return findings
+    observed = list(sessions.get("models_used") or [])
+    declared = ai_use.get("model")
+    if observed and not _text_missing(declared) and not _model_matches(str(declared), observed):
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "SESSION_MODEL_MISMATCH",
+                "message": f"Declared model {declared!r} does not match the model(s) seen in archived sessions: {', '.join(observed)}.",
+            }
+        )
+    if len(observed) > 1:
+        findings.append(
+            {
+                "severity": "info",
+                "code": "MULTIPLE_MODELS_IN_SESSIONS",
+                "message": "Archived sessions used more than one model (switches, fallbacks, or subagents): " + ", ".join(observed) + ".",
+            }
+        )
+    undeclared_servers = sorted(set(sessions.get("mcp_servers") or []) - {str(x) for x in _as_list(ai_use.get("mcp_servers", []))})
+    if undeclared_servers:
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "MCP_SERVERS_UNDECLARED",
+                "message": "Archived sessions called MCP servers not listed in mcp_servers: " + ", ".join(undeclared_servers) + ".",
+            }
+        )
+    for observed_key, declared_key, label in (
+        ("used_subagents", "subagents_used", "subagents"),
+        ("compacted", "context_compacted", "context compaction"),
+        ("used_web_tools", "web_tools_used", "web search/fetch tools"),
+        ("used_computer_use", "computer_use", "computer use"),
+    ):
+        if sessions.get(observed_key) and ai_use.get(declared_key) is not True:
+            findings.append(
+                {
+                    "severity": "warning",
+                    "code": "AGENT_FEATURE_UNDECLARED",
+                    "message": f"Archived sessions show {label}, but ai_use.{declared_key} is not true.",
+                }
+            )
+    modes = set(sessions.get("permission_modes") or [])
+    if not autonomy and modes & _AUTONOMOUS_PERMISSION_MODES:
+        findings.append(
+            {
+                "severity": "warning",
+                "code": "AGENT_AUTONOMY_UNDECLARED",
+                "message": "Archived sessions ran in an autonomous permission mode ("
+                + ", ".join(sorted(modes & _AUTONOMOUS_PERMISSION_MODES))
+                + "); declare agent_autonomy.",
+            }
+        )
+    return findings

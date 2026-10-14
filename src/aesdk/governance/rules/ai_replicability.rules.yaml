@@ -386,3 +386,55 @@ rules:
       authors: "AESDK"
       title: "AI Replicability Passport"
       year: 2026
+
+  - id: AI-REP-030
+    name: "Autonomous Agent Work Requires Human Review"
+    severity: "warning"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_agent_autonomy in ['autonomous', 'cloud_autonomous'] and ai_human_reviewed != true"
+    requirement: "Analysis produced by an agent running without per-action human approval should be reviewed by a person before results are relied on."
+    guidance: "Have a researcher review the plan, code, and outputs, archive the review in `review_files`, and then set `human_reviewed: true` with a review status. Until then, treat results as drafts."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-031
+    name: "Declared Agent Session And Memory Files Must Exist"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and (ai_session_file_missing_count > 0 or ai_memory_file_missing_count > 0)"
+    requirement: "Agent session transcripts and agent memory/instruction files listed in ai_use must exist so they can be hashed."
+    guidance: "Archive the session transcript (the AESDK hooks save them to `.aesdk/sessions/`, or run `aesdk agent capture-session`) and list instruction/memory files such as CLAUDE.md or AGENTS.md that were in effect."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-032
+    name: "Structured Output Schemas Must Exist"
+    severity: "error"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_structured_output_schema_file_missing_count > 0"
+    requirement: "Structured-output schemas used to constrain AI-derived data must be archived."
+    guidance: "Save the JSON schema used for extraction or classification and list it in `structured_output_schema_files`."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026
+
+  - id: AI-REP-033
+    name: "AI-Derived Data Should Record Request Provenance"
+    severity: "info"
+    estimators: []
+    data_structures: []
+    condition: "ai_used == true and ai_output_used_as_data == true and ai_batch_id_count == 0 and ai_structured_output_schema_file_count == 0"
+    requirement: "AI-derived variables are easier to audit when each request is tied to a batch/request id and a fixed output schema."
+    guidance: "Record provider batch or request ids in `batch_ids` and archive the structured-output schema; `aesdk.llm` adapters record both automatically."
+    reference:
+      authors: "AESDK"
+      title: "AI Replicability Passport"
+      year: 2026

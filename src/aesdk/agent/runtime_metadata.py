@@ -32,7 +32,7 @@ def write_codex_runtime_metadata(
     verbosity: str | None = None,
     approval_policy: str | None = None,
     sandbox_mode: str | None = None,
-    timezone: str = "Asia/Manila",
+    timezone: str | None = None,
     now: datetime | None = None,
 ) -> RuntimeMetadataResult:
     """Write a local Codex runtime metadata snapshot for AI-passport archiving."""
@@ -44,7 +44,7 @@ def write_codex_runtime_metadata(
     repo_root = _git_output(["rev-parse", "--show-toplevel"], workspace)
     commit_sha = _git_output(["rev-parse", "HEAD"], workspace)
     repo_path = Path(repo_root) if repo_root else workspace
-    active_time = now or datetime.now(ZoneInfo(timezone))
+    active_time, timezone = _active_time(now, timezone)
 
     effective_model = session_model or config_values.get("model")
     effective_reasoning_effort = reasoning_effort or config_values.get("model_reasoning_effort") or config_values.get("reasoning_effort")
@@ -119,10 +119,18 @@ def write_claude_runtime_metadata(
     verbosity: str | None = None,
     approval_policy: str | None = None,
     sandbox_mode: str | None = None,
-    timezone: str = "Asia/Manila",
+    timezone: str | None = None,
     now: datetime | None = None,
+    transcript_path: str | Path | None = None,
 ) -> RuntimeMetadataResult:
-    """Write a local Claude Code runtime metadata snapshot for AI-passport archiving."""
+    """Write a local Claude Code runtime metadata snapshot for AI-passport archiving.
+
+    The session model is taken, in order, from ``session_model``, the session
+    transcript (``transcript_path`` or the newest Claude Code transcript for the
+    workspace), and finally the configured default in settings.json. The
+    transcript reflects ``/model`` switches and fallbacks; settings only show
+    what was configured.
+    """
 
     workspace = Path(workspace_path).resolve()
     user_config = Path.home() / ".claude" / "settings.json"
@@ -131,12 +139,25 @@ def write_claude_runtime_metadata(
     repo_root = _git_output(["rev-parse", "--show-toplevel"], workspace)
     commit_sha = _git_output(["rev-parse", "HEAD"], workspace)
     repo_path = Path(repo_root) if repo_root else workspace
-    active_time = now or datetime.now(ZoneInfo(timezone))
-    effective_model = session_model or _first_config(config_values, ["model", "defaultModel", "session.model"])
-    effective_reasoning_effort = reasoning_effort or _first_config(config_values, ["reasoningEffort", "reasoning_effort", "session.reasoningEffort"])
+    active_time, timezone = _active_time(now, timezone)
+    transcript_summary = _claude_transcript_summary(workspace, transcript_path)
+    transcript_model = (transcript_summary or {}).get("last_model")
+    effective_model = (
+        session_model
+        or transcript_model
+        or _first_config(config_values, ["model", "defaultModel", "session.model"])
+    )
+    effective_reasoning_effort = reasoning_effort or _first_config(
+        config_values, ["effortLevel", "reasoningEffort", "reasoning_effort", "session.reasoningEffort"]
+    )
+    transcript_permission_modes = ",".join((transcript_summary or {}).get("permission_modes") or []) or None
     effective_reasoning_summary = reasoning_summary or _first_config(config_values, ["reasoningSummary", "reasoning_summary"])
     effective_verbosity = verbosity or _first_config(config_values, ["verbosity", "outputVerbosity"])
-    effective_approval_policy = approval_policy or _first_config(config_values, ["permissionMode", "approvalPolicy", "permissions.defaultMode"])
+    effective_approval_policy = (
+        approval_policy
+        or transcript_permission_modes
+        or _first_config(config_values, ["permissionMode", "approvalPolicy", "permissions.defaultMode"])
+    )
     effective_sandbox_mode = sandbox_mode or _first_config(config_values, ["sandboxMode", "sandbox.mode"])
 
     metadata = _runtime_metadata(
@@ -177,10 +198,22 @@ def write_claude_runtime_metadata(
         metadata_title="Claude Code client",
         config_sources_label="user ~/.claude/settings.json and project .claude/settings.json",
         limitations=[
-            "Values are collected from local Claude Code CLI/settings and explicit CLI overrides.",
-            "If Claude Code does not expose the active model in settings, archive a status transcript or pass the value explicitly.",
+            "Values are collected from explicit CLI overrides, the Claude Code session transcript, and local settings, in that order.",
+            "The session model comes from the transcript when available (reflecting /model switches and fallbacks); settings.json only shows the configured default.",
         ],
     )
+    sources = metadata["session"]["metadata_sources"]
+    if not session_model and transcript_model:
+        sources["session_model"] = "transcript"
+    if not approval_policy and transcript_permission_modes:
+        sources["approval_policy"] = "transcript"
+    if transcript_summary:
+        metadata["transcript"] = {
+            "path": transcript_summary.get("transcript_file"),
+            "sha256": transcript_summary.get("transcript_sha256"),
+            "models_used": transcript_summary.get("models_used"),
+            "agent_tool_versions": transcript_summary.get("agent_tool_versions"),
+        }
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
@@ -198,7 +231,7 @@ def write_copilot_runtime_metadata(
     verbosity: str | None = None,
     approval_policy: str | None = None,
     sandbox_mode: str | None = None,
-    timezone: str = "Asia/Manila",
+    timezone: str | None = None,
     now: datetime | None = None,
 ) -> RuntimeMetadataResult:
     """Write a local VS Code Copilot runtime metadata snapshot for AI-passport archiving."""
@@ -210,7 +243,7 @@ def write_copilot_runtime_metadata(
     repo_root = _git_output(["rev-parse", "--show-toplevel"], workspace)
     commit_sha = _git_output(["rev-parse", "HEAD"], workspace)
     repo_path = Path(repo_root) if repo_root else workspace
-    active_time = now or datetime.now(ZoneInfo(timezone))
+    active_time, timezone = _active_time(now, timezone)
     effective_model = session_model or _first_config(
         config_values,
         ["github.copilot.chat.model", "github.copilot.chat.defaultModel", "copilot.model"],
@@ -558,3 +591,25 @@ def _metadata_block(
             f"Date/time: {date_time}, {timezone}",
         ]
     )
+
+
+def _active_time(now: datetime | None, timezone: str | None) -> tuple[datetime, str]:
+    """Return the snapshot time and the timezone label (system local by default)."""
+
+    if timezone:
+        active = now or datetime.now(ZoneInfo(timezone))
+        return active, timezone
+    active = (now or datetime.now()).astimezone()
+    return active, active.tzname() or "local"
+
+
+def _claude_transcript_summary(workspace: Path, transcript_path: str | Path | None) -> dict[str, Any] | None:
+    from aesdk.agent.transcripts import find_claude_transcripts, summarize_transcript
+
+    try:
+        if transcript_path:
+            return summarize_transcript(transcript_path)
+        found = find_claude_transcripts(workspace)
+        return summarize_transcript(found[0]) if found else None
+    except OSError:
+        return None

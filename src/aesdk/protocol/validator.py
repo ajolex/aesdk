@@ -573,6 +573,7 @@ class ValidationContext:
         bayesian = self._merged_block("bayesian_block")
         garch = self._merged_block("garch_block")
         ai_use, ai_use_provenance = self._merged_block_with_provenance("ai_use")
+        self._discover_agent_archives(ai_use, ai_use_provenance)
         robustness = self._pap.get("robustness", {})
         covariates = identification.get("covariates", {})
         outcome_variable = self._proposal.get("outcome_variable", identification.get("outcome_variable"))
@@ -882,6 +883,23 @@ class ValidationContext:
                 ai_use.get("code_files", []),
                 self._field_base_dirs("code_files", ai_use_provenance),
             ),
+            "ai_agent_autonomy": ai_use.get("agent_autonomy"),
+            "ai_session_file_count": len(_as_list(ai_use.get("session_files", []))),
+            "ai_session_file_missing_count": _file_missing_count(
+                ai_use.get("session_files", []),
+                self._field_base_dirs("session_files", ai_use_provenance),
+            ),
+            "ai_memory_file_count": len(_as_list(ai_use.get("memory_files", []))),
+            "ai_memory_file_missing_count": _file_missing_count(
+                ai_use.get("memory_files", []),
+                self._field_base_dirs("memory_files", ai_use_provenance),
+            ),
+            "ai_batch_id_count": len(_as_list(ai_use.get("batch_ids", []))),
+            "ai_structured_output_schema_file_count": len(_as_list(ai_use.get("structured_output_schema_files", []))),
+            "ai_structured_output_schema_file_missing_count": _file_missing_count(
+                ai_use.get("structured_output_schema_files", []),
+                self._field_base_dirs("structured_output_schema_files", ai_use_provenance),
+            ),
             "ai_qa_sample_plan": ai_use.get("qa_sample_plan"),
             "ai_sensitivity_plan": ai_use.get("sensitivity_plan"),
         }
@@ -912,6 +930,20 @@ class ValidationContext:
                     block[key] = value
                     provenance[key] = "proposal"
         return block, provenance
+
+    def _discover_agent_archives(self, ai_use: dict[str, Any], provenance: dict[str, str]) -> None:
+        """Count prompts/sessions saved by the AESDK hooks, as the AI passport does."""
+
+        from aesdk.agent.transcripts import discover_agent_archives
+
+        root = self._artifact_base_dirs_by_source.get("pap")
+        if root is None and self._artifact_base_dirs:
+            root = self._artifact_base_dirs[0]
+        if root is None:
+            return
+        for key in discover_agent_archives(ai_use, root):
+            provenance[key] = "auto_discovered"
+            self._artifact_base_dirs_by_source.setdefault("auto_discovered", Path(root))
 
     def _field_base_dirs(self, field: str, provenance: dict[str, str]) -> list[Path]:
         source = provenance.get(field)

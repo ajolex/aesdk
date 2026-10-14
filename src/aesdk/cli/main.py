@@ -630,7 +630,7 @@ def agent_codex_runtime_cmd(
     verbosity: str | None = typer.Option(None, help="Override verbosity config value when known."),
     approval_policy: str | None = typer.Option(None, help="Override approval policy when known."),
     sandbox_mode: str | None = typer.Option(None, help="Override sandbox mode when known."),
-    timezone: str = typer.Option("Asia/Manila", help="IANA timezone for timestamp rendering."),
+    timezone: str | None = typer.Option(None, help="IANA timezone for timestamps (default: system local time)."),
 ) -> None:
     result = write_codex_runtime_metadata(
         output_path=output,
@@ -659,9 +659,13 @@ def agent_claude_runtime_cmd(
     verbosity: str | None = typer.Option(None, help="Override verbosity when known."),
     approval_policy: str | None = typer.Option(None, help="Override permission/approval policy when known."),
     sandbox_mode: str | None = typer.Option(None, help="Override sandbox mode when known."),
-    timezone: str = typer.Option("Asia/Manila", help="IANA timezone for timestamp rendering."),
+    timezone: str | None = typer.Option(None, help="IANA timezone for timestamps (default: system local time)."),
+    transcript: Path | None = typer.Option(
+        None, "--transcript", exists=True, help="Session transcript to read the actual model from (default: newest for workspace)."
+    ),
 ) -> None:
     result = write_claude_runtime_metadata(
+        transcript_path=transcript,
         output_path=output,
         workspace_path=workspace,
         surface=surface,
@@ -688,7 +692,7 @@ def agent_copilot_runtime_cmd(
     verbosity: str | None = typer.Option(None, help="Override verbosity when known."),
     approval_policy: str | None = typer.Option(None, help="Override approval policy when known."),
     sandbox_mode: str | None = typer.Option(None, help="Override sandbox mode when known."),
-    timezone: str = typer.Option("Asia/Manila", help="IANA timezone for timestamp rendering."),
+    timezone: str | None = typer.Option(None, help="IANA timezone for timestamps (default: system local time)."),
 ) -> None:
     result = write_copilot_runtime_metadata(
         output_path=output,

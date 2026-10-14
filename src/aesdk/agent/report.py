@@ -321,6 +321,13 @@ def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -
         ("agent_tool", ai_use.get("agent_tool")),
         ("model_metadata_source", ai_use.get("model_metadata_source")),
         ("model_metadata_unavailable_reason", ai_use.get("model_metadata_unavailable_reason")),
+        ("reasoning_effort", ai_use.get("reasoning_effort")),
+        ("agent_autonomy", ai_use.get("agent_autonomy")),
+        ("mcp_servers", ai_use.get("mcp_servers")),
+        ("subagents_used", ai_use.get("subagents_used")),
+        ("context_compacted", ai_use.get("context_compacted")),
+        ("session_files", ai_use.get("session_files")),
+        ("memory_files", ai_use.get("memory_files")),
         ("prompts_archived", ai_use.get("prompts_archived")),
         ("raw_outputs_archived", ai_use.get("raw_outputs_archived")),
         ("human_in_loop", ai_use.get("human_in_loop")),
@@ -350,6 +357,20 @@ def _ai_use_rows(root: Path, ai_use: dict[str, Any], passport: dict[str, Any]) -
     if passport:
         rows.append(f"<tr><td>passport_status</td><td>{_status_pill(passport.get('status', 'unknown'))}</td></tr>")
         rows.append(f"<tr><td>Replication statement</td><td>{_esc(passport.get('replication_statement', ''))}</td></tr>")
+        sessions = passport.get("agent_sessions") or {}
+        if sessions:
+            observed = [
+                f"{sessions.get('session_count', 0)} archived session(s)",
+                "models: " + (", ".join(sessions.get("models_used") or []) or "not recorded"),
+            ]
+            if sessions.get("permission_modes"):
+                observed.append("permission modes: " + ", ".join(sessions["permission_modes"]))
+            if sessions.get("mcp_servers"):
+                observed.append("MCP servers: " + ", ".join(sessions["mcp_servers"]))
+            for key, label in (("used_subagents", "subagents"), ("compacted", "context compaction"), ("used_web_tools", "web tools")):
+                if sessions.get(key):
+                    observed.append(label)
+            rows.append(f"<tr><td>Observed in agent sessions</td><td>{_esc('; '.join(observed))}</td></tr>")
     return "\n".join(rows) or "<tr><td colspan=\"2\">AI use metadata is empty.</td></tr>"
 
 

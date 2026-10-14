@@ -75,6 +75,7 @@ def summarize_transcript(path: str | Path) -> dict[str, Any]:
     subagent_calls = 0
     compactions = 0
     agent_tool = None
+    last_model = None
     records = 0
 
     for record in _iter_records(transcript):
@@ -101,6 +102,8 @@ def summarize_transcript(path: str | Path) -> dict[str, Any]:
             model = message.get("model")
             if isinstance(model, str) and model and not model.startswith("<"):
                 models[model] += 1
+                if not record.get("isSidechain"):
+                    last_model = model
             for block in _content_blocks(message):
                 if block.get("type") == "tool_use" and block.get("name"):
                     name = str(block["name"])
@@ -126,6 +129,7 @@ def summarize_transcript(path: str | Path) -> dict[str, Any]:
             elif rtype == "turn_context":
                 if payload.get("model"):
                     models[str(payload["model"])] += 1
+                    last_model = str(payload["model"])
                 if payload.get("effort"):
                     reasoning_efforts.add(str(payload["effort"]))
                 if payload.get("approval_policy"):
@@ -159,6 +163,7 @@ def summarize_transcript(path: str | Path) -> dict[str, Any]:
         "session_ids": sorted(session_ids),
         "models_used": sorted(models),
         "model_turns": dict(models),
+        "last_model": last_model,
         "reasoning_efforts": sorted(reasoning_efforts),
         "permission_modes": sorted(permission_modes),
         "user_turns": user_turns,
@@ -221,3 +226,31 @@ def find_claude_transcripts(workspace: str | Path = ".", claude_home: str | Path
     candidates = [root / encoded] if (root / encoded).is_dir() else [p for p in root.glob(encoded[:200] + "*") if p.is_dir()]
     files = [f for d in candidates for f in d.glob("*.jsonl")]
     return sorted(files, key=lambda f: f.stat().st_mtime, reverse=True)
+
+
+ARCHIVE_DIR = ".aesdk"
+
+
+def discover_agent_archives(ai_use: dict[str, Any], project_root: str | Path) -> dict[str, list[str]]:
+    """Fill undeclared ``session_files``/``prompt_files`` from AESDK hook archives.
+
+    The AESDK hooks save prompts to ``.aesdk/prompts.jsonl`` and session
+    transcripts to ``.aesdk/sessions/``. When AI use is declared but these files
+    are not listed, they are added to ``ai_use`` in place (paths relative to
+    ``project_root``) and returned so callers can record the provenance.
+    """
+
+    discovered: dict[str, list[str]] = {}
+    root = Path(project_root)
+    archive = root / ARCHIVE_DIR
+    if ai_use.get("used") is not True or not archive.is_dir():
+        return discovered
+    sessions = sorted(archive.glob("sessions/*.jsonl"))
+    if sessions and not ai_use.get("session_files"):
+        ai_use["session_files"] = [path.relative_to(root).as_posix() for path in sessions]
+        discovered["session_files"] = list(ai_use["session_files"])
+    prompts = archive / "prompts.jsonl"
+    if prompts.is_file() and not ai_use.get("prompt_files"):
+        ai_use["prompt_files"] = [prompts.relative_to(root).as_posix()]
+        discovered["prompt_files"] = list(ai_use["prompt_files"])
+    return discovered

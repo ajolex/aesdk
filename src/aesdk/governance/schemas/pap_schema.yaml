@@ -266,9 +266,33 @@ properties:
       agent_tool_version: {type: string}
       model_metadata_source:
         type: string
-        enum: [api_response, agent_reported, user_reported, agent_unavailable, unknown]
+        enum: [api_response, agent_reported, user_reported, transcript, agent_unavailable, unknown]
       model_metadata_unavailable_reason: {type: string}
       temperature: {type: number, minimum: 0}
+      reasoning_effort: {type: string}
+      thinking_budget_tokens: {type: integer, minimum: 0}
+      agent_autonomy:
+        type: string
+        enum: [manual_approval, auto_accept_edits, autonomous, cloud_autonomous, unknown]
+      session_files:
+        type: array
+        items: {type: string}
+      memory_files:
+        type: array
+        items: {type: string}
+      mcp_servers:
+        type: array
+        items: {type: string}
+      subagents_used: {type: boolean}
+      context_compacted: {type: boolean}
+      web_tools_used: {type: boolean}
+      computer_use: {type: boolean}
+      batch_ids:
+        type: array
+        items: {type: string}
+      structured_output_schema_files:
+        type: array
+        items: {type: string}
       top_p: {type: number, minimum: 0, maximum: 1}
       seed: {}
       prompts_archived: {type: boolean}
