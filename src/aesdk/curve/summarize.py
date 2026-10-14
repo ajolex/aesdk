@@ -1,6 +1,8 @@
 ﻿"""Summarization of econometric results."""
 from __future__ import annotations
+
 from aesdk.curve.spec_engine import SpecResult
+
 
 def summarize_result(result: SpecResult) -> str:
     """Creates a human-readable summary of the econometric result."""

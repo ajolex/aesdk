@@ -240,3 +240,12 @@ def test_console_script_fast_path(project: Path) -> None:
     )
     assert proc.returncode == 0
     assert json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+def test_shell_heredoc_write_of_estimation_code_needs_a_check(project: Path) -> None:
+    command = "cat > est.py <<'EOF'\nimport statsmodels.formula.api as smf\nEOF"
+    assert pre_tool_use(_bash(command, project)).denied
+    assert pre_tool_use(_bash("echo 'reg y x' >> main2.do", project)).denied
+    assert pre_tool_use(_bash("python summarize.py > out.txt 2>&1", project)).action == "allow"
+    _record(project, "pass")
+    assert pre_tool_use(_bash(command, project)).action == "allow"

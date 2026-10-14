@@ -25,7 +25,11 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e .[dev]
+          python -m pip install -e .[dev,mcp]
+      - name: Lint
+        run: |
+          python -m pip install ruff
+          ruff check src tests
       - name: Unit and integration tests
         run: python -m pytest -q
       - name: Agent API smoke
@@ -33,6 +37,10 @@ jobs:
           aesdk agent context --method did --format json
           aesdk agent preflight --method did --pap docs/examples/simulated_did_training_policy/pap.yaml --proposal docs/examples/simulated_did_training_policy/proposal_pass.json
           aesdk methods validate
+      - name: Hook smoke (direct estimation run is denied)
+        run: |
+          printf 'import statsmodels.api as sm\n' > /tmp/analysis.py
+          echo '{"tool_name":"Bash","tool_input":{"command":"python analysis.py"},"cwd":"/tmp"}' | aesdk hook pre-tool-use | grep -q '"permissionDecision": "deny"'
       - name: CLI smoke (blocked DiD)
         run: |
           aesdk init --pap docs/examples/did_min_wage/pap.yaml
@@ -50,6 +58,22 @@ jobs:
           aesdk reproduce --blob docs/examples/regulated_profile/.aesdk.json --replay
           aesdk audit sign --blob docs/examples/regulated_profile/.aesdk.json --mode hmac --secret ci-secret --key-id ci
           aesdk audit verify-signature --blob docs/examples/regulated_profile/.aesdk.json --signature docs/examples/regulated_profile/.aesdk.json.sig.json --secret ci-secret
+
+  mcp-v1:
+    name: MCP SDK 1.x compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install with mcp<2
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev] "mcp>=1.12,<2"
+      - name: Chat and MCP tests
+        run: python -m pytest -q tests/unit/chat
 
   build:
     name: build package
@@ -71,6 +95,16 @@ jobs:
           /tmp/aesdk-wheel-smoke/bin/python -m pip install --upgrade pip
           /tmp/aesdk-wheel-smoke/bin/python -m pip install dist/*.whl
           /tmp/aesdk-wheel-smoke/bin/python -c "import aesdk as ae; print(ae.agent_context('did').method_id)"
+          /tmp/aesdk-wheel-smoke/bin/python -m aesdk chat-guide --target claude > /dev/null
+          /tmp/aesdk-wheel-smoke/bin/python -m aesdk skills show did > /dev/null
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Validate MCP Bundle manifest
+        run: |
+          /tmp/aesdk-wheel-smoke/bin/python -m aesdk mcpb --output /tmp/aesdk.mcpb
+          mkdir /tmp/mcpb && cd /tmp/mcpb && unzip -q /tmp/aesdk.mcpb
+          npx -y @anthropic-ai/mcpb validate manifest.json
       - uses: actions/upload-artifact@v4
         with:
           name: dist

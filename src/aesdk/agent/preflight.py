@@ -13,7 +13,6 @@ from aesdk.governance.pap import validate_pap_file
 from aesdk.governance.policy import ConformanceLevel
 from aesdk.protocol.validator import RuleViolation, Severity, ValidationResult, Validator
 
-
 _METHOD_STRATEGY_ALIASES = {
     "ols_cef": {"OLS"},
     "iv_2sls": {"IV", "2SLS"},

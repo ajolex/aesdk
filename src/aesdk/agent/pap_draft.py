@@ -8,7 +8,6 @@ from typing import Any
 
 import pandas as pd
 
-
 _METHOD_TO_STRATEGY = {
     "did": "DiD",
     "experimental_rct": "RCT",

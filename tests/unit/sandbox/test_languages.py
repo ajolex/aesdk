@@ -4,8 +4,7 @@ from pathlib import Path
 import pytest
 
 import aesdk.sandbox.runner as runner_module
-from aesdk.core.errors import ForbiddenCodePatternError
-from aesdk.core.errors import ImportWhitelistError
+from aesdk.core.errors import ForbiddenCodePatternError, ImportWhitelistError
 from aesdk.sandbox.runner import SandboxRunner, infer_language_from_path, normalize_language
 
 
@@ -272,3 +271,21 @@ def test_unsupported_language_blocks() -> None:
 
     assert result.status == "block"
     assert result.diagnostics[0].code == "UNSUPPORTED_LANGUAGE"
+
+
+def test_memory_cap_failure_explains_how_to_raise_it() -> None:
+    from aesdk.sandbox.runner import SandboxRunner
+
+    runner = SandboxRunner(mem_limit_mb=4096)
+    hints = runner._memory_limit_hint("ImportError: libfoo.so: failed to map segment from shared object")
+    assert hints and hints[0].code == "MEMORY_LIMIT" and "AESDK_SANDBOX_MEM_MB" in hints[0].message
+    assert runner._memory_limit_hint("NameError: x") == []
+
+
+def test_sandbox_memory_cap_is_configurable(monkeypatch) -> None:
+    from aesdk.config.config import AESDKConfig
+
+    monkeypatch.setenv("AESDK_SANDBOX_MEM_MB", "0")
+    assert AESDKConfig().sandbox_mem_limit_mb == 0
+    monkeypatch.delenv("AESDK_SANDBOX_MEM_MB")
+    assert AESDKConfig().sandbox_mem_limit_mb == 4096

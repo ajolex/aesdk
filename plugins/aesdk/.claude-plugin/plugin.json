@@ -1,6 +1,6 @@
 {
   "name": "aesdk",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Econometrics guardrails for AI-assisted research: method skills, a methods-reviewer subagent, hooks that block analysis code which skips the AESDK methods check, the AESDK MCP tools, and automatic AI-provenance archiving. Requires `pip install \"aesdk[mcp]\"`.",
   "author": {
     "name": "AESDK Contributors",

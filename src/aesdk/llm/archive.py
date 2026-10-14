@@ -174,7 +174,7 @@ class ResearchLLM:
         settings = self.adapter.settings()
         batch_ids = sorted({c["batch_id"] for c in calls if c.get("batch_id")})
         if self.batches_path.exists():
-            batch_ids = sorted(set(batch_ids) | {json.loads(l)["batch_id"] for l in self.batches_path.read_text().splitlines() if l.strip()})
+            batch_ids = sorted(set(batch_ids) | {json.loads(line)["batch_id"] for line in self.batches_path.read_text().splitlines() if line.strip()})
         schema_files = sorted({c["schema_file"] for c in calls if c.get("schema_file")})
         block: dict[str, Any] = {
             "used": True,

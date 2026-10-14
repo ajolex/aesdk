@@ -186,7 +186,18 @@ AESDK also includes:
 - sandboxed execution controls
 - Python, Stata, and R execution dispatch
 - CSV and HTML trace export
-- optional LLM adapters
+- `aesdk.llm`: Anthropic/OpenAI adapters with structured outputs and batches, plus `ResearchLLM`, which archives every call for the AI passport
+
+## Agent Integration
+
+AESDK enforces its workflow inside coding agents rather than only describing it:
+
+- **Hooks** (`aesdk hook ...`, installed by the Claude Code plugin or `aesdk setup --claude`): deny ungoverned estimation runs and estimation-code writes before a passing methods check, and archive prompts and session transcripts to `.aesdk/`.
+- **Agent Skills**: `aesdk-workflow` and one `aesdk-<method>` skill per method pack (`aesdk skills write`).
+- **Claude Code plugin and marketplace**: `plugins/aesdk`, `.claude-plugin/marketplace.json`; includes the `aesdk-methods-reviewer` subagent and `/aesdk-check`, `/aesdk-report`.
+- **MCP server**: read-only annotated tools with typed output, resources, prompts, elicitation, stdio or streamable HTTP, and a one-click `aesdk.mcpb` Claude Desktop bundle.
+- **Agent-session provenance**: the AI passport summarizes archived transcripts (models actually used, permission modes, MCP servers, subagents, compaction) and flags contradictions with the declared `ai_use`.
+- **Agent evals**: `evals/run_agent_evals.py` runs a real agent headless on scenario projects and grades whether it followed AESDK.
 
 Most research users will not need these details on day one. They are there for teams that need stronger auditability.
 
@@ -216,3 +227,5 @@ AESDK helps enforce a disciplined workflow:
 - container isolation for high-stakes regulated execution
 - signed replay reports for external auditors
 - live examples for AWS/GCP/Azure KMS setups
+- hooks for agents other than Claude Code once their hook interfaces stabilize (the hook handlers are agent-neutral; only the settings wiring is Claude Code specific)
+- more agent-eval scenarios (IV, RCT, Stata/R projects) and scheduled eval runs

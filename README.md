@@ -43,6 +43,10 @@ AESDK currently provides:
 - AI Replicability Passports for archived prompts, raw outputs, model metadata, AI-generated code, and AI-derived variables
 - replay checks for recorded execution
 - enforced online citation/source integrity checks for agent-generated research text
+- coding-agent hooks that *enforce* the methods check (Claude Code): estimation code that skips preflight is denied, and prompts and session transcripts are archived automatically
+- Agent Skills generated from every method pack, a Claude Code plugin and marketplace, and an independent methods-reviewer subagent
+- an MCP server with read-only tool annotations, typed results, resources, prompts, and a one-click Claude Desktop bundle (`aesdk.mcpb`)
+- reproducible AI-derived variables: `aesdk.llm.ResearchLLM` archives every model call (served model, request id, schema, batch id) for the AI passport
 
 The method guidance is compact and paraphrased. It is meant to guide agents, not to redistribute textbooks.
 
@@ -198,6 +202,45 @@ your project and, if AESDK is not installed yet, ask your assistant: "Please set
 up AESDK for me." The assistant handles the rest and keeps the methods check
 running quietly in the background before any analysis code is written or run.
 
+## Enforce AESDK In Coding Agents (Hooks, Skills, Plugin)
+
+Instructions in `AGENTS.md`/`CLAUDE.md` only work if the agent follows them.
+AESDK can also enforce the workflow from outside the model.
+
+**Claude Code plugin (recommended).** In Claude Code:
+
+```text
+/plugin install aesdk --marketplace ajolex/aesdk
+```
+
+(or `/plugin marketplace add ajolex/aesdk`, then `/plugin install aesdk@aesdk`).
+The plugin needs the Python package (`pip install "aesdk[mcp]"`) and bundles:
+
+- **Hooks.** Running an estimation script directly (`python analysis.py`,
+  `Rscript model.R`, `stata -b do main.do`, heredoc writes included) is denied
+  with a message telling the agent to use `aesdk agent run`. Writing estimation
+  code is denied until a non-blocking methods check is recorded in
+  `.aesdk.json`. Each researcher prompt is appended to `.aesdk/prompts.jsonl`,
+  and each session transcript is archived to `.aesdk/sessions/` with a summary
+  of the models actually used, tools, MCP servers, subagents, and compaction.
+- **Skills.** `aesdk-workflow` plus one `aesdk-<method>` skill per method, loaded
+  only when relevant.
+- **Subagent.** `aesdk-methods-reviewer` checks the plan and code in its own
+  context, so the agent is not the only reviewer of its own work.
+- **Commands.** `/aesdk-check` and `/aesdk-report`.
+- **MCP tools.** The AESDK MCP server.
+
+**Without the marketplace:** `aesdk setup --claude` installs the same hooks,
+skills, subagent, and commands into the project's `.claude/` folder. Use
+`aesdk setup --skills` to also write `.agents/skills/` for other agents that read
+Agent Skills, or `aesdk hooks install` for hooks only.
+
+Set `AESDK_HOOK_MODE=warn` to warn instead of deny, or `off` to disable. Set
+`AESDK_ARCHIVE_PROMPTS=0` / `AESDK_ARCHIVE_SESSIONS=0` to stop archiving. The
+`.aesdk/` folder can contain the researcher's prompts: keep it under the same
+data-handling rules as the project, and do not commit it to a public repository
+if prompts mention confidential data.
+
 ## Use AESDK From Chat (ChatGPT or Claude)
 
 Most researchers start in a chat window (ChatGPT or Claude) rather than a coding
@@ -237,9 +280,22 @@ aesdk connect-claude       # wire AESDK into Claude Desktop
 
 Then fully quit and reopen Claude Desktop, and in a chat say: *"Use AESDK to check
 my study design before we write any code."* Claude can now call `list_methods`,
-`method_context`, `preflight`, `scan_data`, and `check_ols`, and explains the
+`method_context`, `draft_plan`, `preflight`, `scan_data`, `check_ols`,
+`prepare_record`, `workflow_report`, and `ai_passport`, and explains the
 pass/warn/block result in plain language. Use `aesdk connect-claude --dry-run` to
 preview the change first.
+
+**One-click alternative:** `aesdk mcpb` writes `aesdk.mcpb`, a Claude Desktop
+extension. Double-click it (or drag it into Settings > Extensions) and Claude
+Desktop installs AESDK itself; a team lead can build it once and share the file.
+
+The checking tools are marked read-only, so clients can run them without asking
+each time. Results are typed (structured output). When `draft_plan` lacks the
+outcome, treatment, unit, or time variable, it asks the researcher directly if the
+client supports MCP elicitation. Method guardrails are also exposed as resources
+(`aesdk://methods/did`), with a `design_review` prompt. The server works with MCP
+Python SDK 1.12+ and 2.x. For an organization-hosted endpoint, run
+`aesdk mcp --transport streamable-http` behind your own authentication.
 
 <details>
 <summary>Prefer to edit the config yourself?</summary>
@@ -360,6 +416,58 @@ aesdk agent review-diff --ai-code ai_outputs/analysis_ai.do --final-code analysi
 ```
 
 These fields do not automatically count as final human review. `human_reviewed: true` still requires review status and non-empty review evidence files; agent-only runs should leave it false until a researcher actually reviews the work. AESDK blocks workflows that require a live AI model for replication, and it blocks AI-derived data when raw AI outputs are not archived.
+
+### Agent sessions in the passport
+
+Coding-agent work is now long, multi-turn, and tool-using, so the passport records
+more than one prompt and one model:
+
+- `ai_use` accepts `reasoning_effort`, `agent_autonomy`
+  (`manual_approval`, `auto_accept_edits`, `autonomous`, `cloud_autonomous`),
+  `session_files`, `memory_files` (CLAUDE.md, AGENTS.md, and other agent memory
+  in effect), `mcp_servers`, `subagents_used`, `context_compacted`,
+  `web_tools_used`, `computer_use`, `batch_ids`, and
+  `structured_output_schema_files`. `model_metadata_source: transcript` is
+  allowed.
+- Prompts and transcripts archived by the hooks under `.aesdk/` are picked up
+  automatically. Run `aesdk agent capture-session` to archive a session by hand.
+- The passport compares declarations with the archived sessions. It flags a
+  declared model that never ran, undeclared MCP servers, subagents, compaction or
+  web tools, and an autonomous permission mode without `agent_autonomy`.
+  Autonomous work without human review is a warning (rule `AI-REP-030`).
+- `aesdk agent claude-runtime` reads the model that actually ran from the session
+  transcript, which reflects `/model` switches and fallbacks, instead of the
+  configured default.
+
+### Reproducible AI-derived variables
+
+When an LLM codes, classifies, or extracts data, use `aesdk.llm.ResearchLLM` so
+every call is archived and the passport can verify it:
+
+```python
+from aesdk.llm import AnthropicAdapter, ResearchLLM
+
+llm = ResearchLLM(AnthropicAdapter(effort="high"), archive_dir="ai_archive")
+schema = {"type": "object", "properties": {"eligible": {"type": "boolean"}},
+          "required": ["eligible"], "additionalProperties": False}
+row = llm.generate(f"Is this applicant eligible? {text}", schema=schema, record_id=applicant_id)
+row.structured  # {"eligible": True}
+
+# Large jobs: Message Batches (50% cheaper), archived the same way
+batch_id = llm.submit_batch({rid: f"Is this applicant eligible? {t}" for rid, t in rows}, schema=schema)
+results = llm.collect_batch(batch_id)
+
+pap["ai_use"] = llm.ai_use(role="text_classification", ai_derived_variables=["eligible"],
+                           input_files=["applications.csv"], qa_sample_plan="...", sensitivity_plan="...")
+```
+
+`ai_archive/calls.jsonl` holds each prompt, the model that actually served it,
+the provider request id, the stop reason, the parsed output, and the raw
+response. Output schemas are saved under `ai_archive/schemas/`. The Anthropic
+adapter defaults to `claude-opus-5-5` and turns on server-side refusal fallbacks
+(`fallbacks="default"`). The served model is recorded per row, so pass
+`fallbacks=None` if every record must come from one model. `OpenAIAdapter`
+requires an explicit model id. Install with `pip install "aesdk[llm]"`.
 
 ## Data-Aware Preflight
 
@@ -487,6 +595,21 @@ aesdk agent report --blob .aesdk.json --output workflow.html
 ```
 
 This lets a supervisor, coauthor, or future RA inspect what was proposed, validated, and executed. The HTML report summarizes the workflow events, execution diagnostics, recorded artifacts, and nearby output files in the task folder.
+
+## Agent Evals
+
+`evals/run_agent_evals.py` runs Claude Code headless on scenario projects
+(`evals/scenarios.yaml`) with the AESDK plugin and grades the transcript. It
+checks that the agent ran the methods check before any estimation, never ran
+estimation outside governed execution, and stopped on a block:
+
+```bash
+python evals/run_agent_evals.py --max-budget-usd 3          # plugin integration
+python evals/run_agent_evals.py --integration project       # aesdk setup --claude
+```
+
+Each run uses real API credit. The `Agent evals` GitHub workflow runs it on
+demand when an `ANTHROPIC_API_KEY` secret is configured.
 
 ## What AESDK Does Not Do
 

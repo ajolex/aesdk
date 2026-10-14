@@ -1,10 +1,14 @@
 ﻿"""Runner for Econometric Specifications."""
 from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
+
 import pandas as pd
+
 from aesdk.curve.spec_engine import SpecEngine, SpecResult
 from aesdk.plugins import plugins
+
 
 class CurveRunner:
     """Orchestrates the execution of specifications against data."""

@@ -294,7 +294,13 @@ def pre_tool_use(payload: dict[str, Any]) -> HookDecision:
     cwd = Path(payload.get("cwd") or ".")
 
     if tool in _SHELL_TOOLS:
-        invocation = find_analysis_invocation(str(tool_input.get("command") or ""), cwd)
+        command = str(tool_input.get("command") or "")
+        written = _shell_written_code_language(command)
+        if written:
+            write_decision = _guard_code_write(_shell_payload_text(command), written, cwd)
+            if write_decision.action != "allow":
+                return write_decision
+        invocation = find_analysis_invocation(command, cwd)
         if invocation is None:
             return HookDecision()
         return _apply_mode(
@@ -317,25 +323,53 @@ def pre_tool_use(payload: dict[str, Any]) -> HookDecision:
                 new_code += "\n" + str(edit.get("new_string") or "")
         if file_path.lower().endswith(".ipynb") and tool_input.get("content"):
             new_code = _notebook_code(str(tool_input.get("content")))
-        if not contains_estimation_code(new_code, language):
-            return HookDecision()
-        status = latest_validation_status(cwd)
-        if status in {"pass", "warn"}:
-            return HookDecision()
-        if status == "block":
-            return _apply_mode(
-                "AESDK: the latest methods check for this project BLOCKED the analysis, so estimation code "
-                "should not be written yet. Explain the blocking issue to the researcher, fix the plan, and "
-                "re-run `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json` until it passes."
-            )
-        return _apply_mode(
-            "AESDK: this file fits an econometric model, but no AESDK methods check has been recorded for this "
-            "project yet. First run `aesdk agent intake --prompt \"<request>\" --method <method> --output-dir .` "
-            "(or `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .`), "
-            "explain the result to the researcher, and only then write the analysis code."
-        )
+        return _guard_code_write(new_code, language, cwd)
 
     return HookDecision()
+
+
+_SHELL_WRITE = re.compile(r"(?:>>?|\btee\s+(?:-a\s+)?)\s*['\"]?([^\s'\";|&<>]+\.(?:py|r|do))\b", re.IGNORECASE)
+
+
+def _shell_written_code_language(command: str) -> str | None:
+    """Language of a code file the shell command writes (heredoc, redirect, tee)."""
+
+    match = _SHELL_WRITE.search(command)
+    if not match:
+        return None
+    return _CODE_EXTENSIONS.get(Path(match.group(1)).suffix.lower())
+
+
+def _shell_payload_text(command: str) -> str:
+    """Command text plus each quoted argument on its own line (echo/printf bodies)."""
+
+    try:
+        tokens = shlex.split(command, posix=True)
+    except ValueError:
+        tokens = []
+    return "\n".join([command, *(token.replace("\\n", "\n") for token in tokens)])
+
+
+def _guard_code_write(new_code: str, language: str, cwd: Path) -> HookDecision:
+    """Deny writing estimation code until a non-blocking methods check exists."""
+
+    if not contains_estimation_code(new_code, language):
+        return HookDecision()
+    status = latest_validation_status(cwd)
+    if status in {"pass", "warn"}:
+        return HookDecision()
+    if status == "block":
+        return _apply_mode(
+            "AESDK: the latest methods check for this project BLOCKED the analysis, so estimation code "
+            "should not be written yet. Explain the blocking issue to the researcher, fix the plan, and "
+            "re-run `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json` until it passes."
+        )
+    return _apply_mode(
+        "AESDK: this file fits an econometric model, but no AESDK methods check has been recorded for this "
+        "project yet. First run `aesdk agent intake --prompt \"<request>\" --method <method> --output-dir .` "
+        "(or `aesdk agent prepare --method <method> --pap pap.yaml --proposal proposal.json --output-dir .`), "
+        "explain the result to the researcher, and only then write the analysis code."
+    )
 
 
 def _archive_root(payload: dict[str, Any]) -> Path:

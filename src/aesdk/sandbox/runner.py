@@ -109,7 +109,7 @@ class SandboxRunner:
         self,
         whitelist_path: str | Path | None = None,
         *,
-        mem_limit_mb: int = 512,
+        mem_limit_mb: int = 4096,
         cpu_limit_sec: int = 30,
         stata_executable: str | Path | None = None,
         r_executable: str | Path | None = None,
@@ -212,6 +212,7 @@ class SandboxRunner:
 
         if proc.returncode != 0:
             diagnostics.append(SandboxDiagnostic("RUNTIME", proc.stderr.strip() or "Execution failed", "error"))
+            diagnostics.extend(self._memory_limit_hint(proc.stderr))
             return SandboxResult(
                 status="block",
                 diagnostics=diagnostics,
@@ -222,6 +223,23 @@ class SandboxRunner:
 
         diagnostics.append(SandboxDiagnostic("SMOKE", "Execution succeeded", "info"))
         return SandboxResult(status="pass", diagnostics=diagnostics, stdout=proc.stdout, stderr=proc.stderr, artifacts=artifacts)
+
+    def _memory_limit_hint(self, stderr: str | None) -> list[SandboxDiagnostic]:
+        """Explain sandbox memory-cap failures so agents raise the cap instead of
+        rewriting the estimator without the library."""
+
+        text = stderr or ""
+        if not any(marker in text for marker in ("failed to map segment", "MemoryError", "Cannot allocate memory")):
+            return []
+        return [
+            SandboxDiagnostic(
+                "MEMORY_LIMIT",
+                f"The sandbox memory cap ({self.mem_limit_mb} MB of address space) stopped a library from loading. "
+                "Raise it with AESDK_SANDBOX_MEM_MB (for example 8192, or 0 to disable) and re-run; do not replace "
+                "the estimation library with hand-written code.",
+                "error",
+            )
+        ]
 
     def run_stata(self, code: str, timeout_seconds: int | None = None) -> SandboxResult:
         diagnostics: list[SandboxDiagnostic] = []

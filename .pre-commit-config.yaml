@@ -1,0 +1,20 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.8
+    hooks:
+      - id: ruff
+        args: [--fix]
+  - repo: local
+    hooks:
+      - id: aesdk-plugin-sync
+        name: regenerate the Claude Code plugin from the package
+        entry: python scripts/build_plugin.py
+        language: system
+        pass_filenames: false
+        files: ^(src/aesdk/(knowledge|agent)/|scripts/build_plugin\.py)
+      - id: aesdk-knowledge
+        name: validate method packs and rules
+        entry: python -m aesdk methods validate
+        language: system
+        pass_filenames: false
+        files: ^src/aesdk/(knowledge|governance)/

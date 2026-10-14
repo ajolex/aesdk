@@ -8,8 +8,7 @@ import pandas as pd
 import yaml
 from typer.testing import CliRunner
 
-from aesdk.chat import available_targets, chat_guide
-from aesdk.chat import tools
+from aesdk.chat import available_targets, chat_guide, tools
 from aesdk.cli.main import app
 
 runner = CliRunner()

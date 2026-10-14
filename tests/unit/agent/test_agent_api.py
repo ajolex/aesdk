@@ -1,7 +1,6 @@
 import json
 
 import pandas as pd
-import pytest
 import yaml
 
 import aesdk as ae

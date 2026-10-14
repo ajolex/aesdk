@@ -102,3 +102,17 @@ explanations and be asked plain-language questions.
 12. Offer a plain-language summary of what was run and found. For a shareable
     write-up (useful for a supervisor or coauthor), create the HTML report:
     `aesdk agent report --blob .aesdk.json --output workflow.html`.
+
+## Agent features
+
+- If AESDK Agent Skills are installed (`.agents/skills/aesdk-*` or
+  `.claude/skills/aesdk-*`), load `aesdk-workflow` and the method's
+  `aesdk-<method>` skill for the detailed guardrails.
+- AESDK hooks may deny running estimation scripts directly or writing estimation
+  code before a passing methods check. Follow the message; do not work around it.
+- Record research decisions in `pap.yaml` / `proposal.json`, not only in chat or
+  agent memory, so they are checked and reproducible.
+- Prompts and session transcripts saved under `.aesdk/` are picked up by the AI
+  passport automatically. Declare `agent_autonomy`, MCP servers, and subagents
+  you used in `ai_use`. To archive a session by hand, run
+  `aesdk agent capture-session`.

@@ -9,8 +9,8 @@ import yaml
 
 import aesdk as ae
 from aesdk.agent.runtime_metadata import write_claude_runtime_metadata
-from aesdk.protocol.validator import Validator
 from aesdk.governance.policy import ConformanceLevel
+from aesdk.protocol.validator import Validator
 
 
 def _session(path: Path, model: str = "claude-opus-5-5", tools: list[str] | None = None, mode: str = "default") -> Path:

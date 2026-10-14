@@ -1,10 +1,12 @@
 """Tests for Trace Exporters."""
 from __future__ import annotations
-from pathlib import Path
+
 import pytest
+
 from aesdk.trace.blob import ReasoningLog, ReplicationBlob
 from aesdk.trace.exporters.csv_exporter import CSVExporter
 from aesdk.trace.exporters.html_exporter import HTMLExporter
+
 
 @pytest.fixture
 def mock_blob(tmp_path):

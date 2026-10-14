@@ -1,7 +1,10 @@
 ﻿"""Plotting utilities for econometric results."""
 from __future__ import annotations
+
 import matplotlib.pyplot as plt
+
 from aesdk.curve.spec_engine import SpecResult
+
 
 def plot_coefficients(result: SpecResult, title: str = "Coefficient Estimates", show: bool = True):
     """Plots coefficients with confidence intervals."""

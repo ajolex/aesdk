@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import pandas as pd
-import pytest
 
 import aesdk as ae
 from aesdk.data import scan_data

@@ -1,14 +1,15 @@
+from pathlib import Path
+
 import pytest
 import yaml
-from pathlib import Path
 
 from aesdk.knowledge import (
     get_knowledge_pack,
     get_method_protocol,
     get_method_source_map,
     get_source,
-    list_knowledge_pack_ids,
     list_curriculum_stage_ids,
+    list_knowledge_pack_ids,
     list_method_ids,
     list_source_ids,
     load_curriculum,

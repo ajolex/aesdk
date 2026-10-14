@@ -1,0 +1,46 @@
+name: Agent evals
+
+# End-to-end check that a real coding agent follows AESDK (runs Claude Code
+# headless; uses API credit, so it only runs on demand).
+on:
+  workflow_dispatch:
+    inputs:
+      integration:
+        description: "plugin or project"
+        default: plugin
+      max_budget_usd:
+        description: "Per-scenario budget cap (USD)"
+        default: "3"
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install AESDK and Claude Code
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[mcp]
+          npm install -g @anthropic-ai/claude-code
+      - name: Run agent evals
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          python evals/run_agent_evals.py \
+            --integration "${{ inputs.integration }}" \
+            --max-budget-usd "${{ inputs.max_budget_usd }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-eval-transcripts
+          path: evals/out/

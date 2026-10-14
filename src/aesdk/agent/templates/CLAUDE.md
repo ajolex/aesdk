@@ -73,3 +73,22 @@ econometric analysis code, use AESDK first.
   analysis.py`. AESDK also gates Stata `.do` files and R scripts the same way.
 - Offer a plain-language summary, and for a shareable write-up create the HTML
   report with `aesdk agent report --blob .aesdk.json --output workflow.html`.
+
+## Agent features to use
+
+- **Skills:** if the `aesdk-workflow` and `aesdk-<method>` skills are installed
+  (`aesdk setup --claude` or the AESDK plugin), load the method skill for the
+  detailed guardrails instead of re-deriving them.
+- **Independent review:** if the `aesdk-methods-reviewer` subagent is available,
+  ask it to check the plan (and code) before you run anything; do not review
+  your own plan alone.
+- **Hooks:** AESDK hooks may deny running estimation scripts directly with
+  `python`, `Rscript`, or `stata`, or writing estimation code before a passing
+  methods check. That is the guardrail working: follow the message, do not work
+  around it.
+- **Memory:** record research decisions (estimand, sample, clustering,
+  acknowledged warnings) in `pap.yaml` / `proposal.json`, not only in chat or
+  agent memory, so they are checked and reproducible.
+- **AI provenance:** prompts and session transcripts saved under `.aesdk/` are
+  picked up by the AI passport automatically; declare `agent_autonomy` and any
+  MCP servers or subagents you used in `ai_use`.

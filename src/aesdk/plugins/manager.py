@@ -2,8 +2,10 @@
 Allows users to inject custom validation rules or econometric estimators.
 """
 from __future__ import annotations
-from typing import Any, Callable, Dict
+
 from dataclasses import dataclass
+from typing import Callable, Dict
+
 
 @dataclass
 class PluginMetadata:

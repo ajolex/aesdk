@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aesdk"
-version = "0.2.1"
+version = "0.3.0"
 description = "Agentic Econometrics SDK"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -96,3 +96,16 @@ aesdk = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+extend-exclude = ["docs/books"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I001"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/aesdk/core/__init__.py" = ["F403", "F405"]
+"src/aesdk/__init__.py" = ["F401"]

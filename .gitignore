@@ -44,3 +44,4 @@ Thumbs.db
 *.aesdk.json.sig.json
 .env
 
+evals/out/

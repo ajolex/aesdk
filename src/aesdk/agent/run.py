@@ -11,8 +11,7 @@ from aesdk.agent.ai_passport import build_ai_passport
 from aesdk.agent.preflight import PreflightResult, preflight
 from aesdk.config import config
 from aesdk.core.project import Project
-from aesdk.sandbox.runner import SandboxRunner
-from aesdk.sandbox.runner import SandboxResult, infer_language_from_path, normalize_language
+from aesdk.sandbox.runner import SandboxResult, SandboxRunner, infer_language_from_path, normalize_language
 
 
 @dataclass(frozen=True)
