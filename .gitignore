@@ -1,4 +1,4 @@
-﻿# Python
+# Python
 __pycache__/
 *.py[cod]
 *.pyo
@@ -20,10 +20,10 @@ tools/
 docs/books/
 
 # Local agent/project memory
-AGENTS.md
-CLAUDE.md
-AI_MEMORY.md
-CHANGELOG.md
+/AGENTS.md
+/CLAUDE.md
+/AI_MEMORY.md
+/CHANGELOG.md
 docs/HANDOFF.md
 docs/phases/
 
