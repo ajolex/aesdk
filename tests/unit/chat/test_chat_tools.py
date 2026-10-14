@@ -108,3 +108,29 @@ def test_mcp_cli_degrades_without_extra() -> None:
     result = runner.invoke(app, ["mcp"])
     assert result.exit_code == 1
     assert "pip install aesdk[mcp]" in result.output
+
+
+def test_mcpb_bundle(tmp_path: Path) -> None:
+    import json
+    import zipfile
+
+    from aesdk._version import __version__
+
+    result = runner.invoke(app, ["mcpb", "--output", str(tmp_path / "aesdk.mcpb")])
+    assert result.exit_code == 0, result.output
+    with zipfile.ZipFile(tmp_path / "aesdk.mcpb") as archive:
+        names = set(archive.namelist())
+        manifest = json.loads(archive.read("manifest.json"))
+        pyproject = archive.read("pyproject.toml").decode()
+    assert {"manifest.json", "pyproject.toml", "src/server.py"} <= names
+    assert manifest["manifest_version"] == "0.4" and manifest["server"]["type"] == "uv"
+    assert manifest["version"] == __version__
+    assert f"aesdk[mcp]=={__version__}" in pyproject
+    tool_names = {t["name"] for t in manifest["tools"]}
+    assert {"preflight", "draft_plan", "scan_data"} <= tool_names
+
+
+def test_draft_plan_tool_reports_missing_facts() -> None:
+    draft = tools.draft_plan(method="did", goal="Effect of a subsidy on employment", outcome="employment")
+    assert draft["missing"] == ["treatment", "unit", "time"]
+    assert "employment" in draft["pap_yaml"]

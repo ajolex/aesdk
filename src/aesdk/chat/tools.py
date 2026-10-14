@@ -125,3 +125,111 @@ def check_ols(pap_yaml: str, data_path: str) -> dict[str, Any]:
         "ols_assumptions": profile.get("ols_assumptions"),
         "findings": result.get("findings", []),
     }
+
+
+_CORE_FACTS = ("outcome", "treatment", "unit", "time")
+
+
+def draft_plan(
+    *,
+    method: str,
+    goal: str,
+    outcome: str = "",
+    treatment: str = "",
+    unit: str = "",
+    time: str = "",
+    covariates: list[str] | None = None,
+    data_path: str | None = None,
+) -> dict[str, Any]:
+    """Draft a reviewable PAP (YAML) and proposal (JSON) from a plain description.
+
+    Uses the same intake logic as ``aesdk agent intake`` in a throwaway folder,
+    so nothing is written to the researcher's project.
+    """
+    from aesdk.agent.intake import intake_prompt
+
+    facts = {"outcome": outcome, "treatment": treatment, "unit": unit, "time": time}
+    missing = [name for name in _CORE_FACTS if not facts[name]]
+    with tempfile.TemporaryDirectory() as tmp:
+        result = intake_prompt(
+            prompt=goal,
+            method=method,
+            output_dir=tmp,
+            data_path=data_path or None,
+            outcome=outcome or "outcome",
+            treatment=treatment or "treatment",
+            unit=unit or None,
+            time=time or None,
+        )
+        pap = yaml.safe_load(Path(result.pap_path).read_text(encoding="utf-8")) or {}
+        if covariates:
+            pap.setdefault("identification", {})["covariates"] = list(covariates)
+        proposal_text = Path(result.proposal_path).read_text(encoding="utf-8")
+    return {
+        "method_id": method,
+        "pap_yaml": yaml.safe_dump(pap, sort_keys=False),
+        "proposal_json": proposal_text,
+        "missing": missing,
+        "note": (
+            "This is a draft. Confirm every field with the researcher (especially anything listed in "
+            "`missing`, which was filled with a placeholder) before running preflight."
+        ),
+    }
+
+
+def _project_dir(project_dir: str) -> Path:
+    root = Path(project_dir).expanduser()
+    if not root.is_dir():
+        raise ValueError(f"project_dir does not exist or is not a folder: {root}")
+    return root
+
+
+def prepare_record(*, method: str, pap_yaml: str, proposal_json: str, project_dir: str) -> dict[str, Any]:
+    """Save pap.yaml/proposal.json and create or refresh the .aesdk.json audit record."""
+    from aesdk.agent.prepare import prepare
+
+    root = _project_dir(project_dir)
+    pap = yaml.safe_load(pap_yaml) or {}
+    proposal = _load_proposal(proposal_json)
+    pap_path = root / "pap.yaml"
+    proposal_path = root / "proposal.json"
+    pap_path.write_text(yaml.safe_dump(pap, sort_keys=False), encoding="utf-8")
+    proposal_path.write_text(json.dumps(proposal, indent=2), encoding="utf-8")
+    result = prepare(pap_path=pap_path, proposal=proposal_path, blob_path=root / ".aesdk.json")
+    return {
+        "path": str(result.blob_path),
+        "status": result.status,
+        "blocked": result.blocked,
+        "detail": f"Saved {pap_path.name}, {proposal_path.name}, and the audit record (method {method}).",
+    }
+
+
+def workflow_report(*, project_dir: str) -> dict[str, Any]:
+    """Write workflow.html from the project's .aesdk.json."""
+    from aesdk.agent.report import write_workflow_report
+
+    root = _project_dir(project_dir)
+    blob = root / ".aesdk.json"
+    if not blob.exists():
+        raise ValueError("No .aesdk.json audit record in this folder yet; run prepare_record first.")
+    path = write_workflow_report(blob_path=blob, output_path=root / "workflow.html")
+    return {"path": str(path), "detail": "Open workflow.html in a browser to review the run."}
+
+
+def ai_passport(*, project_dir: str) -> dict[str, Any]:
+    """Write ai.lock.json from the project's pap.yaml/proposal.json ai_use block."""
+    from aesdk.agent.ai_passport import write_ai_passport
+
+    root = _project_dir(project_dir)
+    proposal = root / "proposal.json"
+    result = write_ai_passport(
+        pap_path=root / "pap.yaml",
+        proposal_path=proposal if proposal.exists() else None,
+        output_path=root / "ai.lock.json",
+    )
+    return {
+        "path": str(result.path),
+        "status": result.status,
+        "blocked": result.blocked,
+        "detail": "AI Replicability Passport written.",
+    }

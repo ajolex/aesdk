@@ -1084,20 +1084,39 @@ def connect_claude_cmd(
 
 @app.command("mcp")
 def mcp_cmd(
-    transport: str = typer.Option("stdio", "--transport", help="MCP transport (stdio)."),
+    transport: str = typer.Option(
+        "stdio", "--transport", help="MCP transport: stdio (local connectors) or streamable-http (hosted endpoint)."
+    ),
+    host: str = typer.Option("127.0.0.1", "--host", help="Bind address for streamable-http."),
+    port: int = typer.Option(8000, "--port", help="Port for streamable-http."),
 ) -> None:
     """Run the AESDK MCP server so chat clients (e.g. Claude) can call the checks.
 
-    Requires the optional 'mcp' extra: pip install aesdk[mcp].
+    Requires the optional 'mcp' extra: pip install aesdk[mcp]. The data tools read
+    local files, so only expose streamable-http beyond localhost behind your
+    organization's authentication.
     """
 
     from aesdk.chat.server import run as run_server
 
     try:
-        run_server(transport=transport)
-    except RuntimeError as exc:
+        run_server(transport=transport, host=host, port=port)
+    except (RuntimeError, ValueError) as exc:
         typer.echo(str(exc))
         raise typer.Exit(code=1)
+
+
+@app.command("mcpb")
+def mcpb_cmd(
+    output: Path = typer.Option(Path("aesdk.mcpb"), "--output", help="Where to write the MCP Bundle."),
+) -> None:
+    """Build aesdk.mcpb, a one-click Claude Desktop extension (double-click to install)."""
+
+    from aesdk.chat.bundle import build_mcpb
+
+    path = build_mcpb(output)
+    typer.echo(f"mcpb_written={path}")
+    typer.echo("Double-click the file (or drag it into Claude Desktop > Settings > Extensions) to install.")
 
 
 @app.command("hook")
