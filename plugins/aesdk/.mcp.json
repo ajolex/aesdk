@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "aesdk": {
+      "command": "aesdk",
+      "args": [
+        "mcp"
+      ]
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "aesdk",
+  "owner": {
+    "name": "AESDK Contributors",
+    "url": "https://github.com/ajolex/aesdk"
+  },
+  "metadata": {
+    "description": "Econometrics guardrails for AI-assisted research."
+  },
+  "plugins": [
+    {
+      "name": "aesdk",
+      "source": "./plugins/aesdk",
+      "description": "Runs an econometrics methods check (AESDK) before AI agents write or run regression and causal-inference code, enforces it with hooks, and archives AI provenance.",
+      "category": "research",
+      "homepage": "https://github.com/ajolex/aesdk"
+    }
+  ]
+}

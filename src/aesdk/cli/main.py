@@ -1,4 +1,4 @@
-﻿"""CLI entrypoint for AESDK."""
+"""CLI entrypoint for AESDK."""
 
 from __future__ import annotations
 
@@ -67,12 +67,16 @@ methods_app = typer.Typer(help="Textbook-backed method protocols")
 sources_app = typer.Typer(help="Registered textbook and literature sources")
 agent_app = typer.Typer(help="Agent-facing preflight and context helpers")
 rules_app = typer.Typer(help="Executable econometric governance rules")
+hooks_app = typer.Typer(help="Coding-agent hooks that enforce AESDK guardrails")
+skills_app = typer.Typer(help="Agent Skills (SKILL.md) generated from AESDK method packs")
 app.add_typer(cite_app, name="cite")
 app.add_typer(audit_app, name="audit")
 app.add_typer(methods_app, name="methods")
 app.add_typer(sources_app, name="sources")
 app.add_typer(agent_app, name="agent")
 app.add_typer(rules_app, name="rules")
+app.add_typer(hooks_app, name="hooks")
+app.add_typer(skills_app, name="skills")
 
 
 def _load_json(path: str | Path) -> dict:
@@ -990,6 +994,21 @@ def setup_cmd(
     force: bool = typer.Option(
         False, "--force", help="Overwrite existing AGENTS.md/CLAUDE.md instead of keeping them."
     ),
+    hooks: bool = typer.Option(
+        False,
+        "--hooks",
+        help="Also install Claude Code hooks that enforce the methods check (.claude/settings.json).",
+    ),
+    skills: bool = typer.Option(
+        False,
+        "--skills",
+        help="Also write AESDK Agent Skills (SKILL.md) into .claude/skills and .agents/skills.",
+    ),
+    claude: bool = typer.Option(
+        False,
+        "--claude",
+        help="Install the full Claude Code integration into .claude/ (hooks, skills, reviewer subagent, commands).",
+    ),
     output_format: str = typer.Option("text", "--format", help="Output format: text|json"),
 ) -> None:
     """Get AESDK ready in one step and print a plain-language summary.
@@ -999,7 +1018,14 @@ def setup_cmd(
     system settings on its own.
     """
 
-    result = run_setup(output_dir=output_dir, write_templates=template, force=force)
+    result = run_setup(
+        output_dir=output_dir,
+        write_templates=template,
+        force=force,
+        install_hooks=hooks,
+        write_skills=skills,
+        claude=claude,
+    )
     if output_format.lower() == "json":
         typer.echo(json.dumps(result.to_dict(), indent=2))
     elif output_format.lower() == "text":
@@ -1072,6 +1098,116 @@ def mcp_cmd(
     except RuntimeError as exc:
         typer.echo(str(exc))
         raise typer.Exit(code=1)
+
+
+@app.command("hook")
+def hook_cmd(
+    event: str = typer.Argument(..., help="Hook event: session-start|pre-tool-use|user-prompt|session-end."),
+) -> None:
+    """Handle a coding-agent hook event (reads the hook JSON on stdin).
+
+    Normally invoked by Claude Code via .claude/settings.json or the AESDK plugin,
+    not by people. The `aesdk` console script dispatches this without loading the
+    full CLI so hooks stay fast.
+    """
+
+    from aesdk.agent.hooks import run_hook
+
+    code, out, err = run_hook(event, sys.stdin.read())
+    if out:
+        typer.echo(out)
+    if err:
+        typer.echo(err, err=True)
+    raise typer.Exit(code=code)
+
+
+@hooks_app.command("install")
+def hooks_install_cmd(
+    project_dir: Path = typer.Option(Path("."), "--project-dir", help="Project folder to install hooks into."),
+    command: str = typer.Option("aesdk", "--command", help="Command used to invoke AESDK from the hook."),
+) -> None:
+    """Merge AESDK hooks into <project>/.claude/settings.json (idempotent)."""
+
+    from aesdk.agent.hooks import install_claude_hooks
+
+    path = install_claude_hooks(project_dir, command=command)
+    typer.echo(f"hooks_installed={path}")
+    typer.echo(
+        "Claude Code will now block estimation code that skips the AESDK methods check, "
+        "archive prompts to .aesdk/prompts.jsonl, and archive session transcripts to .aesdk/sessions/. "
+        "Set AESDK_HOOK_MODE=warn to only warn."
+    )
+
+
+@hooks_app.command("show")
+def hooks_show_cmd(
+    command: str = typer.Option("aesdk", "--command", help="Command used to invoke AESDK from the hook."),
+) -> None:
+    """Print the hooks block to paste into a Claude Code settings.json."""
+
+    from aesdk.agent.hooks import claude_hook_settings
+
+    typer.echo(json.dumps({"hooks": claude_hook_settings(command)}, indent=2))
+
+
+@skills_app.command("write")
+def skills_write_cmd(
+    output_dir: Path = typer.Option(Path(".claude/skills"), "--output-dir", help="Skills root folder."),
+    method: list[str] = typer.Option(None, "--method", help="Only these method ids (repeatable)."),
+) -> None:
+    """Write one SKILL.md per AESDK method plus the core workflow skill."""
+
+    from aesdk.agent.skills import write_skills
+
+    written = write_skills(output_dir, methods=method or None)
+    typer.echo(f"skills_written={len(written)} root={output_dir}")
+
+
+@skills_app.command("show")
+def skills_show_cmd(
+    method: str = typer.Argument("workflow", help="Method id, or 'workflow' for the core skill."),
+) -> None:
+    """Print one generated SKILL.md."""
+
+    from aesdk.agent.skills import render_method_skill, render_workflow_skill
+
+    typer.echo(render_workflow_skill() if method == "workflow" else render_method_skill(method))
+
+
+@agent_app.command("capture-session")
+def agent_capture_session_cmd(
+    transcript: Path | None = typer.Option(
+        None, "--transcript", exists=True, help="Session transcript JSONL (Claude Code or Codex)."
+    ),
+    workspace: Path = typer.Option(Path("."), help="Workspace whose latest Claude Code session to capture."),
+    output_dir: Path = typer.Option(Path(".aesdk/sessions"), "--output-dir", help="Archive folder."),
+) -> None:
+    """Archive an agent session transcript with a provenance summary.
+
+    Without --transcript, the newest Claude Code transcript for --workspace is used.
+    The AESDK hooks do this automatically at session end.
+    """
+
+    from aesdk.agent.hooks import session_end
+    from aesdk.agent.transcripts import find_claude_transcripts
+
+    source = transcript
+    if source is None:
+        found = find_claude_transcripts(workspace)
+        if not found:
+            typer.echo("No Claude Code transcript found for this workspace; pass --transcript.")
+            raise typer.Exit(code=1)
+        source = found[0]
+    session_end(
+        {"transcript_path": str(source), "session_id": source.stem, "cwd": str(workspace)},
+        sessions_dir=output_dir,
+    )
+    summary_path = output_dir / f"{source.stem}.summary.json"
+    typer.echo(f"session_archived={output_dir / (source.stem + '.jsonl')}")
+    if summary_path.exists():
+        summary = json.loads(summary_path.read_text(encoding="utf-8"))
+        typer.echo(f"models_used={','.join(summary.get('models_used') or []) or 'unknown'}")
+        typer.echo(f"summary={summary_path}")
 
 
 @app.command("init")

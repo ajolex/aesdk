@@ -1,0 +1,58 @@
+{
+  "description": "AESDK econometrics guardrails",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "aesdk hook session-start || echo 'AESDK econometrics guardrails are configured for this project but the aesdk package is not installed. Offer the researcher to install it with: python -m pip install \"aesdk[mcp]\"'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|Write|Edit|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "aesdk hook pre-tool-use"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "aesdk hook user-prompt"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "aesdk hook session-end",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "aesdk hook session-end",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

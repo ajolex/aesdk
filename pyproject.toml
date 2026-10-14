@@ -74,7 +74,7 @@ Issues = "https://github.com/ajolex/aesdk/issues"
 Documentation = "https://github.com/ajolex/aesdk#readme"
 
 [project.scripts]
-aesdk = "aesdk.cli.main:app"
+aesdk = "aesdk.cli.entry:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -90,6 +90,7 @@ aesdk = [
   "knowledge/*.yaml",
   "knowledge/packs/*.yaml",
   "agent/templates/*.md",
+  "agent/templates/claude/*/*.md",
   "chat/presets/*.md",
 ]
 

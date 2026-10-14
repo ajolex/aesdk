@@ -6,9 +6,10 @@ Use AESDK with Claude in one of three ways, from strongest to lightest:
   computer (or install the `aesdk.mcpb` bundle in Claude Desktop). Claude then
   calls AESDK's real checks (`preflight`, `scan_data`, `check_ols`, ...) and
   your data stays on your machine. See `aesdk chat-guide --target mcp`.
-- **Enforced via Claude Code:** install the AESDK plugin (`aesdk setup
-  --claude-plugin`, or `/plugin marketplace add ajolex/aesdk` then `/plugin
-  install aesdk@aesdk`). Hooks block analysis code that skips the methods check.
+- **Enforced via Claude Code:** install the AESDK plugin (`/plugin marketplace
+  add ajolex/aesdk`, then `/plugin install aesdk@aesdk`) or run `aesdk setup
+  --claude` in the project. Hooks block analysis code that skips the methods
+  check.
 - **Advisory (zero setup):** paste the block below into a Claude Project's
   instructions, or as your first message. Nothing executes, so treat Claude's
   verdicts as a knowledgeable review, not enforcement.

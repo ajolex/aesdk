@@ -47,6 +47,9 @@ class SetupResult:
     r_available: bool = False
     templates_written: list[str] = field(default_factory=list)
     templates_present: list[str] = field(default_factory=list)
+    hooks_installed: str | None = None
+    skills_written: list[str] = field(default_factory=list)
+    claude_extras: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     next_steps: list[str] = field(default_factory=list)
 
@@ -64,6 +67,9 @@ class SetupResult:
             "r_available": self.r_available,
             "templates_written": self.templates_written,
             "templates_present": self.templates_present,
+            "hooks_installed": self.hooks_installed,
+            "skills_written": self.skills_written,
+            "claude_extras": self.claude_extras,
             "notes": self.notes,
             "next_steps": self.next_steps,
         }
@@ -91,6 +97,24 @@ class SetupResult:
             lines.append("")
             lines.append(
                 "Kept your existing instruction file(s): " + ", ".join(self.templates_present) + "."
+            )
+        if self.hooks_installed:
+            lines.append("")
+            lines.append(
+                "Turned on automatic enforcement for Claude Code: analysis code that skips the "
+                "methods check is stopped, and prompts and session records are saved under .aesdk/."
+            )
+        if self.skills_written:
+            lines.append("")
+            lines.append(
+                f"Saved {len(self.skills_written)} AESDK skills so assistants load method guidance "
+                "only when it is relevant."
+            )
+        if self.claude_extras:
+            lines.append("")
+            lines.append(
+                "Added an independent methods-reviewer assistant and the /aesdk-check and "
+                "/aesdk-report shortcuts for Claude Code."
             )
         if self.notes:
             lines.append("")
@@ -130,11 +154,19 @@ def run_setup(
     output_dir: str | Path = ".",
     write_templates: str = "both",
     force: bool = False,
+    install_hooks: bool = False,
+    write_skills: bool = False,
+    claude: bool = False,
 ) -> SetupResult:
     """Verify the environment, optionally write assistant templates, and report.
 
     ``write_templates`` is one of ``both``, ``AGENTS.md``, ``CLAUDE.md``, or
     ``none``. Existing files are never overwritten unless ``force`` is true.
+    ``install_hooks`` merges AESDK's Claude Code hooks into
+    ``.claude/settings.json``; ``write_skills`` writes AESDK Agent Skills into
+    ``.claude/skills`` and ``.agents/skills``. ``claude`` installs the full
+    Claude Code integration (hooks, skills, methods-reviewer subagent, and
+    slash commands) into ``.claude/``.
     """
 
     result = SetupResult()
@@ -190,6 +222,35 @@ def run_setup(
             result.templates_written.append(name)
         except Exception:
             result.notes.append(f"Could not write {name}; you can generate it with 'aesdk agent template'.")
+
+    if claude:
+        try:
+            from aesdk.agent.claude_integration import install_claude_project
+
+            installed = install_claude_project(out)
+            result.hooks_installed = installed["settings"]
+            result.skills_written.extend(installed["skills"])
+            result.claude_extras = installed["agents"] + installed["commands"]
+        except Exception as exc:
+            result.notes.append(f"Could not install the Claude Code integration: {exc}")
+    if install_hooks and not result.hooks_installed:
+        try:
+            from aesdk.agent.hooks import install_claude_hooks
+
+            result.hooks_installed = str(install_claude_hooks(out))
+        except Exception as exc:
+            result.notes.append(f"Could not install Claude Code hooks: {exc}")
+    if write_skills:
+        try:
+            from aesdk.agent.skills import write_skills as _write_skills
+
+            roots = [out / ".agents" / "skills"]
+            if not claude:
+                roots.insert(0, out / ".claude" / "skills")
+            for root in roots:
+                result.skills_written.extend(str(p) for p in _write_skills(root))
+        except Exception as exc:
+            result.notes.append(f"Could not write AESDK skills: {exc}")
 
     result.ready = bool(
         result.aesdk_version
